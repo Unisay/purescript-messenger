@@ -1,0 +1,53 @@
+{
+  "name": "purescript-messenger-frontend",
+  "version": "1.0.0",
+  "description": "Frontend part of the Messenger App",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Unisay/purescript-messenger.git"
+  },
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "postinstall": "spago install && npm run gen",
+    "clean": "rm -rf node_modules output dce-output .spago dist/* *.lock .cache",
+    "gen:tailwind": "",
+    "gen": "npm run gen:tailwind",
+    "build:purescript": "spago -P build",
+    "build:tailwind": "tailwindcss build assets/styles/tailwind_inputs.css -c tailwind.config.js -o output/tailwind.css",
+    "build": "npm run build:purescript && npm run build:tailwind",
+    "watch": "spago -P build --watch",
+    "bundle:build": "spago -P build --purs-args '--codegen corefn'",
+    "bundle:dce": "zephyr -f Main.main",
+    "bundle:webpack": "webpack -c webpack-bundle.config.js",
+    "bundle": "npm run bundle:build && npm run bundle:dce && npm run bundle:webpack",
+    "dev": "webpack serve -c webpack-dev.config.js",
+    "test": "spago -P test"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "autoprefixer": "^10.2.5",
+    "clean-webpack-plugin": "^3.0.0",
+    "copy-webpack-plugin": "^8.1.1",
+    "css-loader": "^5.2.2",
+    "html-webpack-plugin": "^5.3.1",
+    "postcss": "^8.2.10",
+    "postcss-import": "^14.0.1",
+    "postcss-loader": "^5.2.0",
+    "postcss-preset-env": "^6.7.0",
+    "purs-loader": "^3.7.2",
+    "style-loader": "^2.0.0",
+    "tailwindcss": "^2.1.2",
+    "webpack": "^5.31.2",
+    "webpack-cli": "^4.6.0",
+    "webpack-dev-server": "^3.11.2",
+    "workbox-webpack-plugin": "^6.1.2"
+  },
+  "dependencies": {
+    "xhr2": "^0.2.1"
+  }
+}

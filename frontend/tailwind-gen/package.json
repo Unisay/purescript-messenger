@@ -1,0 +1,18 @@
+{
+  "name": "tailwind-halo-gen",
+  "version": "1.0.0",
+  "description": "Generate Tailwind ClassNames",
+  "directories": {
+    "test": "test"
+  },
+  "bin": "dist/index.js",
+  "scripts": {
+    "test": "spago test",
+    "bundle": "spago bundle-app --to dist/index.js && chmod +x dist/index.js && npm install"
+  },
+  "keywords": [
+    "tailwind"
+  ],
+  "author": "Yuriy",
+  "license": "ISC"
+}

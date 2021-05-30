@@ -1,0 +1,13 @@
+node_modules/
+output/
+dce-output/
+generated-docs/
+/.psc-package/
+/.psc*
+/.purs*
+/.psa*
+.spago
+.psc-ide-port
+*.code-workspace
+.psci_modules
+.vscode/
