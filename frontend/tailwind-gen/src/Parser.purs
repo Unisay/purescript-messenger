@@ -1,4 +1,4 @@
-module Parser where
+module Parser (classNames) where
 
 import Prelude
 import Control.Alt ((<|>))
@@ -8,10 +8,10 @@ import Data.Array as Array
 import Data.Identity (Identity)
 import Data.Maybe (Maybe(..))
 import Text.Parsing.Parser (Parser)
-import Text.Parsing.Parser.Combinators (asErrorMessage, optional, (<?>))
+import Text.Parsing.Parser.Combinators (asErrorMessage, choice, optional, (<?>))
 import Text.Parsing.Parser.Language (emptyDef)
 import Text.Parsing.Parser.String (char, eof, oneOf, satisfy, string)
-import Text.Parsing.Parser.Token (GenLanguageDef(..), TokenParser, alphaNum, letter, makeTokenParser, unGenLanguageDef)
+import Text.Parsing.Parser.Token (GenLanguageDef(..), TokenParser, alphaNum, digit, letter, makeTokenParser, unGenLanguageDef)
 
 type Parse
   = Parser String
@@ -19,24 +19,43 @@ type Parse
 classNames :: Parse (Array String)
 classNames =
   lang.whiteSpace
-    *> (Array.concat <$> Array.many (ruleParser <|> media) <* lang.whiteSpace)
+    *> (Array.concat <$> Array.many (rule <|> atRule) <* lang.whiteSpace)
     <* eof
 
-ruleParser :: Parse (Array String)
-ruleParser = selectors <* block <* lang.whiteSpace
+rule :: Parse (Array String)
+rule = selectors <* block <* lang.whiteSpace
 
-media :: Parse (Array String)
-media = lang.lexeme (string "@media") *> argsParser *> rules <* lang.whiteSpace
+atRule :: Parse (Array String)
+atRule =
+  asErrorMessage "atRule"
+    $ lang.lexeme
+        ( char '@'
+            *> choice
+                [ string "media"
+                , string "keyframes"
+                , string "-webkit-keyframes"
+                ]
+        )
+    *> optional argsParser
+    *> optional (lang.lexeme (Array.some alphaNum))
+    *> rules
+    <* lang.whiteSpace
   where
   rules :: Parse (Array String)
-  rules = Array.concat <$> lang.braces (Array.many ruleParser)
+  rules =
+    asErrorMessage "rules"
+      $ Array.concat
+      <$> lang.braces (Array.many (rule <|> defer \_ -> atRule))
 
-  argsParser =
-    asErrorMessage "arguments" <<< lang.parens
-      $ Array.many (satisfy (_ /= ')'))
+argsParser :: Parse Unit
+argsParser =
+  void <<< asErrorMessage "arguments" <<< lang.parens
+    $ Array.many (satisfy (_ /= ')'))
 
 selectors :: Parse (Array String)
-selectors = Array.concat <<< Array.fromFoldable <$> lang.commaSep selector
+selectors =
+  Array.concat <<< Array.concat <<< Array.fromFoldable
+    <$> lang.commaSep (Array.many selector)
 
 block :: Parse Unit
 block =
@@ -45,22 +64,35 @@ block =
 
 selector :: Parse (Array String)
 selector =
-  map Array.concat ado
-    s <- Array.fromFoldable <$> simpleSelector
-    ss <- Array.many (operator *> defer (\_ -> selector))
-    in s : ss
+  asErrorMessage "selector"
+    $ map Array.concat ado
+        s <- Array.fromFoldable <$> simpleSelector
+        ss <- Array.many (operator *> defer (\_ -> selector))
+        in s : ss
 
 operator :: Parse Unit
-operator = void $ lang.lexeme (char '>' <|> char '+')
+operator =
+  asErrorMessage "operator" <<< void
+    $ lang.lexeme (oneOf [ '>', '+', '~' ])
 
 simpleSelector :: Parse (Maybe String)
-simpleSelector = class_ <|> universal <|> element <|> attributeSpec
+simpleSelector =
+  choice
+    [ class_
+    , universal
+    , element
+    , attributeSpec
+    , pseudo
+    , percent
+    ]
   where
-  class_ = Just <$> (char '.' *> cssIdent) <?> "class selector"
+  class_ =
+    Just <$> (char '.' *> cssIdent <* optional attributeSpec <* Array.many pseudo)
+      <?> "class selector"
 
   element =
     Nothing
-      <$ (void cssIdent <* optional attributeSpec <* optional pseudo)
+      <$ (void cssIdent <* optional attributeSpec <* Array.many pseudo)
       <?> "element selector"
 
   attributeSpec = Nothing <$ lang.brackets inside <?> "attributes spec"
@@ -73,7 +105,12 @@ simpleSelector = class_ <|> universal <|> element <|> attributeSpec
   pseudo =
     Nothing
       <$ asErrorMessage "pseudo element selector"
-          (char ':' *> optional (char ':') *> cssIdent)
+          (char ':' *> optional (char ':') *> cssIdent <* optional argsParser)
+
+  percent =
+    Nothing
+      <$ asErrorMessage "percent"
+          (lang.lexeme (Array.some lang.integer <* char '%'))
 
 cssIdent :: Parse String
 cssIdent = lang.identifier
@@ -89,7 +126,10 @@ cssStyle =
       , commentEnd = "*/"
       , commentLine = "//"
       , nestedComments = true
-      , identStart = letter <|> oneOf [ '-', '_' ]
-      , identLetter = alphaNum <|> oneOf [ '-', '_', '$' ]
+      , identStart = letter <|> oneOf [ '-', '_' ] <|> escaped
+      , identLetter = alphaNum <|> oneOf [ '-', '_', '$' ] <|> escaped
       , caseSensitive = false
       }
+
+escaped :: Parse Char
+escaped = char '\\' *> (oneOf [ ':', '.', '/' ] <|> (Array.some digit $> ' '))

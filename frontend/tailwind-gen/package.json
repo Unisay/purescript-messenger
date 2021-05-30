@@ -8,7 +8,7 @@
   "bin": "dist/index.js",
   "scripts": {
     "test": "spago test",
-    "bundle": "spago bundle-app --to dist/index.js && chmod +x dist/index.js && npm install"
+    "bundle": "spago bundle-app --to dist/index.js && chmod +x dist/index.js"
   },
   "keywords": [
     "tailwind"

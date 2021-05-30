@@ -5,9 +5,8 @@ import Data.Array (length)
 import Data.Array as Array
 import Data.Either (Either(..))
 import Effect (Effect)
-import Effect.Aff (Aff, launchAff_, throwError)
+import Effect.Aff (Aff, launchAff_)
 import Effect.Class.Console (log)
-import Effect.Exception (error)
 import Node.Encoding as Encoding
 import Node.FS.Aff as FS
 import Node.Path (FilePath)
@@ -15,7 +14,8 @@ import Options.Applicative ((<**>))
 import Options.Applicative as Opt
 import Parser as Parser
 import Printer (printModule)
-import Text.Parsing.Parser (parseErrorMessage, runParser)
+import Text.Parsing.Parser (parseErrorMessage, parseErrorPosition, runParser)
+import Text.Parsing.Parser.Pos (Position(..))
 
 type Options
   = { input :: FilePath
@@ -61,7 +61,19 @@ useOptions { input, output } =
 
 extractClassNames :: String -> Aff (Array String)
 extractClassNames css = case Array.nub <<< Array.sort <$> runParser css Parser.classNames of
-  Left e -> (throwError <<< error <<< parseErrorMessage) e
-  Right classNames -> do
-    log $ "Extracted " <> show (length classNames) <> " classes."
-    pure classNames
+  Left e -> do
+    let
+      Position { column, line } = parseErrorPosition e
+    log
+      $ Array.fold
+          [ "Parse error at "
+          , show line
+          , ":"
+          , show column
+          , " "
+          , parseErrorMessage e
+          ]
+    pure []
+  Right classNames ->
+    log ("Extracted " <> show (length classNames) <> " classes.")
+      $> classNames
