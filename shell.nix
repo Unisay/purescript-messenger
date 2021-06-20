@@ -1,7 +1,7 @@
 let
   pkgs = import
     (builtins.fetchTarball {
-      url = "https://github.com/NixOS/nixpkgs/archive/20.09.tar.gz";
+      url = "https://github.com/NixOS/nixpkgs/archive/21.05.tar.gz";
     })
     { };
 
@@ -14,8 +14,8 @@ let
     (pkgs.fetchFromGitHub {
       owner = "justinwoo";
       repo = "easy-purescript-nix";
-      rev = "fbbb27c1afd51d729939a6a2006e954dbd844846";
-      sha256 = "1kw9cqycrq456dipd5mq7c1ij6jl3d9ajlnba152db3qrw5wmrg0";
+      rev = "47bdc016c7d56e987ca1aca690b1d6c9816a8584";
+      sha256 = "051fzxd03y0c63sll2bhn0h66dywy9lw6ylyh5vq8fymvix20q94";
     })
     { inherit pkgs; };
 

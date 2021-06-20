@@ -4,9 +4,9 @@ import Prelude
 
 import Data.Array ((:))
 import Data.String as Str
-import Data.String.Extra (camelCase)
+import Data.Tuple (Tuple(..))
 
-printModule :: Array String -> String
+printModule :: Array (Tuple String String) -> String
 printModule classNames =
   Str.joinWith "\n"
     $ "module Tailwind where"
@@ -14,13 +14,11 @@ printModule classNames =
     : "import Web.HTML.Common (ClassName(..))"
     : map printClassName classNames
 
-printClassName :: String -> String
-printClassName name =
+printClassName :: Tuple String String -> String
+printClassName (Tuple pursName tailwindName) =
   Str.joinWith "\n"
     [ ""
-    , pname <> " :: ClassName"
-    , pname <> " = ClassName \"" <> name <> "\""
+    , pursName <> " :: ClassName"
+    , pursName <> " = ClassName \"" <> tailwindName <> "\""
     ]
-  where
-  pname = camelCase name
 

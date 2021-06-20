@@ -1,9 +1,13 @@
 module Main where
 
 import Prelude
+
 import Data.Array (length)
 import Data.Array as Array
 import Data.Either (Either(..))
+import Data.Function (on)
+import Data.String.Extra (camelCase)
+import Data.Tuple (Tuple(..), fst)
 import Effect (Effect)
 import Effect.Aff (Aff, launchAff_)
 import Effect.Class.Console (log)
@@ -14,7 +18,7 @@ import Options.Applicative ((<**>))
 import Options.Applicative as Opt
 import Parser as Parser
 import Printer (printModule)
-import Text.Parsing.Parser (parseErrorMessage, parseErrorPosition, runParser)
+import Text.Parsing.Parser (ParseError, parseErrorMessage, parseErrorPosition, runParser)
 import Text.Parsing.Parser.Pos (Position(..))
 
 type Options
@@ -59,8 +63,8 @@ useOptions { input, output } =
     classNames <- extractClassNames css
     FS.writeTextFile Encoding.UTF8 output (printModule classNames)
 
-extractClassNames :: String -> Aff (Array String)
-extractClassNames css = case Array.nub <<< Array.sort <$> runParser css Parser.classNames of
+extractClassNames :: String -> Aff (Array (Tuple String String))
+extractClassNames css = case f <$> res of
   Left e -> do
     let
       Position { column, line } = parseErrorPosition e
@@ -77,3 +81,12 @@ extractClassNames css = case Array.nub <<< Array.sort <$> runParser css Parser.c
   Right classNames ->
     log ("Extracted " <> show (length classNames) <> " classes.")
       $> classNames
+  where
+  res :: Either ParseError (Array String)
+  res = runParser css Parser.classNames
+
+  f :: Array String -> Array (Tuple String String)
+  f ss = Array.nubBy (compare `on` fst) (map toTuple (Array.sort ss))
+
+  toTuple :: String -> Tuple String String
+  toTuple s = Tuple (camelCase s) s

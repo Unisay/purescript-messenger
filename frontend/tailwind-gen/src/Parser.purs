@@ -97,7 +97,7 @@ simpleSelector =
 
   attributeSpec = Nothing <$ lang.brackets inside <?> "attributes spec"
     where
-    inside = void $ Array.many (satisfy (_ /= ']'))
+    inside = void $ Array.many $ satisfy (_ /= ']')
 
   -- https://www.w3.org/TR/selectors/#the-universal-selector
   universal = Nothing <$ ((lang.lexeme (string "*")) <?> "universal selector")

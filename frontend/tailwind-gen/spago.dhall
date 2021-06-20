@@ -17,6 +17,7 @@
   , "psci-support"
   , "strings"
   , "strings-extra"
+  , "tuples"
   ]
 , packages = ../../packages.dhall
 , sources = [ "src/**/*.purs", "test/**/*.purs" ]

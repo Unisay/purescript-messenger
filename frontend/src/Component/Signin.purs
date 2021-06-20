@@ -9,13 +9,13 @@ import Effect.Class.Console (log)
 import Halogen (liftEffect)
 import Halogen as H
 import Halogen.Aff (awaitBody, runHalogenAff)
-import Tailwind as TW
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Extended as HH
 import Halogen.HTML.Properties as HP
 import Halogen.VDom.Driver (runUI)
 import Web.Event.Event (Event)
 import Web.Event.Event as Event
+import Tailwind as TW
 
 main :: Effect Unit
 main =
@@ -35,7 +35,8 @@ data Action
   | SetPassword String
   | SubmitForm Event
 
-component :: forall query input output m. MonadAff m => H.Component query input output m
+component ::
+  forall query input output m. MonadAff m => H.Component query input output m
 component =
   H.mkComponent
     { initialState
@@ -44,7 +45,7 @@ component =
     }
 
 initialState :: forall input. input -> State
-initialState _ =
+initialState _input =
   { loading: false
   , login: Nothing
   , password: Nothing
@@ -91,7 +92,7 @@ handleAction ::
 handleAction = case _ of
   SetLogin str -> do
     log $ "Login " <> show str <> " was set"
-    H.modify_ _ { login = if null str then Nothing else Just str }
+    H.modify_ \x -> x { login = if null str then Nothing else Just str }
   SetPassword str -> do
     log $ "Password " <> show str <> " was set"
     H.modify_ _ { password = if null str then Nothing else Just str }
