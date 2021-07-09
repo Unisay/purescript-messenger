@@ -1,21 +1,25 @@
 module Component.Signin where
 
 import Prelude
+
+import Affjax as AX
+import Data.Either (Either(..))
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.String (null)
 import Effect (Effect)
+import Effect.Aff (Aff)
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class.Console (log)
-import Halogen (liftEffect)
+import Halogen (liftAff, liftEffect)
 import Halogen as H
 import Halogen.Aff (awaitBody, runHalogenAff)
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Extended as HH
 import Halogen.HTML.Properties as HP
 import Halogen.VDom.Driver (runUI)
+import Tailwind as TW
 import Web.Event.Event (Event)
 import Web.Event.Event as Event
-import Tailwind as TW
 
 main :: Effect Unit
 main =
@@ -99,6 +103,24 @@ handleAction = case _ of
   SubmitForm ev -> do
     liftEffect $ Event.preventDefault ev
     { login, password } <- H.get
-    log "form was submitted"
-    log $ show login
-    log $ show password
+    signInResponse <- liftAff $ sendRequestToServer login password
+    case signInResponse of
+      Ok -> log "Successfully signed in"
+      Failure -> log "Sign in failed"
+
+data SignInResponse = Ok | Failure
+
+instance showSignInResponse :: Show SignInResponse where
+  show = case _ of
+    Ok -> "Ok"
+    Failure -> "Failure"
+
+sendRequestToServer :: Maybe String -> Maybe String -> Aff SignInResponse
+sendRequestToServer _login _password = do
+  log "Form is being submitted...." 
+  response  <- AX.request AX.defaultRequest { url = "http://localhost:8081/" }
+  serverResponse :: SignInResponse <- case response of
+    Left err -> log (AX.printError err) $> Failure
+    Right res -> log (show res) $> Ok
+  log ("Received server response: " <> show serverResponse)
+  pure serverResponse
