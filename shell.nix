@@ -25,6 +25,7 @@ pkgs.stdenv.mkDerivation {
   buildInputs = with pursPkgs; [
     pkgs.nix-prefetch-git
     pursPkgs.purs
+    pursPkgs.purty
     pursPkgs.spago
     pursPkgs.zephyr
     pkgs.dhall-lsp-server
