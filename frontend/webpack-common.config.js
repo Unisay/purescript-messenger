@@ -13,6 +13,7 @@ module.exports = {
       patterns: [
         { context: "assets/favicon/", from: "*.ico", to: "./" },
         { context: "assets/favicon/", from: "*.png", to: "./" },
+        { context: "assets/images/", from: "*.svg", to: "./images" },
       ],
       options: { concurrency: 100 },
     }),

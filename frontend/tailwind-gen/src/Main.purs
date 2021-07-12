@@ -1,7 +1,6 @@
 module Main where
 
 import Prelude
-
 import Data.Array (length)
 import Data.Array as Array
 import Data.Either (Either(..))
