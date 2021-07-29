@@ -1,6 +1,7 @@
 { name = "purescript-messenger-backend"
 , dependencies =
-  [ "console"
+  [ "argonaut"
+  , "console"
   , "effect"
   , "express"
   , "maybe"

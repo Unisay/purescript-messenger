@@ -1,7 +1,8 @@
 module Main where
 
 import Prelude
-import Data.Maybe (Maybe(..))
+
+import Data.Maybe (fromMaybe)
 import Effect (Effect)
 import Effect.Class.Console (log)
 import Middleware as Middleware
@@ -19,7 +20,8 @@ app = do
   get "/" do
     Response.send "Messenger API"
   post "/login" do
-    name <- Request.getBodyParam "name"
-    case name of
-      Nothing -> Response.send "Name not found"
-      Just value -> Response.send $ "Hello, " <> value
+    username <- Request.getBodyParam "username"
+    password <- Request.getBodyParam "password"
+    log $ fromMaybe "No username received" username
+    log $ fromMaybe "No password received" password
+    Response.send "Received"

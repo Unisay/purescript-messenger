@@ -1,8 +1,11 @@
 module Component.Signin where
 
 import Prelude
-import Affjax as AX
+import Affjax (defaultRequest, printError, request) as AX
+import Affjax.RequestBody (RequestBody(..)) as AX
 import Data.Either (Either(..))
+import Data.Argonaut.Encode (encodeJson) as Json
+import Data.HTTP.Method (Method(..))
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.String (null)
 import Effect (Effect)
@@ -19,7 +22,6 @@ import Halogen.VDom.Driver (runUI)
 import Tailwind as TW
 import Web.Event.Event (Event)
 import Web.Event.Event as Event
-import Data.HTTP.Method (Method(..))
 
 main :: Effect Unit
 main =
@@ -241,13 +243,16 @@ instance showSignInResponse :: Show SignInResponse where
     Failure -> "Failure"
 
 sendRequestToServer :: Maybe String -> Maybe String -> Aff SignInResponse
-sendRequestToServer _login _password = do
+sendRequestToServer username password = do
   log "Form is being submitted...."
   response <-
     AX.request
       AX.defaultRequest
         { method = Left POST
         , url = "http://localhost:8081/login"
+        , content =
+          Just $ AX.Json
+            $ Json.encodeJson { username, password }
         }
   serverResponse :: SignInResponse <- case response of
     Left err -> log (AX.printError err) $> Failure
