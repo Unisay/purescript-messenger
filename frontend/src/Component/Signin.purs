@@ -250,9 +250,7 @@ sendRequestToServer username password = do
       AX.defaultRequest
         { method = Left POST
         , url = "http://localhost:8081/login"
-        , content =
-          Just $ AX.Json
-            $ Json.encodeJson { username, password }
+        , content = Just $ AX.Json $ Json.encodeJson { username, password }
         }
   serverResponse :: SignInResponse <- case response of
     Left err -> log (AX.printError err) $> Failure

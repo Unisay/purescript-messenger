@@ -9,13 +9,12 @@ let
   # nix-prefetch-git https://github.com/justinwoo/easy-purescript-nix
   #
   # Then, copy the resulting rev and sha256 here.
-  # Last update: 2020-08-01
   pursPkgs = import
     (pkgs.fetchFromGitHub {
       owner = "justinwoo";
       repo = "easy-purescript-nix";
-      rev = "47bdc016c7d56e987ca1aca690b1d6c9816a8584";
-      sha256 = "051fzxd03y0c63sll2bhn0h66dywy9lw6ylyh5vq8fymvix20q94";
+      rev = "d0f592b71b2be222f8dcfb4f4cefb52608bbc1ae";
+      sha256 = "0bq26y836bd1y8657f182wnsl4cdr1xxbykxdgz7xm9shpii48r5";
     })
     { inherit pkgs; };
 
@@ -25,13 +24,14 @@ pkgs.stdenv.mkDerivation {
   buildInputs = with pursPkgs; [
     pkgs.nix-prefetch-git
     pursPkgs.purs
-    pursPkgs.purty
     pursPkgs.spago
     pursPkgs.zephyr
+    pursPkgs.purs-tidy
     pkgs.dhall-lsp-server
     pkgs.dhall
-    pkgs.nodejs-14_x
+    pkgs.nodejs-16_x
     pkgs.nodePackages_latest.purty
     pkgs.nixpkgs-fmt
+    pkgs.httpie
   ];
 }
