@@ -1,0 +1,51 @@
+title FE/BE
+
+box "Client Side"
+  participant "FE JS App" as FEA
+  participant "Browser" as B
+end box
+
+box "Server Side"
+  participant "Backend Server" as BES
+  participant "Request Logging" as LOG
+  participant "CORS" as CORS
+  participant "JSON Body Parser" as BODY
+  participant "BE JS App" as BEA
+end box
+
+autonumber
+
+B->FEA: onClickEvent
+activate FEA
+FEA->B: Builds\nHTTP Post Request
+deactivate FEA
+B->BES: Sends HTTP Post Request
+activate BES
+BES->LOG: JS Request Object
+deactivate BES
+activate LOG
+LOG->CORS: JS Request Object
+deactivate LOG
+activate CORS
+CORS->BODY: JS Request Object
+deactivate CORS
+activate BODY
+BODY->BEA: JS Request Object
+deactivate BODY
+activate BEA
+BEA-->BODY: JS Response Object
+deactivate BEA
+deactivate BODY
+BODY-->CORS: JS Response Object
+activate CORS
+CORS-->LOG: JS Response Object
+deactivate CORS
+LOG-->BES: JS Response Object
+activate BES
+BES-->B: HTTP Post Response
+deactivate BES
+B->FEA: JS Response Response
+activate FEA
+FEA-->FEA: Decodes JSON from\nResponse Body
+deactivate FEA
+FEA->B: Render decoded response data
