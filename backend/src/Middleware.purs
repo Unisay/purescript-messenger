@@ -9,7 +9,7 @@ import Node.Express.Handler (Handler, next)
 import Node.Express.Request (getMethod, getOriginalUrl)
 import Node.Express.Types (Middleware)
 
-foreign import jsonBodyParser :: Middleware
+foreign import json :: Middleware
 
 foreign import cors :: Middleware
 
@@ -24,4 +24,4 @@ init :: App
 init = do
   use requestLogging
   useExternal cors
-  useExternal jsonBodyParser
+  useExternal json
