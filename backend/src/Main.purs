@@ -2,14 +2,20 @@ module Main where
 
 import Prelude
 
+import Control.Monad.Error.Class (throwError)
 import Control.Monad.Except (runExcept)
 import Data.Either (Either(..))
 import Effect (Effect)
 import Effect.Class.Console (log)
+import Foreign (renderForeignError)
+import Foreign as Foreign
+import Foreign.Generic.Class (class Decode)
 import Middleware as Middleware
 import Node.Express.App (App, get, listenHttp, post)
+import Node.Express.Handler (Handler)
 import Node.Express.Request as Request
 import Node.Express.Response as Response
+import Data.Array as Array
 
 main :: Effect Unit
 main = void $ listenHttp app tcpPort \_ -> log $ "Listening on " <> show tcpPort
@@ -18,20 +24,43 @@ main = void $ listenHttp app tcpPort \_ -> log $ "Listening on " <> show tcpPort
 
 type LoginRequest = { username :: String, password :: String }
 
+data LogoutReason = Timeout | UserAction
+
+instance decodeLoginReason :: Decode LogoutReason where
+  decode f = case runExcept (Foreign.readInt f) of
+    Left errs -> throwError errs
+    Right 0 -> pure Timeout
+    Right 1 -> pure UserAction
+    Right r ->
+      Foreign.fail $ Foreign.ForeignError $ "Unknown logout reason: " <> show r
+
+type LogoutRequest = { reason :: LogoutReason }
+
 app :: App
 app = do
   Middleware.init
   get "/" do
     Response.send "Messenger API"
-  post "/login" do
-    Request.getBody >>= runExcept >>> case _ of
-      Left multipleErrors -> do
-        Response.setStatus 400
-        Response.send multipleErrors
-      Right ({ username, password } :: LoginRequest) -> do
-        if username == "root" && password == "qwerty123" 
-         then Response.send "Success"
-         else do
-           Response.setStatus 403           
-           Response.send "Failure"
+  post "/login" $ withBody \loginRequest -> do
+    if login loginRequest then Response.send "Success"
+    else do
+      Response.setStatus 403
+      Response.send "Failure"
+  post "/logout" $ withBody \(logoutRequest :: LogoutRequest) ->
+    case logoutRequest.reason of
+      Timeout -> Response.send "Logout successful: timeout."
+      UserAction -> Response.send "Logout successful: bye bye!"
 
+withBody :: forall body. Decode body => (body -> Handler) -> Handler
+withBody cont =
+  Request.getBody >>= runExcept >>> case _ of
+    Left multipleErrors -> do
+      Response.setStatus 400
+      Response.send $ Array.fromFoldable $ map renderForeignError multipleErrors 
+    Right body ->
+      cont body
+
+-- Business Logic:
+login :: LoginRequest -> Boolean
+login { username, password } =
+  username == "root" && password == "qwerty123"
