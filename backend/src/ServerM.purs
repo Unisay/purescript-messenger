@@ -2,51 +2,34 @@ module ServerM where
 
 import Prelude
 
-import Control.Monad.Except (except, runExcept)
+import Control.Monad.Except (ExceptT(..), lift, runExcept, runExceptT)
+import Node.Express.Response as Response
 import Data.Array as Array
 import Data.Either (Either(..))
-import Data.Newtype (class Newtype, over, unwrap, wrap)
-import Foreign (F, renderForeignError)
+import Foreign (MultipleErrors, renderForeignError)
+import Foreign.Class (class Decode)
 import Node.Express.Handler (Handler, HandlerM)
+import Node.Express.Request as Request
 import Node.Express.Response (setStatus, send)
 
 type Server = ServerM Unit
 
-type ErrorsM = F
-
-newtype ServerM a = ServerM (HandlerM (ErrorsM a))
-
-instance Functor ServerM where
-  map f = over ServerM (map (map f))
-
-instance Apply ServerM where
-  apply (ServerM hef) (ServerM hea) = ServerM $ apply (map apply hef) hea
-
-instance Applicative ServerM where
-  pure = wrap <<< pure <<< pure
-
-instance Bind ServerM where
-  bind (ServerM hea) f = ServerM do
-    ea <- hea
-    case runExcept ea of
-      Left errs -> pure $ except $ Left errs
-      Right a -> unwrap $ f a
-
-derive instance newtypeServerM :: Newtype (ServerM a) _
-
-liftErrors :: forall a. ErrorsM a -> ServerM a
-liftErrors = wrap <<< pure
-
-liftHandler :: forall a. HandlerM a -> ServerM a
-liftHandler = wrap <<< map pure
-
-lift :: forall a. HandlerM (ErrorsM a) -> ServerM a
-lift = wrap
+type ServerM a = ExceptT MultipleErrors HandlerM a
 
 runServerM :: Server -> Handler
-runServerM = unwrap >>> \handlerHasErrors ->
-  handlerHasErrors >>= runExcept >>> case _ of
-    Left multipleErrors -> do
-      setStatus 400
-      send $ Array.fromFoldable $ map renderForeignError multipleErrors
-    Right _ -> pure unit
+runServerM s = runExceptT s >>= case _ of
+  Left foreignErrors -> do
+    setStatus 400
+    send $ Array.fromFoldable $ map renderForeignError foreignErrors
+  Right _ -> pure unit
+
+-- Lifted functions
+
+readBody :: forall b. Decode b => ServerM b
+readBody = ?homeworkToImplement -- Hint: you need to "lift" `Request.getBody` somehow.
+
+replyWithStatus :: Int -> String -> Server
+replyWithStatus s m = lift (Response.setStatus s) *> reply m
+
+reply :: String -> Server
+reply = lift <<< Response.send
