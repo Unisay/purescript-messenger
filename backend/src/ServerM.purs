@@ -26,7 +26,7 @@ runServerM s = runExceptT s >>= case _ of
 -- Lifted functions
 
 readBody :: forall b. Decode b => ServerM b
-readBody = ?homeworkToImplement -- Hint: you need to "lift" `Request.getBody` somehow.
+readBody = ExceptT $ runExcept <$> Request.getBody
 
 replyWithStatus :: Int -> String -> Server
 replyWithStatus s m = lift (Response.setStatus s) *> reply m
