@@ -1,11 +1,13 @@
 module Auth where
 
 import Prelude
-import Foreign as Foreign
+
 import Control.Monad.Error.Class (throwError)
-import Foreign.Generic.Class (class Decode)
 import Control.Monad.Except (runExcept)
 import Data.Either (Either(..))
+import Foreign as Foreign
+import Foreign.Generic.Class (class Decode)
+import Node.Express.Handler (HandlerM)
 
 type LoginRequest = { username :: String, password :: String }
 data LoginResult = LoginSuccess | LoginFailure
@@ -21,10 +23,16 @@ instance decodeLogoutReason :: Decode LogoutReason where
     Right r ->
       Foreign.fail $ Foreign.ForeignError $ "Unknown logout reason: " <> show r
 
-login :: LoginRequest -> LoginResult
+type User =
+  { email :: String
+  , username :: String
+  , password :: String
+  }
+
+login :: LoginRequest -> HandlerM LoginResult
 login { username, password }
-  | username == "root" && password == "qwerty123" = LoginSuccess
-  | otherwise = LoginFailure
+  | username == "root" && password == "qwerty123" = pure LoginSuccess
+  | otherwise = pure LoginFailure
 
 logout :: LogoutRequest -> LogoutResult
 logout { reason } = LogoutSuccess reason

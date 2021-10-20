@@ -2,13 +2,14 @@ module Main where
 
 import Prelude
 
-import ServerM (readBody, reply, replyWithStatus, runServerM)
 import Auth (LoginResult(..), LogoutReason(..), LogoutResult(..), login, logout)
+import Control.Monad.Trans.Class (lift)
 import Effect (Effect)
 import Effect.Class.Console (log)
 import Middleware as Middleware
 import Node.Express.App (App, get, listenHttp, post)
 import Node.Express.Response as Response
+import ServerM (readBody, reply, replyWithStatus, runServerM)
 
 main :: Effect Unit
 main = void $ listenHttp app tcpPort \_ -> log $ "Listening on " <> show tcpPort
@@ -20,9 +21,10 @@ app = do
   Middleware.init
   get "/" do
     Response.send "Messenger API"
-  post "/login" $ runServerM $ do
-    loginRequest <- readBody
-    case login loginRequest of
+  post "/login" $ runServerM do
+    loginRequest <- readBody 
+    loginResponse <- lift $ login loginRequest 
+    case loginResponse of
       LoginSuccess -> reply "Success"
       LoginFailure -> replyWithStatus 403 "Failure"
   post "/logout" $ runServerM do
