@@ -4,10 +4,16 @@ import Prelude
 
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.Except (runExcept)
+import Control.Monad.Except.Trans (mapExceptT)
+import Data.Array as Array
 import Data.Either (Either(..))
-import Foreign as Foreign
-import Foreign.Generic.Class (class Decode)
-import Node.Express.Handler (HandlerM)
+import Data.Maybe (fromMaybe)
+import Data.Newtype (unwrap)
+import Database as Db
+import Foreign (fail, readInt) as Foreign
+import Foreign.Generic (class Decode, ForeignError(..), decode, encode) as Foreign
+import SQLite3 as SQLite
+import ServerM (ServerM)
 
 type LoginRequest = { username :: String, password :: String }
 data LoginResult = LoginSuccess | LoginFailure
@@ -15,7 +21,7 @@ type LogoutRequest = { reason :: LogoutReason }
 data LogoutReason = Timeout | UserAction
 data LogoutResult = LogoutSuccess LogoutReason
 
-instance decodeLogoutReason :: Decode LogoutReason where
+instance decodeLogoutReason :: Foreign.Decode LogoutReason where
   decode f = case runExcept (Foreign.readInt f) of
     Left errs -> throwError errs
     Right 0 -> pure Timeout
@@ -29,10 +35,13 @@ type User =
   , password :: String
   }
 
-login :: LoginRequest -> HandlerM LoginResult
-login { username, password }
-  | username == "root" && password == "qwerty123" = pure LoginSuccess
-  | otherwise = pure LoginFailure
+login :: SQLite.DBConnection -> LoginRequest -> ServerM LoginResult
+login dbConn { username, password } = do
+  result <- Db.query dbConn
+    "SELECT * FROM users WHERE username = ? AND password = ?"
+    [ Foreign.encode username, Foreign.encode password ]
+  users :: Array User <- mapExceptT (unwrap >>> pure) (Foreign.decode result)
+  pure $ fromMaybe LoginFailure $ Array.head $ LoginSuccess <$ users
 
 logout :: LogoutRequest -> LogoutResult
 logout { reason } = LogoutSuccess reason

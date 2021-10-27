@@ -1,6 +1,7 @@
 { name = "purescript-messenger-backend"
 , dependencies =
-  [ "arrays"
+  [ "aff"
+  , "arrays"
   , "console"
   , "debug"
   , "effect"
@@ -8,6 +9,8 @@
   , "express"
   , "foreign"
   , "foreign-generic"
+  , "maybe"
+  , "newtype"
   , "node-sqlite3"
   , "prelude"
   , "psci-support"
