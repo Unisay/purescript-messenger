@@ -13,8 +13,8 @@ let
     (pkgs.fetchFromGitHub {
       owner = "justinwoo";
       repo = "easy-purescript-nix";
-      rev = "d0f592b71b2be222f8dcfb4f4cefb52608bbc1ae";
-      sha256 = "0bq26y836bd1y8657f182wnsl4cdr1xxbykxdgz7xm9shpii48r5";
+      rev = "7802db65618c2ead3a55121355816b4c41d276d9";
+      sha256 = "0n99hxxcp9yc8yvx7bx4ac6askinfark7dnps3hzz5v9skrvq15q";
     })
     { inherit pkgs; };
 
@@ -29,7 +29,7 @@ pkgs.stdenv.mkDerivation {
     pursPkgs.purs-tidy
     pkgs.dhall-lsp-server
     pkgs.dhall
-    pkgs.nodejs-16_x
+    pkgs.nodejs
     pkgs.nodePackages_latest.purty
     pkgs.nixpkgs-fmt
     pkgs.httpie

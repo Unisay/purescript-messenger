@@ -2,13 +2,14 @@ module Auth where
 
 import Prelude
 
+import Auth.Hash (Password(..), Salt(..), hashPassword)
+import Data.Newtype (unwrap)
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.Except (runExcept)
 import Control.Monad.Except.Trans (mapExceptT)
 import Data.Array as Array
 import Data.Either (Either(..))
 import Data.Maybe (fromMaybe)
-import Data.Newtype (unwrap)
 import Database as Db
 import Foreign (fail, readInt) as Foreign
 import Foreign.Generic (class Decode, ForeignError(..), decode, encode) as Foreign
@@ -37,9 +38,10 @@ type User =
 
 login :: SQLite.DBConnection -> LoginRequest -> ServerM LoginResult
 login dbConn { username, password } = do
+  hashedPassword <- hashPassword (Password password) (Salt "123245678")
   result <- Db.query dbConn
     "SELECT * FROM users WHERE username = ? AND password = ?"
-    [ Foreign.encode username, Foreign.encode password ]
+    [ Foreign.encode username, Foreign.encode hashedPassword ]
   users :: Array User <- mapExceptT (unwrap >>> pure) (Foreign.decode result)
   pure $ fromMaybe LoginFailure $ Array.head $ LoginSuccess <$ users
 

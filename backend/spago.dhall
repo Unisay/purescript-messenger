@@ -1,6 +1,7 @@
 { name = "purescript-messenger-backend"
 , dependencies =
   [ "aff"
+  , "aff-promise"
   , "arrays"
   , "console"
   , "debug"
