@@ -14,10 +14,11 @@ import Node.Express.Response as Response
 import SQLite3 as SQLite
 import ServerM (readBody, reply, replyWithStatus, runServerM)
 
-type Resources = SQLite.DBConnection
+type Resources = { dbConn :: SQLite.DBConnection }
 
 main :: Effect Unit
-main = launchAff_ $ Db.withConnection mainWithResources
+main = launchAff_ $ Db.withConnection \dbConn ->
+  mainWithResources { dbConn }
 
 mainWithResources :: Resources -> Aff Unit
 mainWithResources resources = do
@@ -28,19 +29,18 @@ mainWithResources resources = do
   tcpPort = 8081
 
 app :: Resources -> App
-app resources = do
+app { dbConn } = do
   Middleware.init
   get "/" $ Response.send "Messenger API"
   post "/signup" $ runServerM do
-    readBody >>= signup resources
+    readBody >>= signup dbConn 
     replyWithStatus 201 "Created" 
   post "/signin" $ runServerM $ 
-    readBody >>= signin resources >>= case _ of
+    readBody >>= signin dbConn >>= case _ of
       LoginSuccess -> reply "Success"
       LoginFailure -> replyWithStatus 403 "Failure"
   post "/signout" $ runServerM do
-    logoutRequest <- readBody
-    case signout logoutRequest of
+    readBody <#> signout >>= case _ of
       LogoutSuccess Timeout -> reply "Logout successful: timeout."
       LogoutSuccess UserAction -> reply "Logout successful: bye bye!"
 
