@@ -26,12 +26,12 @@ pkgs.stdenv.mkDerivation {
     pursPkgs.purs
     pursPkgs.spago
     pursPkgs.zephyr
-    pursPkgs.purs-tidy
+    # pursPkgs.purs-tidy
     pkgs.dhall-lsp-server
     pkgs.dhall
     pkgs.nodejs
-    pkgs.nodePackages_latest.purty
     pkgs.nixpkgs-fmt
     pkgs.httpie
+    pkgs.wrangler
   ];
 }

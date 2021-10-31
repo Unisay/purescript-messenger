@@ -14,7 +14,18 @@ withConnection useResource = do
   where
   initResource = do
     log "Opening DB connection"
-    SQLite.newDB "db/backend.sqlite3"
+    conn <- SQLite.newDB "db/backend.sqlite3"
+    _ <- SQLite.queryDB conn
+      """
+        create table if not exists users (
+          email text primary key on conflict fail,
+          username text unique on conflict fail,
+          password_hash text unique on conflict fail,
+          salt text unique on conflict fail
+        ) 
+      """ []
+    pure conn
+
   disposeResource conn = do
     log "Closing DB connection"
     SQLite.closeDB conn

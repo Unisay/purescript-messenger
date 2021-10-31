@@ -2,10 +2,10 @@ module Main where
 
 import Prelude
 
-import Auth (LoginResult(..), LogoutReason(..), LogoutResult(..), login, logout)
+import Auth (LoginResult(..), LogoutReason(..), LogoutResult(..), signin, signout, signup)
 import Database as Db
 import Effect (Effect)
-import Effect.Aff (Aff, launchAff_)
+import Effect.Aff (Aff, launchAff_, never)
 import Effect.Class (liftEffect)
 import Effect.Class.Console (log)
 import Middleware as Middleware
@@ -20,25 +20,27 @@ main :: Effect Unit
 main = launchAff_ $ Db.withConnection mainWithResources
 
 mainWithResources :: Resources -> Aff Unit
-mainWithResources resources = liftEffect $ void $
-  listenHttp (app resources) tcpPort \_ -> log $ "Listening on " <> show tcpPort
+mainWithResources resources = do
+  liftEffect $ void $ listenHttp (app resources) tcpPort \_ ->
+    log $ "Listening on " <> show tcpPort
+  never
   where
   tcpPort = 8081
 
 app :: Resources -> App
 app resources = do
   Middleware.init
-  get "/" do
-    Response.send "Messenger API"
-  post "/login" $ runServerM do
-    loginRequest <- readBody 
-    loginResponse <- login resources loginRequest 
-    case loginResponse of
+  get "/" $ Response.send "Messenger API"
+  post "/signup" $ runServerM do
+    readBody >>= signup resources
+    replyWithStatus 201 "Created" 
+  post "/signin" $ runServerM $ 
+    readBody >>= signin resources >>= case _ of
       LoginSuccess -> reply "Success"
       LoginFailure -> replyWithStatus 403 "Failure"
-  post "/logout" $ runServerM do
+  post "/signout" $ runServerM do
     logoutRequest <- readBody
-    case logout logoutRequest of
+    case signout logoutRequest of
       LogoutSuccess Timeout -> reply "Logout successful: timeout."
       LogoutSuccess UserAction -> reply "Logout successful: bye bye!"
 
