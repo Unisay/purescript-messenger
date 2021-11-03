@@ -2,19 +2,19 @@ module Auth where
 
 import Prelude
 
-import Auth.Hash (Password(..), Salt(..), hashPassword)
-import Effect (Effect)
+import Auth.Hash (Hash(..), Password(..), Salt(..), hashPassword)
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.Except (runExcept)
 import Control.Monad.Except.Trans (mapExceptT)
 import Data.Array as Array
 import Data.Either (Either(..))
 import Data.Enum (enumFromTo)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Newtype (unwrap)
 import Data.String.CodeUnits as String
 import Data.Unfoldable (replicateA)
 import Database as Db
+import Effect (Effect)
 import Effect.Class (liftEffect)
 import Effect.Random (randomInt)
 import Foreign (fail, readInt) as Foreign
@@ -45,35 +45,42 @@ type User =
 genSalt :: Effect Salt
 genSalt = Salt <<< String.fromCharArray <$> replicateA 32 genChar
   where
-    genChar :: Effect Char
-    genChar = do  
-      let alphabet = enumFromTo 'A' 'Z'
-                  <> enumFromTo 'a' 'z'
-                  <> enumFromTo '0' '9'
-      fromMaybe '?' <<< Array.index alphabet
-        <$> randomInt 0 (Array.length alphabet - 1)
+  genChar :: Effect Char
+  genChar = do
+    let
+      alphabet = enumFromTo 'A' 'Z'
+        <> enumFromTo 'a' 'z'
+        <> enumFromTo '0' '9'
+    fromMaybe '?' <<< Array.index alphabet
+      <$> randomInt 0 (Array.length alphabet - 1)
 
 signup :: SQLite.DBConnection -> User -> Server
 signup dbConn user = do
   salt <- liftEffect genSalt
-  void $ Db.query dbConn """
+  hash <- hashPassword (Password user.password) salt
+  void $ Db.query dbConn
+    """
     INSERT INTO users (email, username, password_hash, salt)
     VALUES (?, ?, ?, ?)
-    """ [ Foreign.encode user.email
-        , Foreign.encode user.username
-        , Foreign.encode ?hash
-        , Foreign.encode salt
-        ]
+    """
+    [ Foreign.encode user.email
+    , Foreign.encode user.username
+    , Foreign.encode hash
+    , Foreign.encode salt
+    ]
 
 signin :: SQLite.DBConnection -> LoginRequest -> ServerM LoginResult
 signin dbConn { username, password } = do
-  -- TODO: fetch salt from database 
-  hashedPassword <- hashPassword (Password password) (Salt "123245678")
   result <- Db.query dbConn
-    "SELECT * FROM users WHERE username = ? AND password = ?"
-    [ Foreign.encode username, Foreign.encode hashedPassword ]
-  users :: Array User <- mapExceptT (unwrap >>> pure) (Foreign.decode result)
-  pure $ fromMaybe LoginFailure $ Array.head $ LoginSuccess <$ users
+    "SELECT password_hash, salt FROM users WHERE username = ?"
+    [ Foreign.encode username ]
+  rows :: _ { password_hash :: Hash, salt :: Salt } <-
+    mapExceptT (unwrap >>> pure) (Foreign.decode result)
+  case Array.head rows of
+    Just { password_hash, salt } ->
+      hashPassword (Password password) salt <#> \hash ->
+        if hash == password_hash then LoginSuccess else LoginFailure
+    Nothing -> pure LoginFailure
 
 signout :: LogoutRequest -> LogoutResult
 signout { reason } = LogoutSuccess reason
