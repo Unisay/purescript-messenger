@@ -11,13 +11,26 @@ import Foreign.Class (class Decode)
 import Node.Express.Handler (Handler, HandlerM)
 import Node.Express.Request as Request
 import Node.Express.Response (setStatus, send)
+import Control.Monad.Error.Class
+import Effect.Aff as Aff
 
 type Server = ServerM Unit
 
-type ServerM a = ExceptT MultipleErrors HandlerM a
+newtype ServerM a = ServerM (ExceptT MultipleErrors HandlerM a)
+
+derive newtype instance functorServerM :: Functor ServerM
+derive newtype instance applyServerM :: Apply ServerM
+derive newtype instance applicativeServerM :: Applicative ServerM
+derive newtype instance monadServerM :: Monad ServerM
+
+instance MonadThrow Aff.Error ServerM where
+  throwError = ?c
+
+instance MonadError Aff.Error ServerM where
+  catchError = ?x
 
 runServerM :: Server -> Handler
-runServerM s = runExceptT s >>= case _ of
+runServerM (ServerM s) = runExceptT s >>= case _ of
   Left foreignErrors -> do
     setStatus 400
     send $ Array.fromFoldable $ map renderForeignError foreignErrors
@@ -26,10 +39,10 @@ runServerM s = runExceptT s >>= case _ of
 -- Lifted functions
 
 readBody :: forall b. Decode b => ServerM b
-readBody = ExceptT $ runExcept <$> Request.getBody
+readBody = ServerM $ ExceptT $ runExcept <$> Request.getBody
 
 replyWithStatus :: Int -> String -> Server
-replyWithStatus s m = lift (Response.setStatus s) *> reply m
+replyWithStatus s m = ServerM (lift (Response.setStatus s)) *> reply m
 
 reply :: String -> Server
-reply = lift <<< Response.send
+reply = ServerM <<< lift <<< Response.send

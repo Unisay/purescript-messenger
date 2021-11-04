@@ -1,5 +1,6 @@
 module Auth where
 
+import Control.Monad.Error.Class
 import Prelude
 
 import Auth.Hash (Hash(..), Password(..), Salt(..), hashPassword)
@@ -15,8 +16,12 @@ import Data.String.CodeUnits as String
 import Data.Unfoldable (replicateA)
 import Database as Db
 import Effect (Effect)
+import Effect.Aff (Error, message)
 import Effect.Class (liftEffect)
+import Effect.Class.Console (log)
+import Effect.Exception (catchException)
 import Effect.Random (randomInt)
+import Foreign (MultipleErrors)
 import Foreign (fail, readInt) as Foreign
 import Foreign.Generic (class Decode, ForeignError(..), decode, encode) as Foreign
 import SQLite3 as SQLite
@@ -58,16 +63,17 @@ signup :: SQLite.DBConnection -> User -> Server
 signup dbConn user = do
   salt <- liftEffect genSalt
   hash <- hashPassword (Password user.password) salt
-  void $ Db.query dbConn
-    """
+  ( void $ Db.query dbConn
+      """
     INSERT INTO users (email, username, password_hash, salt)
     VALUES (?, ?, ?, ?)
     """
-    [ Foreign.encode user.email
-    , Foreign.encode user.username
-    , Foreign.encode hash
-    , Foreign.encode salt
-    ]
+      [ Foreign.encode user.email
+      , Foreign.encode user.username
+      , Foreign.encode hash
+      , Foreign.encode salt
+      ]
+  ) `catchError` \(err :: Error) -> log $ "Exception in database: " <> message err
 
 signin :: SQLite.DBConnection -> LoginRequest -> ServerM LoginResult
 signin dbConn { username, password } = do
