@@ -1,39 +1,36 @@
 module Auth where
 
-import Control.Monad.Error.Class
 import Prelude
 
-import Auth.Hash (Hash(..), Password(..), Salt(..), hashPassword)
-import Control.Monad.Error.Class (throwError)
+import Control.Monad.Error.Class (catchError, throwError)
+import ServerM (ServerM)
+import Auth.Hash (Hash, Password(..), Salt(..), hashPassword)
 import Control.Monad.Except (runExcept)
 import Control.Monad.Except.Trans (mapExceptT)
 import Data.Array as Array
 import Data.Either (Either(..))
 import Data.Enum (enumFromTo)
 import Data.Maybe (Maybe(..), fromMaybe)
-import Data.Newtype (unwrap)
+import Data.Newtype (unwrap, wrap)
 import Data.String.CodeUnits as String
 import Data.Unfoldable (replicateA)
 import Database as Db
 import Effect (Effect)
-import Effect.Aff (Error, message)
+import Effect.Aff as Aff
 import Effect.Class (liftEffect)
-import Effect.Class.Console (log)
-import Effect.Exception (catchException)
 import Effect.Random (randomInt)
-import Foreign (MultipleErrors)
 import Foreign (fail, readInt) as Foreign
 import Foreign.Generic (class Decode, ForeignError(..), decode, encode) as Foreign
 import SQLite3 as SQLite
-import ServerM (ServerM, Server)
 
-type LoginRequest = { username :: String, password :: String }
-data LoginResult = LoginSuccess | LoginFailure
-type LogoutRequest = { reason :: LogoutReason }
-data LogoutReason = Timeout | UserAction
-data LogoutResult = LogoutSuccess LogoutReason
+data SignupResult = SignupSuccess | UserExists
+type SigninRequest = { username :: String, password :: String }
+data SigninResult = SigninSuccess | SigninFailure
+type SignoutRequest = { reason :: SignoutReason }
+data SignoutReason = Timeout | UserAction
+data SignoutResult = SignoutSuccess SignoutReason
 
-instance decodeLogoutReason :: Foreign.Decode LogoutReason where
+instance decodeLogoutReason :: Foreign.Decode SignoutReason where
   decode f = case runExcept (Foreign.readInt f) of
     Left errs -> throwError errs
     Right 0 -> pure Timeout
@@ -59,11 +56,11 @@ genSalt = Salt <<< String.fromCharArray <$> replicateA 32 genChar
     fromMaybe '?' <<< Array.index alphabet
       <$> randomInt 0 (Array.length alphabet - 1)
 
-signup :: SQLite.DBConnection -> User -> Server
+signup :: SQLite.DBConnection -> User -> ServerM SignupResult
 signup dbConn user = do
   salt <- liftEffect genSalt
   hash <- hashPassword (Password user.password) salt
-  ( void $ Db.query dbConn
+  ( SignupSuccess <$ Db.query dbConn
       """
     INSERT INTO users (email, username, password_hash, salt)
     VALUES (?, ?, ?, ?)
@@ -73,20 +70,20 @@ signup dbConn user = do
       , Foreign.encode hash
       , Foreign.encode salt
       ]
-  ) `catchError` \(err :: Error) -> log $ "Exception in database: " <> message err
+  ) `catchError` \(_ :: Aff.Error) -> pure UserExists
 
-signin :: SQLite.DBConnection -> LoginRequest -> ServerM LoginResult
+signin :: SQLite.DBConnection -> SigninRequest -> ServerM SigninResult
 signin dbConn { username, password } = do
   result <- Db.query dbConn
     "SELECT password_hash, salt FROM users WHERE username = ?"
     [ Foreign.encode username ]
   rows :: _ { password_hash :: Hash, salt :: Salt } <-
-    mapExceptT (unwrap >>> pure) (Foreign.decode result)
+    wrap $ mapExceptT (unwrap >>> pure) (Foreign.decode result)
   case Array.head rows of
     Just { password_hash, salt } ->
       hashPassword (Password password) salt <#> \hash ->
-        if hash == password_hash then LoginSuccess else LoginFailure
-    Nothing -> pure LoginFailure
+        if hash == password_hash then SigninSuccess else SigninFailure
+    Nothing -> pure SigninFailure
 
-signout :: LogoutRequest -> LogoutResult
-signout { reason } = LogoutSuccess reason
+signout :: SignoutRequest -> SignoutResult
+signout { reason } = SignoutSuccess reason

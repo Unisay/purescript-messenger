@@ -2,26 +2,33 @@ module ServerM where
 
 import Prelude
 
+import Effect.Aff.Class (class MonadAff)
+import Effect.Class (class MonadEffect)
+import Control.Monad.Error.Class (class MonadError, class MonadThrow, catchError, throwError)
 import Control.Monad.Except (ExceptT(..), lift, runExcept, runExceptT)
-import Node.Express.Response as Response
 import Data.Array as Array
 import Data.Either (Either(..))
+import Data.Newtype (class Newtype, unwrap, wrap)
+import Effect.Aff as Aff
 import Foreign (MultipleErrors, renderForeignError)
 import Foreign.Class (class Decode)
 import Node.Express.Handler (Handler, HandlerM)
 import Node.Express.Request as Request
 import Node.Express.Response (setStatus, send)
-import Control.Monad.Error.Class
-import Effect.Aff as Aff
+import Node.Express.Response as Response
 
 type Server = ServerM Unit
 
 newtype ServerM a = ServerM (ExceptT MultipleErrors HandlerM a)
 
+derive instance newtypeServerM :: Newtype (ServerM a) _
 derive newtype instance functorServerM :: Functor ServerM
 derive newtype instance applyServerM :: Apply ServerM
 derive newtype instance applicativeServerM :: Applicative ServerM
+derive newtype instance bindServerM :: Bind ServerM
 derive newtype instance monadServerM :: Monad ServerM
+derive newtype instance monadEffectServerM :: MonadEffect ServerM
+derive newtype instance monadAffServerM :: MonadAff ServerM
 
 instance MonadThrow Aff.Error ServerM where
   throwError = ?c

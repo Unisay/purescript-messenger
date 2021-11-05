@@ -2,7 +2,7 @@ module Main where
 
 import Prelude
 
-import Auth (LoginResult(..), LogoutReason(..), LogoutResult(..), signin, signout, signup)
+import Auth (SigninResult(..), SignoutReason(..), SignoutResult(..), SignupResult(..), signin, signout, signup) 
 import Database as Db
 import Effect (Effect)
 import Effect.Aff (Aff, launchAff_, never)
@@ -33,14 +33,15 @@ app { dbConn } = do
   Middleware.init
   get "/" $ Response.send "Messenger API"
   post "/signup" $ runServerM do
-    readBody >>= signup dbConn 
-    replyWithStatus 201 "Created" 
-  post "/signin" $ runServerM $ 
+    readBody >>= signup dbConn >>= case _ of
+      UserExists -> replyWithStatus 409 "Conflict"
+      SignupSuccess -> replyWithStatus 201 "Created"
+  post "/signin" $ runServerM $
     readBody >>= signin dbConn >>= case _ of
-      LoginSuccess -> reply "Success"
-      LoginFailure -> replyWithStatus 403 "Failure"
+      SigninSuccess -> reply "Success"
+      SigninFailure -> replyWithStatus 403 "Failure"
   post "/signout" $ runServerM do
     readBody <#> signout >>= case _ of
-      LogoutSuccess Timeout -> reply "Logout successful: timeout."
-      LogoutSuccess UserAction -> reply "Logout successful: bye bye!"
+      SignoutSuccess Timeout -> reply "Signout successful: timeout."
+      SignoutSuccess UserAction -> reply "Signout successful: bye bye!"
 
