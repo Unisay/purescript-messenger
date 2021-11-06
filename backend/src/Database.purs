@@ -1,12 +1,27 @@
 module Database where
 
+import Data.Either (Either(..), either)
 import Prelude
 
+import Control.Monad.Except (ExceptT, lift, mapExceptT)
+import Data.Generic.Rep (class Generic)
+import Data.Newtype (unwrap)
+import Data.Show.Generic (genericShow)
 import Effect.Aff (Aff, bracket)
 import Effect.Aff.Class (class MonadAff, liftAff)
 import Effect.Class.Console (log)
-import Foreign (Foreign)
+import Foreign (MultipleErrors)
+import Foreign.Class (class Decode, decode)
 import SQLite3 as SQLite
+
+data Error
+  = Constraint String
+  | Decoding MultipleErrors
+  | Other String
+
+derive instance genericDatabaseError :: Generic Error _
+instance showDatabaseError :: Show Error where
+  show = genericShow
 
 withConnection :: forall a. (SQLite.DBConnection -> Aff a) -> Aff a
 withConnection useResource = do
@@ -23,7 +38,8 @@ withConnection useResource = do
           password_hash text unique on conflict fail,
           salt text unique on conflict fail
         ) 
-      """ []
+      """
+      []
     pure conn
 
   disposeResource conn = do
@@ -31,11 +47,17 @@ withConnection useResource = do
     SQLite.closeDB conn
 
 query
-  :: forall m
+  :: forall a m
    . MonadAff m
+  => Decode a
   => SQLite.DBConnection
   -> SQLite.Query
   -> Array SQLite.Param
-  -> m Foreign
-query conn q params = liftAff $ SQLite.queryDB conn q params
+  -> ExceptT Error m a
+query conn q params = do
+  foreignA <- lift (liftAff (SQLite.queryDB conn q params))
+  mapExceptT
+    (pure <<< either (Left <<< Decoding) Right <<< unwrap)
+    (decode foreignA)
+-- `catchError` \err ->  ?x
 

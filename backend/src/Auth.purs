@@ -2,9 +2,8 @@ module Auth where
 
 import Prelude
 
-import Control.Monad.Error.Class (catchError, throwError)
-import ServerM (ServerM)
 import Auth.Hash (Hash, Password(..), Salt(..), hashPassword)
+import Control.Monad.Error.Class (catchError, throwError)
 import Control.Monad.Except (runExcept)
 import Control.Monad.Except.Trans (mapExceptT)
 import Data.Array as Array
@@ -22,6 +21,7 @@ import Effect.Random (randomInt)
 import Foreign (fail, readInt) as Foreign
 import Foreign.Generic (class Decode, ForeignError(..), decode, encode) as Foreign
 import SQLite3 as SQLite
+import ServerM (ServerM(..))
 
 data SignupResult = SignupSuccess | UserExists
 type SigninRequest = { username :: String, password :: String }
@@ -74,11 +74,11 @@ signup dbConn user = do
 
 signin :: SQLite.DBConnection -> SigninRequest -> ServerM SigninResult
 signin dbConn { username, password } = do
-  result <- Db.query dbConn
-    "SELECT password_hash, salt FROM users WHERE username = ?"
-    [ Foreign.encode username ]
-  rows :: _ { password_hash :: Hash, salt :: Salt } <-
-    wrap $ mapExceptT (unwrap >>> pure) (Foreign.decode result)
+  rows :: Array { password_hash :: Hash, salt :: Salt } <-
+    ServerM $ Db.query dbConn
+      "SELECT password_hash, salt FROM users WHERE username = ?"
+      [ Foreign.encode username ]
+
   case Array.head rows of
     Just { password_hash, salt } ->
       hashPassword (Password password) salt <#> \hash ->
