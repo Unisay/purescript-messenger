@@ -3,25 +3,23 @@ module Auth where
 import Prelude
 
 import Auth.Hash (Hash, Password(..), Salt(..), hashPassword)
-import Control.Monad.Error.Class (catchError, throwError)
-import Control.Monad.Except (runExcept)
-import Control.Monad.Except.Trans (mapExceptT)
+import Control.Monad.Error.Class (throwError)
+import Control.Monad.Except (runExcept, withExceptT)
 import Data.Array as Array
 import Data.Either (Either(..))
 import Data.Enum (enumFromTo)
 import Data.Maybe (Maybe(..), fromMaybe)
-import Data.Newtype (unwrap, wrap)
+import Data.Newtype (wrap)
 import Data.String.CodeUnits as String
 import Data.Unfoldable (replicateA)
 import Database as Db
 import Effect (Effect)
-import Effect.Aff as Aff
 import Effect.Class (liftEffect)
 import Effect.Random (randomInt)
 import Foreign (fail, readInt) as Foreign
-import Foreign.Generic (class Decode, ForeignError(..), decode, encode) as Foreign
+import Foreign.Generic (class Decode, ForeignError(..), encode) as Foreign
 import SQLite3 as SQLite
-import ServerM (ServerM(..))
+import ServerM (Error(..), ServerM)
 
 data SignupResult = SignupSuccess | UserExists
 type SigninRequest = { username :: String, password :: String }
@@ -60,22 +58,22 @@ signup :: SQLite.DBConnection -> User -> ServerM SignupResult
 signup dbConn user = do
   salt <- liftEffect genSalt
   hash <- hashPassword (Password user.password) salt
-  ( SignupSuccess <$ Db.query dbConn
-      """
-    INSERT INTO users (email, username, password_hash, salt)
-    VALUES (?, ?, ?, ?)
+  wrap $ withExceptT DatabaseErr $ Db.execute dbConn
     """
-      [ Foreign.encode user.email
-      , Foreign.encode user.username
-      , Foreign.encode hash
-      , Foreign.encode salt
-      ]
-  ) `catchError` \(_ :: Aff.Error) -> pure UserExists
+      INSERT INTO users (email, username, password_hash, salt)
+      VALUES (?, ?, ?, ?)
+      """
+    [ Foreign.encode user.email
+    , Foreign.encode user.username
+    , Foreign.encode hash
+    , Foreign.encode salt
+    ]
+  pure SignupSuccess
 
 signin :: SQLite.DBConnection -> SigninRequest -> ServerM SigninResult
 signin dbConn { username, password } = do
   rows :: Array { password_hash :: Hash, salt :: Salt } <-
-    ServerM $ Db.query dbConn
+    wrap $ withExceptT DatabaseErr $ Db.query dbConn
       "SELECT password_hash, salt FROM users WHERE username = ?"
       [ Foreign.encode username ]
 

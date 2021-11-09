@@ -2,12 +2,14 @@ module ServerM where
 
 import Prelude
 
-import Effect.Aff (catchError, throwError)
 import Control.Monad.Error.Class (class MonadError, class MonadThrow)
 import Control.Monad.Except (ExceptT(..), lift, runExcept, runExceptT)
 import Data.Array as Array
+import Data.Bifunctor (lmap)
 import Data.Either (Either(..))
 import Data.Newtype (class Newtype, unwrap, wrap)
+import Database as Database
+import Effect.Aff (catchError, throwError)
 import Effect.Aff as Aff
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class (class MonadEffect)
@@ -17,11 +19,14 @@ import Node.Express.Handler (Handler, HandlerM)
 import Node.Express.Request as Request
 import Node.Express.Response (setStatus, send)
 import Node.Express.Response as Response
-import Database as Database
 
 type Server = ServerM Unit
 
-newtype ServerM a = ServerM (ExceptT Database.Error HandlerM a)
+data Error
+  = BodyDecodingErr MultipleErrors
+  | DatabaseErr Database.Error
+
+newtype ServerM a = ServerM (ExceptT Error HandlerM a)
 
 derive instance newtypeServerM :: Newtype (ServerM a) _
 derive newtype instance functorServerM :: Functor ServerM
@@ -41,13 +46,18 @@ instance MonadError Aff.Error ServerM where
 
 runServerM :: Server -> Handler
 runServerM (ServerM s) = runExceptT s >>= case _ of
-  Left (Database.Decoding foreignErrors) -> do
+  Left (DatabaseErr (Database.Decoding foreignErrors)) -> do
     setStatus 400
     send $ Array.fromFoldable $ map renderForeignError foreignErrors
-  Left (Database.Constraint message) -> do
-    ?handleConstraintErrors
-  Left (Database.Other message) -> do
-    ?handletherErrors
+  Left (DatabaseErr (Database.Constraint message)) -> do
+    setStatus 500
+    send message
+  Left (DatabaseErr (Database.Other message)) -> do
+    setStatus 500
+    send message
+  Left (BodyDecodingErr me) -> do
+    setStatus 400
+    send $ Array.fromFoldable $ map renderForeignError me
   Right _ -> pure unit
 
 -- Lifted functions
@@ -56,7 +66,9 @@ liftHandler :: forall a. HandlerM a -> ServerM a
 liftHandler = wrap <<< lift
 
 readBody :: forall b. Decode b => ServerM b
-readBody = ServerM $ ExceptT $ runExcept <$> Request.getBody
+readBody =
+  liftHandler (Request.getBody) >>=
+    wrap <<< wrap <<< pure <<< lmap BodyDecodingErr <<< runExcept
 
 replyWithStatus :: Int -> String -> Server
 replyWithStatus s m = liftHandler (Response.setStatus s) *> reply m

@@ -1,18 +1,20 @@
 module Database where
 
-import Data.Either (Either(..), either)
 import Prelude
 
-import Control.Monad.Except (ExceptT, lift, mapExceptT)
+import Control.Monad.Except (ExceptT, mapExceptT)
+import Data.Bifunctor (lmap)
 import Data.Generic.Rep (class Generic)
-import Data.Newtype (unwrap)
+import Data.Newtype (unwrap, wrap)
 import Data.Show.Generic (genericShow)
-import Effect.Aff (Aff, bracket)
+import Effect.Aff (Aff, bracket, try)
+import Effect.Aff as Aff
 import Effect.Aff.Class (class MonadAff, liftAff)
 import Effect.Class.Console (log)
 import Foreign (MultipleErrors)
 import Foreign.Class (class Decode, decode)
 import SQLite3 as SQLite
+import Unsafe.Coerce (unsafeCoerce)
 
 data Error
   = Constraint String
@@ -46,6 +48,15 @@ withConnection useResource = do
     log "Closing DB connection"
     SQLite.closeDB conn
 
+execute
+  :: forall a m
+   . MonadAff m
+  => SQLite.DBConnection
+  -> SQLite.Query
+  -> Array SQLite.Param
+  -> ExceptT Error m Unit
+execute conn q params = unsafeCoerce unit
+
 query
   :: forall a m
    . MonadAff m
@@ -55,9 +66,11 @@ query
   -> Array SQLite.Param
   -> ExceptT Error m a
 query conn q params = do
-  foreignA <- lift (liftAff (SQLite.queryDB conn q params))
-  mapExceptT
-    (pure <<< either (Left <<< Decoding) Right <<< unwrap)
-    (decode foreignA)
--- `catchError` \err ->  ?x
+  f <- wrap $ map (lmap adaptError) $ liftAff $ try $
+    SQLite.queryDB conn q params
+  mapExceptT (pure <<< lmap Decoding <<< unwrap) (decode f)
+  where
+  adaptError :: Aff.Error -> Error
+  -- SQLITE_CONSTRAINT: UNIQUE constraint failed: users.username
+  adaptError ae = Other $ Aff.message ae
 
