@@ -3,7 +3,6 @@
   [ "aff"
   , "affjax"
   , "argonaut-codecs"
-  , "argonaut-core"
   , "codec-argonaut"
   , "console"
   , "effect"
@@ -15,7 +14,6 @@
   , "profunctor"
   , "psci-support"
   , "strings"
-  , "tuples"
   , "web-events"
   , "web-html"
   ]

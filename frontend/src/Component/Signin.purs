@@ -221,7 +221,7 @@ handleAction ::
 handleAction = case _ of
   SetLogin str -> do
     log $ "Login " <> show str <> " was set"
-    H.modify_ \x -> x { login = if null str then Nothing else Just str }
+    H.modify_ _ { login = if null str then Nothing else Just str }
   SetPassword str -> do
     log $ "Password " <> show str <> " was set"
     H.modify_ _ { password = if null str then Nothing else Just str }
@@ -249,7 +249,7 @@ sendRequestToServer username password = do
     AX.request
       AX.defaultRequest
         { method = Left POST
-        , url = "http://localhost:8081/login"
+        , url = "http://localhost:8081/signin"
         , content = Just $ AX.Json $ Json.encodeJson { username, password }
         }
   serverResponse :: SignInResponse <- case response of

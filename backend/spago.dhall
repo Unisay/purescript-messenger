@@ -9,6 +9,7 @@
   , "effect"
   , "either"
   , "enums"
+  , "exceptions"
   , "express"
   , "foreign"
   , "foreign-generic"

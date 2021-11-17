@@ -4,12 +4,11 @@ import Prelude
 
 import Auth.Hash (Hash, Password(..), Salt(..), hashPassword)
 import Control.Monad.Error.Class (throwError)
-import Control.Monad.Except (runExcept, withExceptT)
+import Control.Monad.Except (runExcept)
 import Data.Array as Array
 import Data.Either (Either(..))
 import Data.Enum (enumFromTo)
 import Data.Maybe (Maybe(..), fromMaybe)
-import Data.Newtype (wrap)
 import Data.String.CodeUnits as String
 import Data.Unfoldable (replicateA)
 import Database as Db
@@ -19,7 +18,7 @@ import Effect.Random (randomInt)
 import Foreign (fail, readInt) as Foreign
 import Foreign.Generic (class Decode, ForeignError(..), encode) as Foreign
 import SQLite3 as SQLite
-import ServerM (Error(..), ServerM)
+import ServerM (ServerM, liftDbM)
 
 data SignupResult = SignupSuccess | UserExists
 type SigninRequest = { username :: String, password :: String }
@@ -58,7 +57,7 @@ signup :: SQLite.DBConnection -> User -> ServerM SignupResult
 signup dbConn user = do
   salt <- liftEffect genSalt
   hash <- hashPassword (Password user.password) salt
-  wrap $ withExceptT DatabaseErr $ Db.execute dbConn
+  liftDbM $ Db.execute dbConn
     """
       INSERT INTO users (email, username, password_hash, salt)
       VALUES (?, ?, ?, ?)
@@ -73,7 +72,7 @@ signup dbConn user = do
 signin :: SQLite.DBConnection -> SigninRequest -> ServerM SigninResult
 signin dbConn { username, password } = do
   rows :: Array { password_hash :: Hash, salt :: Salt } <-
-    wrap $ withExceptT DatabaseErr $ Db.query dbConn
+    liftDbM $ Db.query dbConn
       "SELECT password_hash, salt FROM users WHERE username = ?"
       [ Foreign.encode username ]
 

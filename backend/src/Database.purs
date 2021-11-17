@@ -14,10 +14,17 @@ import Effect.Class.Console (log)
 import Foreign (MultipleErrors)
 import Foreign.Class (class Decode, decode)
 import SQLite3 as SQLite
-import Unsafe.Coerce (unsafeCoerce)
+import Effect.Exception as Ex
+
+data DbConstraint = Username | Email
+
+instance show :: Show DbConstraint where
+  show = case _ of
+    Username -> "users.username"
+    Email -> "users.email"
 
 data Error
-  = Constraint String
+  = ConstraintViolation DbConstraint
   | Decoding MultipleErrors
   | Other String
 
@@ -34,12 +41,12 @@ withConnection useResource = do
     conn <- SQLite.newDB "db/backend.sqlite3"
     _ <- SQLite.queryDB conn
       """
-        create table if not exists users (
-          email text primary key on conflict fail,
-          username text unique on conflict fail,
-          password_hash text unique on conflict fail,
-          salt text unique on conflict fail
-        ) 
+      CREATE TABLE IF NOT EXISTS users (
+        email TEXT PRIMARY KEY ON CONFLICT FAIL,
+        username TEXT UNIQUE ON CONFLICT FAIL,
+        password_hash TEXT UNIQUE ON CONFLICT FAIL,
+        salt TEXT UNIQUE ON CONFLICT FAIL
+      ) 
       """
       []
     pure conn
@@ -48,29 +55,41 @@ withConnection useResource = do
     log "Closing DB connection"
     SQLite.closeDB conn
 
+type DbM m a = ExceptT Error m a
+
 execute
-  :: forall a m
+  :: forall m
    . MonadAff m
   => SQLite.DBConnection
   -> SQLite.Query
   -> Array SQLite.Param
-  -> ExceptT Error m Unit
-execute conn q params = unsafeCoerce unit
+  -> DbM m Unit
+execute conn q params =
+  SQLite.queryDB conn q params
+    # void
+    # try
+    # liftAff
+    # map (lmap adaptError)
+    # wrap
 
 query
-  :: forall a m
+  :: forall m a
    . MonadAff m
   => Decode a
   => SQLite.DBConnection
   -> SQLite.Query
   -> Array SQLite.Param
-  -> ExceptT Error m a
+  -> DbM m a
 query conn q params = do
   f <- wrap $ map (lmap adaptError) $ liftAff $ try $
     SQLite.queryDB conn q params
   mapExceptT (pure <<< lmap Decoding <<< unwrap) (decode f)
-  where
-  adaptError :: Aff.Error -> Error
-  -- SQLITE_CONSTRAINT: UNIQUE constraint failed: users.username
-  adaptError ae = Other $ Aff.message ae
+
+adaptError :: Aff.Error -> Error
+adaptError e = case Ex.message e of
+  "SQLITE_CONSTRAINT: UNIQUE constraint failed: users.username" ->
+    ConstraintViolation Username
+  "SQLITE_CONSTRAINT: UNIQUE constraint failed: users.email" ->
+    ConstraintViolation Email
+  _ -> Other $ Ex.message e
 
