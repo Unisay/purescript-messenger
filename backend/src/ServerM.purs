@@ -4,6 +4,7 @@ import Prelude
 
 import Control.Monad.Error.Class (class MonadError, class MonadThrow)
 import Control.Monad.Except (ExceptT(..), lift, runExcept, runExceptT, withExceptT)
+import Data.Argonaut.Encode (class EncodeJson, encodeJson)
 import Data.Array as Array
 import Data.Bifunctor (lmap)
 import Data.Either (Either(..))
@@ -19,7 +20,6 @@ import Foreign (MultipleErrors, renderForeignError)
 import Foreign.Class (class Decode)
 import Node.Express.Handler (Handler, HandlerM)
 import Node.Express.Request as Request
-import Node.Express.Response (setStatus, send)
 import Node.Express.Response as Response
 
 type Server = ServerM Unit
@@ -49,23 +49,26 @@ instance MonadError Aff.Error ServerM where
 runServerM :: Server -> Handler
 runServerM (ServerM s) = runExceptT s >>= case _ of
   Left (DatabaseErr (Database.Decoding foreignErrors)) -> do
-    setStatus 400
-    send $ Array.fromFoldable $ map renderForeignError foreignErrors
+    Response.setStatus 400
+    Response.sendJson
+      { errors:
+          Array.fromFoldable $ map renderForeignError foreignErrors
+      }
   Left (DatabaseErr (Database.ConstraintViolation column)) -> do
     case column of
       Database.Username -> do
-        setStatus 409
-        send "User already registered"
+        Response.setStatus 409
+        Response.sendJson { errors: [ "User already registered" ] }
       Database.Email -> do
-        setStatus 409
-        send "Email already registered."
+        Response.setStatus 409
+        Response.sendJson { errors: [ "Email already registered" ] }
   Left (DatabaseErr (Database.Other message)) -> do
-    setStatus 500
+    Response.setStatus 500
     log message
-    send "Internal Server Error"
+    Response.sendJson { error: "Internal Server Error" }
   Left (BodyDecodingErr me) -> do
-    setStatus 400
-    send $ Array.fromFoldable $ map renderForeignError me
+    Response.setStatus 400
+    Response.sendJson { errors: Array.fromFoldable $ map renderForeignError me }
   Right _ -> pure unit
 
 -- Lifted functions
@@ -81,8 +84,11 @@ readBody =
   liftHandler (Request.getBody) >>=
     wrap <<< wrap <<< pure <<< lmap BodyDecodingErr <<< runExcept
 
-replyWithStatus :: Int -> String -> Server
-replyWithStatus s m = liftHandler (Response.setStatus s) *> reply m
+setStatus :: Int -> Server
+setStatus = liftHandler <<< Response.setStatus
 
 reply :: String -> Server
 reply = liftHandler <<< Response.send
+
+replyJson :: forall a. EncodeJson a => a -> Server
+replyJson = liftHandler <<< Response.sendJson <<< encodeJson

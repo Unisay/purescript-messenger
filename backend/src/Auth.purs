@@ -20,7 +20,6 @@ import Foreign.Generic (class Decode, ForeignError(..), encode) as Foreign
 import SQLite3 as SQLite
 import ServerM (ServerM, liftDbM)
 
-data SignupResult = SignupSuccess | UserExists
 type SigninRequest = { username :: String, password :: String }
 data SigninResult = SigninSuccess | SigninFailure
 type SignoutRequest = { reason :: SignoutReason }
@@ -53,7 +52,7 @@ genSalt = Salt <<< String.fromCharArray <$> replicateA 32 genChar
     fromMaybe '?' <<< Array.index alphabet
       <$> randomInt 0 (Array.length alphabet - 1)
 
-signup :: SQLite.DBConnection -> User -> ServerM SignupResult
+signup :: SQLite.DBConnection -> User -> ServerM Unit
 signup dbConn user = do
   salt <- liftEffect genSalt
   hash <- hashPassword (Password user.password) salt
@@ -67,7 +66,6 @@ signup dbConn user = do
     , Foreign.encode hash
     , Foreign.encode salt
     ]
-  pure SignupSuccess
 
 signin :: SQLite.DBConnection -> SigninRequest -> ServerM SigninResult
 signin dbConn { username, password } = do

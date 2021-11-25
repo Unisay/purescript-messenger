@@ -2,7 +2,7 @@ module Main where
 
 import Prelude
 
-import Auth (SigninResult(..), SignoutReason(..), SignoutResult(..), SignupResult(..), signin, signout, signup) 
+import Auth (SigninResult(..), SignoutReason(..), SignoutResult(..), signin, signout, signup)
 import Database as Db
 import Effect (Effect)
 import Effect.Aff (Aff, launchAff_, never)
@@ -12,7 +12,7 @@ import Middleware as Middleware
 import Node.Express.App (App, get, listenHttp, post)
 import Node.Express.Response as Response
 import SQLite3 as SQLite
-import ServerM (readBody, reply, replyWithStatus, runServerM)
+import ServerM (readBody, reply, runServerM, setStatus)
 
 type Resources = { dbConn :: SQLite.DBConnection }
 
@@ -33,13 +33,12 @@ app { dbConn } = do
   Middleware.init
   get "/" $ Response.send "Messenger API"
   post "/signup" $ runServerM do
-    readBody >>= signup dbConn >>= case _ of
-      UserExists -> replyWithStatus 409 "Conflict"
-      SignupSuccess -> replyWithStatus 201 "Created"
+    readBody >>= signup dbConn 
+    setStatus 201 *> reply ""
   post "/signin" $ runServerM $
     readBody >>= signin dbConn >>= case _ of
       SigninSuccess -> reply "Success"
-      SigninFailure -> replyWithStatus 403 "Failure"
+      SigninFailure -> setStatus 403 *> reply ""
   post "/signout" $ runServerM do
     readBody <#> signout >>= case _ of
       SignoutSuccess Timeout -> reply "Signout successful: timeout."

@@ -1,0 +1,67 @@
+openapi: 3.0.0
+info:
+  version: '0.0.1'
+  title: 'Messenger Backend'
+servers:
+  - url: 'localhost:8081'
+paths:
+  /signup:
+    post:
+      summary: Signup new user
+      operationId: signup
+      security: []
+      tags: 
+        - auth
+      requestBody:
+        description: User Info
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserInfo'    
+      responses:
+        '200':
+          description: 'Signup is successfull'
+        '409':
+          description: 'Username is already registered'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        default:
+          description: Unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+components:
+  schemas:
+    UserInfo:
+      type: object
+      required:
+        - email
+        - username
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+        username:
+          type: string
+          minLength: 2
+        password:
+          type: string
+          minLength: 8
+    Error:
+      type: object
+      properties:
+          errors:
+            type: array
+            items: 
+              type: string
+              example: Internal Server Error
+  securitySchemes:
+    auth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

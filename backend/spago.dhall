@@ -2,6 +2,7 @@
 , dependencies =
   [ "aff"
   , "aff-promise"
+  , "argonaut-codecs"
   , "arrays"
   , "bifunctors"
   , "console"

@@ -1,15 +1,16 @@
 module Component.Signin where
 
 import Prelude
+
 import Affjax (defaultRequest, printError, request) as AX
 import Affjax.RequestBody (RequestBody(..)) as AX
-import Data.Either (Either(..))
 import Data.Argonaut.Encode (encodeJson) as Json
+import Data.Either (Either(..))
 import Data.HTTP.Method (Method(..))
 import Data.Maybe (Maybe(..), fromMaybe)
+import Data.Newtype (unwrap)
 import Data.String (null)
 import Effect (Effect)
-import Effect.Aff (Aff)
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class.Console (log)
 import Halogen (liftAff, liftEffect)
@@ -30,19 +31,20 @@ main =
     runUI component unit body
 
 type State
-  = { loading :: Boolean
-    , login :: Maybe String
-    , password :: Maybe String
-    , result :: Maybe String
-    }
+  =
+  { loading :: Boolean
+  , login :: Maybe String
+  , password :: Maybe String
+  , result :: Maybe String
+  }
 
 data Action
   = SetLogin String
   | SetPassword String
   | SubmitForm Event
 
-component ::
-  forall query input output m. MonadAff m => H.Component query input output m
+component
+  :: forall query input output m. MonadAff m => H.Component query input output m
 component =
   H.mkComponent
     { initialState
@@ -214,10 +216,11 @@ render state = signinFormContainer
           HH.p_ [ HH.text "Please wait" ]
       ]
 
-handleAction ::
-  forall output m.
-  MonadAff m =>
-  Action -> H.HalogenM State Action () output m Unit
+handleAction
+  :: forall output m
+   . MonadAff m
+  => Action
+  -> H.HalogenM State Action () output m Unit
 handleAction = case _ of
   SetLogin str -> do
     log $ "Login " <> show str <> " was set"
@@ -228,32 +231,43 @@ handleAction = case _ of
   SubmitForm ev -> do
     liftEffect $ Event.preventDefault ev
     { login, password } <- H.get
-    signInResponse <- liftAff $ sendRequestToServer login password
+    signInResponse <- sendRequestToServer login password
     case signInResponse of
-      Ok -> log "Successfully signed in"
-      Failure -> log "Sign in failed"
+      SignedIn -> log "Successfully signed in"
+      Forbidden -> log "Forbidden"
+      Failure err -> log $ "Sign in failed: " <> err
 
 data SignInResponse
-  = Ok
-  | Failure
+  = SignedIn
+  | Forbidden
+  | Failure String
 
 instance showSignInResponse :: Show SignInResponse where
   show = case _ of
-    Ok -> "Ok"
-    Failure -> "Failure"
+    SignedIn -> "Signed In"
+    Forbidden -> "Sign in is forbidden"
+    Failure statusCode -> "Failure: " <> show statusCode
 
-sendRequestToServer :: Maybe String -> Maybe String -> Aff SignInResponse
+sendRequestToServer
+  :: forall m. MonadAff m => Maybe String -> Maybe String -> m SignInResponse
 sendRequestToServer username password = do
   log "Form is being submitted...."
-  response <-
+  response <- liftAff $
     AX.request
       AX.defaultRequest
         { method = Left POST
         , url = "http://localhost:8081/signin"
         , content = Just $ AX.Json $ Json.encodeJson { username, password }
         }
-  serverResponse :: SignInResponse <- case response of
-    Left err -> log (AX.printError err) $> Failure
-    Right res -> log (show res) $> Ok
+  let
+    serverResponse =
+      case response of
+        Left err -> Failure (AX.printError err)
+        Right { status } ->
+          case unwrap status of
+            200 -> SignedIn
+            403 -> Forbidden
+            _ -> Failure (show status)
+
   log ("Received server response: " <> show serverResponse)
   pure serverResponse
