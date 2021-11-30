@@ -1,65 +1,123 @@
 openapi: 3.0.0
 info:
-  version: '0.0.1'
-  title: 'Messenger Backend'
+  version: "0.0.1"
+  title: "Messenger Backend"
 servers:
-  - url: 'localhost:8081'
+  - url: "localhost:8081"
 paths:
-  /signup:
-    post:
+  /users/{username}:
+    put:
       summary: Signup new user
       operationId: signup
       security: []
-      tags: 
+      tags:
         - auth
+      parameters:
+        - $ref: "#/components/parameters/username"
       requestBody:
         description: User Info
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UserInfo'    
+              $ref: "#/components/schemas/UserInfo"
       responses:
-        '200':
-          description: 'Signup is successfull'
-        '409':
-          description: 'Username is already registered'
+        "200":
+          description: "Signup is successfull"
+        "409":
+          description: "Username is already registered"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: "#/components/schemas/Error"
         default:
           description: Unexpected error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: "#/components/schemas/Error"
+
+  /users/{username}/sessions/{session-id}:
+    put:
+      tags:
+        - auth
+      parameters:
+        - $ref: "#/components/parameters/username"
+        - in: path
+          name: session-id
+          required: true
+          schema:
+            type: string
+            format: uuid
+            example: 37fcf218-5050-11ec-b47b-000d3aa9eb1a
+          description: Session ID
+      requestBody:
+        description: User Session
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - password
+              properties:
+                password:
+                  type: string
+                  minLength: 8
+      responses:
+        "200":
+          description: User session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserSession"
+        "403":
+          description: Access denied
+
 components:
+  parameters:
+    username:
+      in: path
+      name: username
+      schema:
+        type: string
+        minLength: 2
+      required: true
+      example: john
+      description:
+        Username is used to uniquely identify a user within the system.
+        It could only contain alphanumeric characters.
   schemas:
     UserInfo:
       type: object
       required:
         - email
-        - username
         - password
       properties:
         email:
           type: string
           format: email
-        username:
-          type: string
-          minLength: 2
+          example: user@example.com
         password:
           type: string
           minLength: 8
+    UserSession:
+      type: object
+      required:
+        - token
+      properties:
+        token:
+          type: string
+          format: jwt
+
     Error:
       type: object
       properties:
-          errors:
-            type: array
-            items: 
-              type: string
-              example: Internal Server Error
+        errors:
+          type: array
+          items:
+            type: string
+            example: Internal Server Error
   securitySchemes:
     auth:
       type: http

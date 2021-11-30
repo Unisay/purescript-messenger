@@ -3,16 +3,18 @@ module Main where
 import Prelude
 
 import Auth (SigninResult(..), SignoutReason(..), SignoutResult(..), signin, signout, signup)
+import Data.Maybe (Maybe(..))
 import Database as Db
 import Effect (Effect)
 import Effect.Aff (Aff, launchAff_, never)
 import Effect.Class (liftEffect)
 import Effect.Class.Console (log)
 import Middleware as Middleware
-import Node.Express.App (App, get, listenHttp, post)
+import Node.Express.App (App, get, listenHttp, post, put)
+import Node.Express.Request as Request
 import Node.Express.Response as Response
 import SQLite3 as SQLite
-import ServerM (readBody, reply, runServerM, setStatus)
+import ServerM (liftHandler, readBody, reply, runServerM, setStatus)
 
 type Resources = { dbConn :: SQLite.DBConnection }
 
@@ -32,9 +34,15 @@ app :: Resources -> App
 app { dbConn } = do
   Middleware.init
   get "/" $ Response.send "Messenger API"
-  post "/signup" $ runServerM do
-    readBody >>= signup dbConn 
-    setStatus 201 *> reply ""
+  put "/users/:username" $ runServerM do
+    username <- liftHandler $ Request.getRouteParam "username"
+    case username of
+      Nothing -> setStatus 404 *> reply ""
+      Just username' -> do
+        { email, password } :: { email :: String, password :: String } <- readBody
+        signup dbConn { email , password , username: username' }
+        setStatus 200
+        reply ""
   post "/signin" $ runServerM $
     readBody >>= signin dbConn >>= case _ of
       SigninSuccess -> reply "Success"
