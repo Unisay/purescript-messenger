@@ -87,6 +87,9 @@ readBody =
 setStatus :: Int -> Server
 setStatus = liftHandler <<< Response.setStatus
 
+replyStatus :: Int -> Server
+replyStatus status = setStatus status *> reply ""
+
 reply :: String -> Server
 reply = liftHandler <<< Response.send
 

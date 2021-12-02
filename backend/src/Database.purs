@@ -64,13 +64,7 @@ execute
   -> SQLite.Query
   -> Array SQLite.Param
   -> DbM m Unit
-execute conn q params =
-  SQLite.queryDB conn q params
-    # void
-    # try
-    # liftAff
-    # map (lmap adaptError)
-    # wrap
+execute = query
 
 query
   :: forall m a

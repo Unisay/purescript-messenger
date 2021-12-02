@@ -11,20 +11,22 @@ import Effect.Aff.Class (liftAff)
 
 newtype Hash = Hash String
 
-derive newtype instance encodeHash :: Encode Hash
-derive newtype instance decodeHash :: Decode Hash
-derive newtype instance eqHash :: Eq Hash
+derive newtype instance Encode Hash
+derive newtype instance Decode Hash
+derive newtype instance Eq Hash
 
 -- Password --------------------------------------------------------------------
 
 newtype Password = Password String
 
+derive newtype instance Decode Password
+
 -- Salt ------------------------------------------------------------------------
 
 newtype Salt = Salt String
 
-derive newtype instance encodeSalt :: Encode Salt
-derive newtype instance decodeSalt :: Decode Salt
+derive newtype instance Encode Salt
+derive newtype instance Decode Salt
 
 --------------------------------------------------------------------------------
 
