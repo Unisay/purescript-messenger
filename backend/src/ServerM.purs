@@ -8,6 +8,7 @@ import Data.Argonaut.Encode (class EncodeJson, encodeJson)
 import Data.Array as Array
 import Data.Bifunctor (lmap)
 import Data.Either (Either(..))
+import Data.Maybe (Maybe(..), maybe)
 import Data.Newtype (class Newtype, unwrap, wrap)
 import Database (DbM)
 import Database as Database
@@ -27,6 +28,7 @@ type Server = ServerM Unit
 data Error
   = BodyDecodingErr MultipleErrors
   | DatabaseErr Database.Error
+  | RouteParamIsMissing
 
 newtype ServerM a = ServerM (ExceptT Error HandlerM a)
 
@@ -38,13 +40,7 @@ derive newtype instance bindServerM :: Bind ServerM
 derive newtype instance monadServerM :: Monad ServerM
 derive newtype instance monadEffectServerM :: MonadEffect ServerM
 derive newtype instance monadAffServerM :: MonadAff ServerM
-
-instance MonadThrow Aff.Error ServerM where
-  throwError = liftHandler <<< throwError
-
-instance MonadError Aff.Error ServerM where
-  catchError m f =
-    wrap (wrap (catchError (unwrap (unwrap m)) (\e -> unwrap (unwrap (f e)))))
+derive newtype instance monadThrowServerM :: MonadThrow Error ServerM
 
 runServerM :: Server -> Handler
 runServerM (ServerM s) = runExceptT s >>= case _ of
@@ -69,6 +65,9 @@ runServerM (ServerM s) = runExceptT s >>= case _ of
   Left (BodyDecodingErr me) -> do
     Response.setStatus 400
     Response.sendJson { errors: Array.fromFoldable $ map renderForeignError me }
+  Left RouteParamIsMissing -> do
+    Response.setStatus 404
+    Response.send ""
   Right _ -> pure unit
 
 -- Lifted functions
@@ -83,6 +82,11 @@ readBody :: forall b. Decode b => ServerM b
 readBody =
   liftHandler (Request.getBody) >>=
     wrap <<< wrap <<< pure <<< lmap BodyDecodingErr <<< runExcept
+
+readPathParam :: String -> ServerM String
+readPathParam name =
+  liftHandler (Request.getRouteParam name) >>=
+    maybe (throwError RouteParamIsMissing) pure
 
 setStatus :: Int -> Server
 setStatus = liftHandler <<< Response.setStatus

@@ -7,6 +7,10 @@ import Foreign.Class (class Encode, class Decode)
 import ServerM (ServerM)
 import Effect.Aff.Class (liftAff)
 
+-- Token -----------------------------------------------------------------------
+
+type Token = String
+
 -- Hash ------------------------------------------------------------------------
 
 newtype Hash = Hash String

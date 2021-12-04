@@ -2,7 +2,7 @@ module Auth where
 
 import Prelude
 
-import Auth.Hash (Hash, Password, Salt(..), hashPassword)
+import Auth.Hash (Hash, Password, Salt(..), Token, hashPassword)
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.Except (runExcept)
 import Data.Array as Array
@@ -21,7 +21,7 @@ import Foreign.Generic (class Decode, class Encode)
 import SQLite3 as SQLite
 import ServerM (ServerM, liftDbM)
 
-data SigninResult = SigninSuccess | SigninFailure
+data SigninResult = SigninSuccess Token | SigninFailure
 data SignupResult = SignedUp | UserInfoUpdated | NotSignedUpInvalidCredentials
 type SignoutRequest = { reason :: SignoutReason }
 data SignoutReason = Timeout | UserAction
@@ -60,21 +60,13 @@ genSalt = Salt <<< String.fromCharArray <$> replicateA 32 genChar
 
 signup :: SQLite.DBConnection -> UserInfo -> ServerM SignupResult
 signup dbConn user = do
-  -- Выбираем из базы данных записи по username: salt
   hashedData <- usernameHashedData dbConn user.username
   case hashedData of
-    -- Если ничего не найдено, то вставляем новую запись
     Nothing -> insertRecord $> SignedUp
-    -- Если найдено, 
     Just { password_hash, salt } -> do
-      -- то берём соль и солим присланный пароль.
       password_hash' <- hashPassword user.password salt
-      -- Если посоленный пароль совпадает с сохраненным, 
-      if password_hash' == password_hash
-      -- то обновляем данные пользователя   
-      then updateRecord $> UserInfoUpdated
-      -- Иначе обрываем процедуру.
-      else pure NotSignedUpInvalidCredentials 
+      if password_hash' == password_hash then updateRecord $> UserInfoUpdated
+      else pure NotSignedUpInvalidCredentials
   where
   insertRecord = do
     salt <- liftEffect genSalt
@@ -89,7 +81,6 @@ signup dbConn user = do
       , Foreign.encode hash
       , Foreign.encode salt
       ]
-
   updateRecord = liftDbM $ Db.execute dbConn "UPDATE users SET email = ?"
     [ Foreign.encode user.email ]
 
@@ -98,7 +89,9 @@ signin dbConn username password =
   usernameHashedData dbConn username >>= case _ of
     Just { password_hash, salt } ->
       hashPassword password salt <#> \hash ->
-        if hash == password_hash then SigninSuccess else SigninFailure
+        if hash == password_hash
+        then SigninSuccess "todo: signedJwtToken"
+        else SigninFailure
     Nothing -> pure SigninFailure
 
 usernameHashedData
