@@ -12,16 +12,24 @@ import Effect.Class (liftEffect)
 import Effect.Class.Console (log)
 import Middleware as Middleware
 import Node.Express.App (App, get, listenHttp, post, put)
-import Node.Express.Request as Request
 import Node.Express.Response as Response
+import Node.Jwt as Jwt
+import Node.Process (lookupEnv)
 import SQLite3 as SQLite
-import ServerM (ServerM(..), liftHandler, readBody, readPathParam, reply, replyJson, replyStatus, runServerM)
+import ServerM (ServerM, readBody, readPathParam, reply, replyJson, replyStatus, runServerM)
 
-type Resources = { dbConn :: SQLite.DBConnection }
+type Resources =
+  { dbConn :: SQLite.DBConnection
+  , jwtSecret :: Jwt.Secret
+  }
 
 main :: Effect Unit
-main = launchAff_ $ Db.withConnection \dbConn ->
-  mainWithResources { dbConn }
+main = launchAff_ $ Db.withConnection \dbConn -> do
+  liftEffect (lookupEnv "JWT_SECRET") >>= case _ of
+    Nothing ->
+      log "Please specify JWT_SECRET env variable"
+    Just jwtSecret ->
+      mainWithResources { dbConn, jwtSecret: Jwt.Secret jwtSecret }
 
 mainWithResources :: Resources -> Aff Unit
 mainWithResources resources = do
@@ -32,7 +40,7 @@ mainWithResources resources = do
   tcpPort = 8081
 
 app :: Resources -> App
-app { dbConn } = do
+app { dbConn, jwtSecret } = do
   Middleware.init
   get "/" $ Response.send "Messenger API"
   put "/users/:username" $ runServerM do
@@ -46,7 +54,7 @@ app { dbConn } = do
   put "/users/:username/session" $ runServerM do
     username <- readUsername
     { password } :: { password :: Password } <- readBody
-    signin dbConn username password >>= case _ of
+    signin dbConn jwtSecret username password >>= case _ of
       SigninSuccess token -> replyJson { token }
       SigninFailure -> replyStatus 403
   post "/signout" $ runServerM do

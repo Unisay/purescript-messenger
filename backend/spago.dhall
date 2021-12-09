@@ -6,7 +6,6 @@
   , "arrays"
   , "bifunctors"
   , "console"
-  , "debug"
   , "effect"
   , "either"
   , "enums"
@@ -16,6 +15,8 @@
   , "foreign-generic"
   , "maybe"
   , "newtype"
+  , "node-jwt"
+  , "node-process"
   , "node-sqlite3"
   , "prelude"
   , "psci-support"
@@ -24,6 +25,6 @@
   , "transformers"
   , "unfoldable"
   ]
-, packages = ../packages.dhall
+, packages = ./packages.dhall
 , sources = [ "src/**/*.purs", "test/**/*.purs", "../common/src/**/*.purs" ]
 }

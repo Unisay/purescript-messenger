@@ -9,15 +9,18 @@ import Data.Array as Array
 import Data.Either (Either(..))
 import Data.Enum (enumFromTo)
 import Data.Maybe (Maybe(..), fromMaybe)
+import Data.Newtype (class Newtype, unwrap)
 import Data.String.CodeUnits as String
 import Data.Unfoldable (replicateA)
 import Database as Db
 import Effect (Effect)
+import Effect.Aff.Class (liftAff)
 import Effect.Class (liftEffect)
 import Effect.Random (randomInt)
 import Foreign (fail, readInt) as Foreign
 import Foreign.Generic (class Decode, ForeignError(..), encode) as Foreign
 import Foreign.Generic (class Decode, class Encode)
+import Node.Jwt as Jwt
 import SQLite3 as SQLite
 import ServerM (ServerM, liftDbM)
 
@@ -43,6 +46,7 @@ type UserInfo =
 
 newtype Username = Username String
 
+derive instance Newtype Username _
 derive newtype instance Encode Username
 derive newtype instance Decode Username
 
@@ -84,14 +88,23 @@ signup dbConn user = do
   updateRecord = liftDbM $ Db.execute dbConn "UPDATE users SET email = ?"
     [ Foreign.encode user.email ]
 
-signin :: SQLite.DBConnection -> Username -> Password -> ServerM SigninResult
-signin dbConn username password =
+signin
+  :: SQLite.DBConnection
+  -> Jwt.Secret
+  -> Username
+  -> Password
+  -> ServerM SigninResult
+signin dbConn secret username password =
   usernameHashedData dbConn username >>= case _ of
     Just { password_hash, salt } ->
-      hashPassword password salt <#> \hash ->
-        if hash == password_hash
-        then SigninSuccess "todo: signedJwtToken"
-        else SigninFailure
+      hashPassword password salt >>= \hash -> do
+        token <- liftAff $ Jwt.sign
+          secret
+          Jwt.defaultHeaders
+          Jwt.defaultClaims { sub = Just (unwrap username) }
+        pure
+          if hash == password_hash then SigninSuccess token
+          else SigninFailure
     Nothing -> pure SigninFailure
 
 usernameHashedData

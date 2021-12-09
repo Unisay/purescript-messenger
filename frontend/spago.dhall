@@ -10,6 +10,7 @@
   , "halogen"
   , "http-methods"
   , "maybe"
+  , "newtype"
   , "prelude"
   , "profunctor"
   , "psci-support"
@@ -17,6 +18,6 @@
   , "web-events"
   , "web-html"
   ]
-, packages = ../packages.dhall
+, packages = ./packages.dhall
 , sources = [ "src/**/*.purs", "test/**/*.purs", "../common/src/**/*.purs" ]
 }
