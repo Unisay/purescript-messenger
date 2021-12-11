@@ -2,13 +2,14 @@ module Auth where
 
 import Prelude
 
-import Auth.Hash (Hash, Password, Salt(..), Token, hashPassword)
+import Auth.Hash (Hash, Password, Salt(..), Token(..), hashPassword)
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.Except (runExcept)
 import Data.Array as Array
 import Data.DateTime (adjust)
-import Data.Either (Either(..))
+import Data.Either (Either(..), note)
 import Data.Enum (enumFromTo)
+import Data.List.NonEmpty (NonEmptyList)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Newtype (class Newtype, unwrap, wrap)
 import Data.String.CodeUnits as String
@@ -110,7 +111,7 @@ signin dbConn secret username password =
             , exp = wrap <$> adjust (Minutes 30.0) now
             }
         pure
-          if hash == password_hash then SigninSuccess token
+          if hash == password_hash then SigninSuccess (Token token)
           else SigninFailure
     Nothing -> pure SigninFailure
 
@@ -125,3 +126,15 @@ usernameHashedData dbConn username =
 
 signout :: SignoutRequest -> SignoutResult
 signout { reason } = SignoutSuccess reason
+
+type TokenErrors = NonEmptyList String
+
+-- ExceptT TokenErrors ServerM Username ?
+tokenInfo :: Token -> Jwt.Secret -> Either TokenErrors Username
+tokenInfo token secret = do
+  tok :: Jwt.Token () _ <- Jwt.verify secret (unwrap token)
+  Username <$> note (pure "sub claim not found") tok.claims.sub
+ 
+
+
+

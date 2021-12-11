@@ -1,15 +1,20 @@
 module Auth.Hash where
 
 import Prelude
-import Control.Promise as Promise
+
 import Control.Promise (Promise)
+import Control.Promise as Promise
+import Data.Argonaut.Encode (class EncodeJson)
+import Data.Newtype (class Newtype)
+import Effect.Aff.Class (class MonadAff, liftAff)
 import Foreign.Class (class Encode, class Decode)
-import ServerM (ServerM)
-import Effect.Aff.Class (liftAff)
 
 -- Token -----------------------------------------------------------------------
 
-type Token = String
+newtype Token = Token String
+
+derive instance Newtype Token _
+derive newtype instance EncodeJson Token
 
 -- Hash ------------------------------------------------------------------------
 
@@ -34,7 +39,7 @@ derive newtype instance Decode Salt
 
 --------------------------------------------------------------------------------
 
-hashPassword :: Password -> Salt -> ServerM Hash
+hashPassword :: forall m. MonadAff m => Password -> Salt -> m Hash
 hashPassword (Password pass) (Salt salt) =
   _hashPassword pass salt
     # Promise.toAff

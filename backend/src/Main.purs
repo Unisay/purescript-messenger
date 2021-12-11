@@ -2,8 +2,19 @@ module Main where
 
 import Prelude
 
-import Auth (SigninResult(..), SignoutReason(..), SignoutResult(..), SignupResult(..), Username(..), signin, signout, signup)
+import Auth
+  ( SigninResult(..)
+  , SignoutReason(..)
+  , SignoutResult(..)
+  , SignupResult(..)
+  , Username(..)
+  , signin
+  , signout
+  , signup
+  , tokenInfo
+  )
 import Auth.Hash (Password)
+import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
 import Database as Db
 import Effect (Effect)
@@ -16,7 +27,7 @@ import Node.Express.Response as Response
 import Node.Jwt as Jwt
 import Node.Process (lookupEnv)
 import SQLite3 as SQLite
-import ServerM (ServerM, readBody, readPathParam, reply, replyJson, replyStatus, runServerM)
+import ServerM (ServerM, readBody, readPathParam, readToken, reply, replyJson, replyStatus, runServerM)
 
 type Resources =
   { dbConn :: SQLite.DBConnection
@@ -58,11 +69,16 @@ app { dbConn, jwtSecret } = do
       SigninSuccess token -> replyJson { token }
       SigninFailure -> replyStatus 403
   get "/chat/users" $ runServerM do
-    replyJson
-      [ { username: "yura", self: true, status: "away" }
-      , { username: "chiki", self: false, status: "online" }
-      , { username: "vadym", self: false, status: "online" }
-      ]
+    readToken >>= case _ of
+      Nothing -> replyStatus 403
+      Just token -> case tokenInfo token jwtSecret of
+        Left _errors -> replyStatus 403
+        Right _username -> 
+          replyJson
+            [ { username: "yura", self: true, status: "away" }
+            , { username: "chiki", self: false, status: "online" }
+            , { username: "vadym", self: false, status: "online" }
+            ]
   post "/signout" $ runServerM do
     readBody <#> signout >>= case _ of
       SignoutSuccess Timeout -> reply "Signout successful: timeout."

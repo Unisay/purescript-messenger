@@ -2,18 +2,19 @@ module ServerM where
 
 import Prelude
 
-import Control.Monad.Error.Class (class MonadError, class MonadThrow)
+import Auth.Hash (Token(..))
+import Control.Monad.Error.Class (class MonadThrow)
 import Control.Monad.Except (ExceptT(..), lift, runExcept, runExceptT, withExceptT)
 import Data.Argonaut.Encode (class EncodeJson, encodeJson)
 import Data.Array as Array
 import Data.Bifunctor (lmap)
 import Data.Either (Either(..))
-import Data.Maybe (Maybe(..), maybe)
-import Data.Newtype (class Newtype, unwrap, wrap)
+import Data.Maybe (Maybe, maybe)
+import Data.Newtype (class Newtype, wrap)
+import Data.String as Str
 import Database (DbM)
 import Database as Database
-import Effect.Aff (catchError, throwError)
-import Effect.Aff as Aff
+import Effect.Aff (throwError)
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class (class MonadEffect)
 import Effect.Class.Console (log)
@@ -83,10 +84,21 @@ readBody =
   liftHandler (Request.getBody) >>=
     wrap <<< wrap <<< pure <<< lmap BodyDecodingErr <<< runExcept
 
-readPathParam :: String -> ServerM String
+type ParamName = String
+
+readPathParam :: ParamName -> ServerM String
 readPathParam name =
   liftHandler (Request.getRouteParam name) >>=
     maybe (throwError RouteParamIsMissing) pure
+
+type HeaderName = String
+
+readHeader :: HeaderName -> ServerM (Maybe String)
+readHeader = liftHandler <<< Request.getRequestHeader
+
+readToken :: ServerM (Maybe Token)
+readToken = map (map (Token <<< Str.trim <<< Str.drop 7 <<< Str.trim))
+  $ readHeader "Authorization"
 
 setStatus :: Int -> Server
 setStatus = liftHandler <<< Response.setStatus

@@ -14,6 +14,7 @@
   , "express"
   , "foreign"
   , "foreign-generic"
+  , "lists"
   , "maybe"
   , "newtype"
   , "node-jwt"

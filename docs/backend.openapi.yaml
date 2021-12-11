@@ -39,6 +39,9 @@ paths:
 
   /users/{username}/session/:
     put:
+      summary: Signin user
+      operationId: signin
+      security: []
       tags:
         - auth
       parameters:
@@ -68,8 +71,11 @@ paths:
 
   /chat/users:
     get:
+      summary: List of users in the chat
       tags:
         - chat
+      security: 
+        - auth: [] 
       responses:
         "200":
           description: List of active users
@@ -77,6 +83,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/UserList"
+        "403":
+          description: Access denied
+
 components:
   parameters:
     username:
