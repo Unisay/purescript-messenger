@@ -66,6 +66,17 @@ paths:
         "403":
           description: Access denied
 
+  /chat/users:
+    get:
+      tags:
+        - chat
+      responses:
+        "200":
+          description: List of active users
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserList"
 components:
   parameters:
     username:
@@ -93,6 +104,26 @@ components:
         password:
           type: string
           minLength: 8
+    UserList:
+      type: array
+      items:
+        type: object
+        properties:
+          username:
+            type: string
+            example: john
+          status:
+            $ref: "#/components/schemas/Status"
+          self:
+            type: boolean
+        required:
+          - username
+          - status
+    Status:
+      type: string
+      enum:
+        - online
+        - away
     Session:
       type: object
       required:
@@ -115,3 +146,4 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+

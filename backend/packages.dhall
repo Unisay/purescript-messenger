@@ -16,9 +16,9 @@ let additions =
           , "aff-promise"
           , "psci-support"
           ]
-        , repo = "https://github.com/Unisay/purescript-node-jwt.git"
+        , repo = "https://github.com/gaku-sei/purescript-node-jwt.git"
         , version = "master"
         }
       }
 
-in  upstream // overrides // additions
+in  overrides // upstream // additions

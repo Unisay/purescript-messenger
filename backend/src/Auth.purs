@@ -6,16 +6,19 @@ import Auth.Hash (Hash, Password, Salt(..), Token, hashPassword)
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.Except (runExcept)
 import Data.Array as Array
+import Data.DateTime (adjust)
 import Data.Either (Either(..))
 import Data.Enum (enumFromTo)
 import Data.Maybe (Maybe(..), fromMaybe)
-import Data.Newtype (class Newtype, unwrap)
+import Data.Newtype (class Newtype, unwrap, wrap)
 import Data.String.CodeUnits as String
+import Data.Time.Duration (Minutes(..))
 import Data.Unfoldable (replicateA)
 import Database as Db
 import Effect (Effect)
 import Effect.Aff.Class (liftAff)
 import Effect.Class (liftEffect)
+import Effect.Now (nowDateTime)
 import Effect.Random (randomInt)
 import Foreign (fail, readInt) as Foreign
 import Foreign.Generic (class Decode, ForeignError(..), encode) as Foreign
@@ -98,10 +101,14 @@ signin dbConn secret username password =
   usernameHashedData dbConn username >>= case _ of
     Just { password_hash, salt } ->
       hashPassword password salt >>= \hash -> do
+        now <- liftEffect nowDateTime
         token <- liftAff $ Jwt.sign
           secret
           Jwt.defaultHeaders
-          Jwt.defaultClaims { sub = Just (unwrap username) }
+          Jwt.defaultClaims
+            { sub = Just (unwrap username)
+            , exp = wrap <$> adjust (Minutes 30.0) now
+            }
         pure
           if hash == password_hash then SigninSuccess token
           else SigninFailure

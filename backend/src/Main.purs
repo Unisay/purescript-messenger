@@ -57,6 +57,12 @@ app { dbConn, jwtSecret } = do
     signin dbConn jwtSecret username password >>= case _ of
       SigninSuccess token -> replyJson { token }
       SigninFailure -> replyStatus 403
+  get "/chat/users" $ runServerM do
+    replyJson
+      [ { username: "yura", self: true, status: "away" }
+      , { username: "chiki", self: false, status: "online" }
+      , { username: "vadym", self: false, status: "online" }
+      ]
   post "/signout" $ runServerM do
     readBody <#> signout >>= case _ of
       SignoutSuccess Timeout -> reply "Signout successful: timeout."
