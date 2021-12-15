@@ -15,6 +15,7 @@ import Foreign (MultipleErrors)
 import Foreign.Class (class Decode, decode)
 import SQLite3 as SQLite
 import Effect.Exception as Ex
+import Data.String as String
 
 data DbConstraint = Username | Email
 
@@ -39,18 +40,29 @@ withConnection useResource = do
   initResource = do
     log "Opening DB connection"
     conn <- SQLite.newDB "db/backend.sqlite3"
-    _ <- SQLite.queryDB conn
-      """
-      CREATE TABLE IF NOT EXISTS users (
-        email TEXT PRIMARY KEY ON CONFLICT FAIL,
-        username TEXT UNIQUE ON CONFLICT FAIL,
-        password_hash TEXT UNIQUE ON CONFLICT FAIL,
-        salt TEXT UNIQUE ON CONFLICT FAIL
-      ) 
-      """
-      []
+    let
+      createTable table fields = void $ SQLite.queryDB conn
+        ( String.joinWith " "
+            [ "CREATE TABLE IF NOT EXISTS"
+            , table
+            , "("
+            , String.joinWith "," fields
+            , ")"
+            ]
+        )
+        []
+    createTable "users"
+      [ "email TEXT PRIMARY KEY ON CONFLICT FAIL"
+      , "username TEXT UNIQUE ON CONFLICT FAIL"
+      , "password_hash TEXT UNIQUE ON CONFLICT FAIL"
+      , "salt TEXT UNIQUE ON CONFLICT FAIL"
+      ]
+    createTable "chat_users"
+      [ "username TEXT",
+        "status TEXT",
+        "FOREIGN KEY(username) REFERENCES users(username)"
+      ]
     pure conn
-
   disposeResource conn = do
     log "Closing DB connection"
     SQLite.closeDB conn

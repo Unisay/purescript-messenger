@@ -6,6 +6,7 @@ import Auth.Hash (Hash, Password, Salt(..), Token(..), hashPassword)
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.Except (runExcept)
 import Data.Array as Array
+import Data.Argonaut.Encode (class EncodeJson)
 import Data.DateTime (adjust)
 import Data.Either (Either(..), note)
 import Data.Enum (enumFromTo)
@@ -53,6 +54,7 @@ newtype Username = Username String
 derive instance Newtype Username _
 derive newtype instance Encode Username
 derive newtype instance Decode Username
+derive newtype instance EncodeJson Username
 
 genSalt :: Effect Salt
 genSalt = Salt <<< String.fromCharArray <$> replicateA 32 genChar

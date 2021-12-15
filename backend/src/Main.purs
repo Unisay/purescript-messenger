@@ -14,6 +14,7 @@ import Auth
   , tokenInfo
   )
 import Auth.Hash (Password)
+import Chat as Chat
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
 import Database as Db
@@ -66,19 +67,16 @@ app { dbConn, jwtSecret } = do
     username <- readUsername
     { password } :: { password :: Password } <- readBody
     signin dbConn jwtSecret username password >>= case _ of
-      SigninSuccess token -> replyJson { token }
+      SigninSuccess token -> do
+        Chat.enter dbConn username status
+        replyJson { token }
       SigninFailure -> replyStatus 403
   get "/chat/users" $ runServerM do
     readToken >>= case _ of
       Nothing -> replyStatus 403
       Just token -> case tokenInfo token jwtSecret of
         Left _errors -> replyStatus 403
-        Right _username -> 
-          replyJson
-            [ { username: "yura", self: true, status: "away" }
-            , { username: "chiki", self: false, status: "online" }
-            , { username: "vadym", self: false, status: "online" }
-            ]
+        Right _username -> Chat.users dbConn >>= replyJson
   post "/signout" $ runServerM do
     readBody <#> signout >>= case _ of
       SignoutSuccess Timeout -> reply "Signout successful: timeout."
