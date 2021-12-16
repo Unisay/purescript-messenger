@@ -2,33 +2,24 @@ module Main where
 
 import Prelude
 
-import Auth
-  ( SigninResult(..)
-  , SignoutReason(..)
-  , SignoutResult(..)
-  , SignupResult(..)
-  , Username(..)
-  , signin
-  , signout
-  , signup
-  , tokenInfo
-  )
+import Auth (SigninResult(..), SignoutReason(..), SignoutResult(..), SignupResult(..), Username(..), signin, signout, signup, tokenInfo)
 import Auth.Hash (Password)
 import Chat as Chat
+import Chat as Status
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
 import Database as Db
 import Effect (Effect)
 import Effect.Aff (Aff, launchAff_, never)
 import Effect.Class (liftEffect)
-import Effect.Class.Console (log)
+import Effect.Class.Console (log, logShow)
 import Middleware as Middleware
-import Node.Express.App (App, get, listenHttp, post, put)
+import Node.Express.App (App, get, listenHttp, post, put, delete)
 import Node.Express.Response as Response
 import Node.Jwt as Jwt
 import Node.Process (lookupEnv)
 import SQLite3 as SQLite
-import ServerM (ServerM, readBody, readPathParam, readToken, reply, replyJson, replyStatus, runServerM)
+import ServerM (readBody, readPathParam, readToken, reply, replyJson, replyStatus, runServerM)
 
 type Resources =
   { dbConn :: SQLite.DBConnection
@@ -67,9 +58,7 @@ app { dbConn, jwtSecret } = do
     username <- readUsername
     { password } :: { password :: Password } <- readBody
     signin dbConn jwtSecret username password >>= case _ of
-      SigninSuccess token -> do
-        -- TODO: enter chat
-        replyJson { token }
+      SigninSuccess token -> replyJson { token }
       SigninFailure -> replyStatus 403
   get "/chat/users" $ runServerM do
     readToken >>= case _ of
@@ -77,10 +66,29 @@ app { dbConn, jwtSecret } = do
       Just token -> case tokenInfo token jwtSecret of
         Left _errors -> replyStatus 403
         Right _username -> Chat.users dbConn >>= replyJson
+  put "/chat/users/:username" $ runServerM do
+    usernamePath <- readUsername
+    readToken >>= case _ of
+      Nothing -> replyStatus 401
+      Just token -> case tokenInfo token jwtSecret of
+        Left errors -> do
+          logShow errors
+          replyStatus 401
+        Right username ->
+          if usernamePath == username then
+            Chat.enter dbConn username Status.Online *> replyStatus 201
+          else replyStatus 403
+  delete "/chat/users/:username" $ runServerM do
+    readToken >>= case _ of
+      Nothing -> replyStatus 403
+      Just token -> case tokenInfo token jwtSecret of
+        Left _errors -> replyStatus 403
+        Right (Username username) -> do
+          log $ "Left chat: " <> username -- TODO: homework (check token!)
+          replyStatus 201
   post "/signout" $ runServerM do
     readBody <#> signout >>= case _ of
       SignoutSuccess Timeout -> reply "Signout successful: timeout."
       SignoutSuccess UserAction -> reply "Signout successful: bye bye!"
   where
-  readUsername :: ServerM Username
   readUsername = Username <$> readPathParam "username"

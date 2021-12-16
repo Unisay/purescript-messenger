@@ -58,7 +58,7 @@ withConnection useResource = do
       , "salt TEXT UNIQUE ON CONFLICT FAIL"
       ]
     createTable "chat_users"
-      [ "username TEXT"
+      [ "username TEXT UNIQUE ON CONFLICT FAIL"
       , "status TEXT"
       , "FOREIGN KEY(username) REFERENCES users(username)"
       ]

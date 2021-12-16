@@ -5,14 +5,16 @@ import Prelude
 import Auth.Hash (Hash, Password, Salt(..), Token(..), hashPassword)
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.Except (runExcept)
-import Data.Array as Array
 import Data.Argonaut.Encode (class EncodeJson)
+import Data.Array as Array
 import Data.DateTime (adjust)
 import Data.Either (Either(..), note)
 import Data.Enum (enumFromTo)
+import Data.Generic.Rep (class Generic)
 import Data.List.NonEmpty (NonEmptyList)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Newtype (class Newtype, unwrap, wrap)
+import Data.Show.Generic (genericShow)
 import Data.String.CodeUnits as String
 import Data.Time.Duration (Minutes(..))
 import Data.Unfoldable (replicateA)
@@ -52,6 +54,9 @@ type UserInfo =
 newtype Username = Username String
 
 derive instance Newtype Username _
+derive instance Generic Username _
+instance Show Username where show = genericShow
+derive newtype instance Eq Username
 derive newtype instance Encode Username
 derive newtype instance Decode Username
 derive newtype instance EncodeJson Username
@@ -131,12 +136,8 @@ signout { reason } = SignoutSuccess reason
 
 type TokenErrors = NonEmptyList String
 
--- ExceptT TokenErrors ServerM Username ?
 tokenInfo :: Token -> Jwt.Secret -> Either TokenErrors Username
 tokenInfo token secret = do
   tok :: Jwt.Token () _ <- Jwt.verify secret (unwrap token)
   Username <$> note (pure "sub claim not found") tok.claims.sub
  
-
-
-

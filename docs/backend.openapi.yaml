@@ -3,7 +3,7 @@ info:
   version: "0.1.0"
   title: "Messenger Backend"
 servers:
-  - url: "localhost:8081"
+  - url: "http://localhost:8081"
 paths:
   /users/{username}:
     put:
@@ -74,8 +74,8 @@ paths:
       summary: List of users in the chat
       tags:
         - chat
-      security: 
-        - auth: [] 
+      security:
+        - auth: []
       responses:
         "200":
           description: List of active users
@@ -85,6 +85,34 @@ paths:
                 $ref: "#/components/schemas/UserList"
         "403":
           description: Access denied
+
+  /chat/users/{username}:
+    put:
+      summary: User enters chat
+      tags:
+        - chat
+      security:
+        - auth: []
+      parameters:
+        - $ref: "#/components/parameters/username"
+      responses:
+        "201":
+          description: User successfully entered chat
+        "204":
+          description: User is in the chat
+    delete:
+      summary: User exits chat
+      tags:
+        - chat
+      security:
+        - auth: []
+      parameters:
+        - $ref: "#/components/parameters/username"
+      responses:
+        "204":
+          description: User successfully exited chat
+        "404":
+          description: User is not in the chat
 
 components:
   parameters:
@@ -155,4 +183,3 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-

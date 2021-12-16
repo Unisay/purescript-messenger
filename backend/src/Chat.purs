@@ -5,26 +5,43 @@ import Prelude
 import Auth (Username)
 import Control.Monad.Error.Class (throwError)
 import Data.Argonaut.Encode (class EncodeJson, encodeJson)
+import Data.List.NonEmpty as NEL
 import Database as Db
 import Foreign (ForeignError(..), readString)
+import Foreign.Class as Foreign
 import Foreign.Generic.Class (class Decode)
 import SQLite3 as SQLite
 import ServerM (ServerM, liftDbM)
-import Data.List.NonEmpty as NEL
 
 users :: SQLite.DBConnection -> ServerM (Array UserStatus)
 users dbconn = liftDbM $ Db.query dbconn "SELECT * FROM chat_users" []
 
-data Status = Online | Offline
+enter :: SQLite.DBConnection -> Username -> Status -> ServerM Unit
+enter dbconn username status = liftDbM $ Db.execute dbconn
+  """
+    INSERT INTO chat_users (username, status)
+    VALUES (?, ?)
+  """
+  [ Foreign.encode username, Foreign.encode status ]
+
+data Status = Online | Away | Offline
+
+instance Show Status where
+  show = case _ of
+    Online -> "Online"
+    Away -> "Away"
+    Offline -> "Offline"
+
+instance Foreign.Encode Status where
+  encode = Foreign.encode <<< show
 
 instance EncodeJson Status where
-  encodeJson = case _ of
-    Online -> encodeJson "Online"
-    Offline -> encodeJson "Offline"
+  encodeJson = encodeJson <<< show
 
 instance Decode Status where
   decode foreignStatus = readString foreignStatus >>= case _ of
     "Online" -> pure Online
+    "Away" -> pure Away
     "Offline" -> pure Offline
     invalidStatus -> throwError $ NEL.singleton $ ForeignError $
       "Invalid status value: " <> invalidStatus
