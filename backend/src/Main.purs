@@ -68,7 +68,7 @@ app { dbConn, jwtSecret } = do
     { password } :: { password :: Password } <- readBody
     signin dbConn jwtSecret username password >>= case _ of
       SigninSuccess token -> do
-        Chat.enter dbConn username status
+        -- TODO: enter chat
         replyJson { token }
       SigninFailure -> replyStatus 403
   get "/chat/users" $ runServerM do

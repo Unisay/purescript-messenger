@@ -41,16 +41,16 @@ withConnection useResource = do
     log "Opening DB connection"
     conn <- SQLite.newDB "db/backend.sqlite3"
     let
-      createTable table fields = void $ SQLite.queryDB conn
-        ( String.joinWith " "
-            [ "CREATE TABLE IF NOT EXISTS"
-            , table
-            , "("
-            , String.joinWith "," fields
-            , ")"
-            ]
-        )
-        []
+      run s = void $ SQLite.queryDB conn s []
+      createTable table fields = run do
+        String.joinWith " "
+          [ "CREATE TABLE IF NOT EXISTS"
+          , table
+          , "("
+          , String.joinWith "," fields
+          , ")"
+          ]
+    run "PRAGMA foreign_keys = ON"
     createTable "users"
       [ "email TEXT PRIMARY KEY ON CONFLICT FAIL"
       , "username TEXT UNIQUE ON CONFLICT FAIL"
@@ -58,9 +58,9 @@ withConnection useResource = do
       , "salt TEXT UNIQUE ON CONFLICT FAIL"
       ]
     createTable "chat_users"
-      [ "username TEXT",
-        "status TEXT",
-        "FOREIGN KEY(username) REFERENCES users(username)"
+      [ "username TEXT"
+      , "status TEXT"
+      , "FOREIGN KEY(username) REFERENCES users(username)"
       ]
     pure conn
   disposeResource conn = do
