@@ -2,10 +2,19 @@ module Main where
 
 import Prelude
 
-import Auth (SigninResult(..), SignoutReason(..), SignoutResult(..), SignupResult(..), Username(..), signin, signout, signup, tokenInfo)
+import Auth
+  ( SigninResult(..)
+  , SignoutReason(..)
+  , SignoutResult(..)
+  , SignupResult(..)
+  , Username(..)
+  , signin
+  , signout
+  , signup
+  , tokenInfo
+  )
 import Auth.Hash (Password)
 import Chat as Chat
-import Chat as Status
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
 import Database as Db
@@ -71,21 +80,21 @@ app { dbConn, jwtSecret } = do
     readToken >>= case _ of
       Nothing -> replyStatus 401
       Just token -> case tokenInfo token jwtSecret of
-        Left errors -> do
-          logShow errors
-          replyStatus 401
+        Left errors -> logShow errors *> replyStatus 401
         Right username ->
           if usernamePath == username then
-            Chat.enter dbConn username Status.Online *> replyStatus 201
+            Chat.enter dbConn username *> replyStatus 201
           else replyStatus 403
   delete "/chat/users/:username" $ runServerM do
+    usernamePath <- readUsername
     readToken >>= case _ of
-      Nothing -> replyStatus 403
+      Nothing -> replyStatus 401
       Just token -> case tokenInfo token jwtSecret of
-        Left _errors -> replyStatus 403
-        Right (Username username) -> do
-          log $ "Left chat: " <> username -- TODO: homework (check token!)
-          replyStatus 201
+        Left errors -> logShow errors *> replyStatus 401
+        Right username ->
+          if usernamePath == username then
+            Chat.exit dbConn username *> replyStatus 200
+          else replyStatus 403
   post "/signout" $ runServerM do
     readBody <#> signout >>= case _ of
       SignoutSuccess Timeout -> reply "Signout successful: timeout."

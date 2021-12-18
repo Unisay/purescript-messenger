@@ -16,13 +16,18 @@ import ServerM (ServerM, liftDbM)
 users :: SQLite.DBConnection -> ServerM (Array UserStatus)
 users dbconn = liftDbM $ Db.query dbconn "SELECT * FROM chat_users" []
 
-enter :: SQLite.DBConnection -> Username -> Status -> ServerM Unit
-enter dbconn username status = liftDbM $ Db.execute dbconn
+enter :: SQLite.DBConnection -> Username -> ServerM Unit
+enter dbconn username = liftDbM $ Db.execute dbconn
   """
-    INSERT INTO chat_users (username, status)
+    INSERT OR IGNORE INTO chat_users (username, status)
     VALUES (?, ?)
   """
-  [ Foreign.encode username, Foreign.encode status ]
+  [ Foreign.encode username, Foreign.encode Online]
+
+exit :: SQLite.DBConnection -> Username -> ServerM Unit
+exit dbconn username = liftDbM $ Db.execute dbconn
+  "DELETE FROM chat_users WHERE username = ?"
+  [ Foreign.encode username ]
 
 data Status = Online | Away | Offline
 
