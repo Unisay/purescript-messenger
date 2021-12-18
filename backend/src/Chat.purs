@@ -10,22 +10,22 @@ import Database as Db
 import Foreign (ForeignError(..), readString)
 import Foreign.Class as Foreign
 import Foreign.Generic.Class (class Decode)
-import SQLite3 as SQLite
 import ServerM (ServerM, liftDbM)
 
-users :: SQLite.DBConnection -> ServerM (Array UserStatus)
-users dbconn = liftDbM $ Db.query dbconn "SELECT * FROM chat_users" []
+users :: ServerM (Array UserStatus)
+users = liftDbM $ Db.query "SELECT * FROM chat_users" []
 
-enter :: SQLite.DBConnection -> Username -> ServerM Unit
-enter dbconn username = liftDbM $ Db.execute dbconn
-  """
-    INSERT OR IGNORE INTO chat_users (username, status)
-    VALUES (?, ?)
-  """
-  [ Foreign.encode username, Foreign.encode Online]
+enter :: Username -> ServerM Unit
+enter username = liftDbM $
+  Db.execute
+    """
+      INSERT OR IGNORE INTO chat_users (username, status)
+      VALUES (?, ?)
+    """
+    [ Foreign.encode username, Foreign.encode Online ]
 
-exit :: SQLite.DBConnection -> Username -> ServerM Unit
-exit dbconn username = liftDbM $ Db.execute dbconn
+exit :: Username -> ServerM Unit
+exit username = liftDbM $ Db.execute
   "DELETE FROM chat_users WHERE username = ?"
   [ Foreign.encode username ]
 

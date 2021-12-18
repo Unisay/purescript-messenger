@@ -64,30 +64,30 @@ app :: Resources -> App
 app { dbConn, jwtSecret } = do
   Middleware.init
   get "/" $ Response.send "Messenger API"
-  put "/users/:username" $ runServerM do
+  put "/users/:username" $ runServerM dbConn do
     username <- readUsername
     { email, password } ::
       { email :: String, password :: Password } <- readBody
-    signup dbConn { email, password, username } >>= case _ of
+    signup { email, password, username } >>= case _ of
       SignedUp -> replyStatus 200
       UserInfoUpdated -> replyStatus 200
       NotSignedUpInvalidCredentials -> replyStatus 409
-  put "/users/:username/session" $ runServerM do
+  put "/users/:username/session" $ runServerM dbConn do
     username <- readUsername
     { password } :: { password :: Password } <- readBody
-    signin dbConn jwtSecret username password >>= case _ of
+    signin jwtSecret username password >>= case _ of
       SigninSuccess token -> replyJson { token }
       SigninFailure -> replyStatus 403
-  post "/signout" $ runServerM do
+  post "/signout" $ runServerM dbConn do
     readBody <#> signout >>= case _ of
       SignoutSuccess Timeout -> reply "Signout successful: timeout."
       SignoutSuccess UserAction -> reply "Signout successful: bye bye!"
-  get "/chat/users" $ runServerM $ withTokenInfo \_username ->
-    Chat.users dbConn >>= replyJson
-  put "/chat/users/:username" $ runServerM $ withAuthUsername \username ->
-    Chat.enter dbConn username *> replyStatus 201
-  delete "/chat/users/:username" $ runServerM $ withAuthUsername \username ->
-    Chat.exit dbConn username *> replyStatus 200
+  get "/chat/users" $ runServerM dbConn $ withTokenInfo \_username ->
+    Chat.users >>= replyJson
+  put "/chat/users/:username" $ runServerM dbConn $ withAuthUsername \username ->
+    Chat.enter username *> replyStatus 201
+  delete "/chat/users/:username" $ runServerM dbConn $ withAuthUsername \username ->
+    Chat.exit username *> replyStatus 200
   where
   readUsername = Username <$> readPathParam "username"
 

@@ -4,7 +4,8 @@ import Prelude
 
 import Auth.Hash (Token(..))
 import Control.Monad.Error.Class (class MonadThrow)
-import Control.Monad.Except (ExceptT(..), lift, runExcept, runExceptT, withExceptT)
+import Control.Monad.Except (ExceptT, except, lift, runExcept, runExceptT, withExceptT)
+import Control.Monad.Reader (ReaderT(..), mapReaderT, runReaderT)
 import Data.Argonaut.Encode (class EncodeJson, encodeJson)
 import Data.Array as Array
 import Data.Bifunctor (lmap)
@@ -23,6 +24,7 @@ import Foreign.Class (class Decode)
 import Node.Express.Handler (Handler, HandlerM)
 import Node.Express.Request as Request
 import Node.Express.Response as Response
+import SQLite3 as SQLite
 
 type Server = ServerM Unit
 
@@ -31,7 +33,11 @@ data Error
   | DatabaseErr Database.Error
   | RouteParamIsMissing
 
-newtype ServerM a = ServerM (ExceptT Error HandlerM a)
+newtype ServerM a = ServerM
+  ( ReaderT SQLite.DBConnection
+      (ExceptT Error HandlerM)
+      a
+  )
 
 derive instance newtypeServerM :: Newtype (ServerM a) _
 derive newtype instance functorServerM :: Functor ServerM
@@ -43,8 +49,8 @@ derive newtype instance monadEffectServerM :: MonadEffect ServerM
 derive newtype instance monadAffServerM :: MonadAff ServerM
 derive newtype instance monadThrowServerM :: MonadThrow Error ServerM
 
-runServerM :: Server -> Handler
-runServerM (ServerM s) = runExceptT s >>= case _ of
+runServerM :: SQLite.DBConnection -> Server -> Handler
+runServerM dbconn (ServerM s) = runExceptT (runReaderT s dbconn) >>= case _ of
   Left (DatabaseErr (Database.Decoding foreignErrors)) -> do
     Response.setStatus 400
     Response.sendJson
@@ -74,15 +80,15 @@ runServerM (ServerM s) = runExceptT s >>= case _ of
 -- Lifted functions
 
 liftHandler :: forall a. HandlerM a -> ServerM a
-liftHandler = wrap <<< lift
+liftHandler = wrap <<< lift <<< lift
 
 liftDbM :: forall a. DbM HandlerM a -> ServerM a
-liftDbM dbm = wrap $ withExceptT DatabaseErr dbm
+liftDbM = ServerM <<< mapReaderT (withExceptT DatabaseErr)
 
 readBody :: forall b. Decode b => ServerM b
-readBody =
-  liftHandler (Request.getBody) >>=
-    wrap <<< wrap <<< pure <<< lmap BodyDecodingErr <<< runExcept
+readBody = do
+  body <- liftHandler (Request.getBody) 
+  ServerM (lift (except (lmap BodyDecodingErr (runExcept body))))
 
 type ParamName = String
 

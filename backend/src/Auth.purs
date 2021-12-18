@@ -55,7 +55,9 @@ newtype Username = Username String
 
 derive instance Newtype Username _
 derive instance Generic Username _
-instance Show Username where show = genericShow
+instance Show Username where
+  show = genericShow
+
 derive newtype instance Eq Username
 derive newtype instance Encode Username
 derive newtype instance Decode Username
@@ -73,9 +75,9 @@ genSalt = Salt <<< String.fromCharArray <$> replicateA 32 genChar
     fromMaybe '?' <<< Array.index alphabet
       <$> randomInt 0 (Array.length alphabet - 1)
 
-signup :: SQLite.DBConnection -> UserInfo -> ServerM SignupResult
-signup dbConn user = do
-  hashedData <- usernameHashedData dbConn user.username
+signup :: UserInfo -> ServerM SignupResult
+signup user = do
+  hashedData <- usernameHashedData user.username
   case hashedData of
     Nothing -> insertRecord $> SignedUp
     Just { password_hash, salt } -> do
@@ -83,30 +85,30 @@ signup dbConn user = do
       if password_hash' == password_hash then updateRecord $> UserInfoUpdated
       else pure NotSignedUpInvalidCredentials
   where
+  insertRecord :: ServerM Unit
   insertRecord = do
     salt <- liftEffect genSalt
     hash <- hashPassword user.password salt
-    liftDbM $ Db.execute dbConn
-      """
-        INSERT INTO users (email, username, password_hash, salt)
-        VALUES (?, ?, ?, ?)
-        """
-      [ Foreign.encode user.email
-      , Foreign.encode user.username
-      , Foreign.encode hash
-      , Foreign.encode salt
-      ]
-  updateRecord = liftDbM $ Db.execute dbConn "UPDATE users SET email = ?"
+    liftDbM
+      ( Db.execute
+          """
+            INSERT INTO users (email, username, password_hash, salt)
+            VALUES (?, ?, ?, ?)
+            """
+          [ Foreign.encode user.email
+          , Foreign.encode user.username
+          , Foreign.encode hash
+          , Foreign.encode salt
+          ]
+      )
+
+  updateRecord :: ServerM Unit
+  updateRecord = liftDbM $ Db.execute "UPDATE users SET email = ?"
     [ Foreign.encode user.email ]
 
-signin
-  :: SQLite.DBConnection
-  -> Jwt.Secret
-  -> Username
-  -> Password
-  -> ServerM SigninResult
-signin dbConn secret username password =
-  usernameHashedData dbConn username >>= case _ of
+signin :: Jwt.Secret -> Username -> Password -> ServerM SigninResult
+signin secret username password =
+  usernameHashedData username >>= case _ of
     Just { password_hash, salt } ->
       hashPassword password salt >>= \hash -> do
         now <- liftEffect nowDateTime
@@ -123,13 +125,14 @@ signin dbConn secret username password =
     Nothing -> pure SigninFailure
 
 usernameHashedData
-  :: SQLite.DBConnection
-  -> Username
+  :: Username
   -> ServerM (Maybe { password_hash :: Hash, salt :: Salt })
-usernameHashedData dbConn username =
-  map Array.head $ liftDbM $ Db.query dbConn
-    "SELECT password_hash, salt FROM users WHERE username = ?"
-    [ Foreign.encode username ]
+usernameHashedData username =
+  Array.head <$> liftDbM
+    ( Db.query
+        "SELECT password_hash, salt FROM users WHERE username = ?"
+        [ Foreign.encode username ]
+    )
 
 signout :: SignoutRequest -> SignoutResult
 signout { reason } = SignoutSuccess reason
@@ -140,4 +143,3 @@ tokenInfo :: Token -> Jwt.Secret -> Either TokenErrors Username
 tokenInfo token secret = do
   tok :: Jwt.Token () _ <- Jwt.verify secret (unwrap token)
   Username <$> note (pure "sub claim not found") tok.claims.sub
- 

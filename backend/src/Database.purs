@@ -3,19 +3,20 @@ module Database where
 import Prelude
 
 import Control.Monad.Except (ExceptT, mapExceptT)
+import Control.Monad.Reader (ReaderT, ask, lift)
 import Data.Bifunctor (lmap)
 import Data.Generic.Rep (class Generic)
 import Data.Newtype (unwrap, wrap)
 import Data.Show.Generic (genericShow)
+import Data.String as String
 import Effect.Aff (Aff, bracket, try)
 import Effect.Aff as Aff
 import Effect.Aff.Class (class MonadAff, liftAff)
 import Effect.Class.Console (log)
+import Effect.Exception as Ex
 import Foreign (MultipleErrors)
 import Foreign.Class (class Decode, decode)
 import SQLite3 as SQLite
-import Effect.Exception as Ex
-import Data.String as String
 
 data DbConstraint = Username | Email
 
@@ -67,13 +68,12 @@ withConnection useResource = do
     log "Closing DB connection"
     SQLite.closeDB conn
 
-type DbM m a = ExceptT Error m a
+type DbM m a = ReaderT SQLite.DBConnection (ExceptT Error m) a
 
 execute
   :: forall m
    . MonadAff m
-  => SQLite.DBConnection
-  -> SQLite.Query
+  => SQLite.Query
   -> Array SQLite.Param
   -> DbM m Unit
 execute = query
@@ -82,14 +82,14 @@ query
   :: forall m a
    . MonadAff m
   => Decode a
-  => SQLite.DBConnection
-  -> SQLite.Query
+  => SQLite.Query
   -> Array SQLite.Param
   -> DbM m a
-query conn q params = do
-  f <- wrap $ map (lmap adaptError) $ liftAff $ try $
-    SQLite.queryDB conn q params
-  mapExceptT (pure <<< lmap Decoding <<< unwrap) (decode f)
+query q params = do
+  conn <- ask 
+  f <- lift $ wrap $ map (lmap adaptError) $ liftAff $ try $
+      SQLite.queryDB conn q params
+  lift $ mapExceptT (pure <<< lmap Decoding <<< unwrap) (decode f)
 
 adaptError :: Aff.Error -> Error
 adaptError e = case Ex.message e of
