@@ -17,7 +17,7 @@
     "cors": "^2.8.5",
     "express": "^4.17.1",
     "jsonwebtoken": "^8.5.1",
-    "purs-tidy": "^0.6.2",
-    "sqlite3": "^5.0.2"
+    "purs-tidy": "^0.6.4",
+    "sqlite3": "npm:@vscode/sqlite3@^5.0.7"
   }
 }
