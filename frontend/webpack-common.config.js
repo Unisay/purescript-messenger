@@ -14,6 +14,7 @@ module.exports = {
         { context: "assets/favicon/", from: "*.ico", to: "./" },
         { context: "assets/favicon/", from: "*.png", to: "./" },
         { context: "assets/images/", from: "*.svg", to: "./images" },
+        { context: "assets/styles/", from: "*.css", to: "./styles" },
       ],
       options: { concurrency: 100 },
     }),
@@ -25,16 +26,6 @@ module.exports = {
     // new WorkboxPlugin.GenerateSW({ clientsClaim: true, skipWaiting: true }),
   ],
   module: {
-    rules: [
-      {
-        test: /\.css$/,
-        include: __dirname + "/assets/styles",
-        use: [
-          { loader: "style-loader" },
-          { loader: "css-loader", options: { importLoaders: 1 } },
-          { loader: "postcss-loader" },
-        ],
-      },
-    ],
+    rules: [],
   },
 };

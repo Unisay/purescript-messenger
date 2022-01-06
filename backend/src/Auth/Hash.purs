@@ -8,6 +8,8 @@ import Data.Argonaut.Encode (class EncodeJson)
 import Data.Newtype (class Newtype)
 import Effect.Aff.Class (class MonadAff, liftAff)
 import Foreign.Class (class Encode, class Decode)
+import Data.Password (Password)
+import Data.Password as Password
 
 -- Token -----------------------------------------------------------------------
 
@@ -24,12 +26,6 @@ derive newtype instance Encode Hash
 derive newtype instance Decode Hash
 derive newtype instance Eq Hash
 
--- Password --------------------------------------------------------------------
-
-newtype Password = Password String
-
-derive newtype instance Decode Password
-
 -- Salt ------------------------------------------------------------------------
 
 newtype Salt = Salt String
@@ -40,8 +36,8 @@ derive newtype instance Decode Salt
 --------------------------------------------------------------------------------
 
 hashPassword :: forall m. MonadAff m => Password -> Salt -> m Hash
-hashPassword (Password pass) (Salt salt) =
-  _hashPassword pass salt
+hashPassword pass (Salt salt) =
+  _hashPassword (Password.toString pass) salt
     # Promise.toAff
     # map Hash
     # liftAff

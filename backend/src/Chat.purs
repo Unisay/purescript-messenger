@@ -2,7 +2,7 @@ module Chat where
 
 import Prelude
 
-import Auth (Username)
+import Data.Username (Username)
 import Control.Monad.Error.Class (throwError)
 import Data.Argonaut.Encode (class EncodeJson, encodeJson)
 import Data.List.NonEmpty as NEL

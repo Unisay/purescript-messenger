@@ -4,7 +4,8 @@ let upstream =
 let overrides = {=}
 
 let additions =
-      { node-jwt =
+      { common = ../common/spago.dhall as Location
+      , node-jwt =
         { dependencies =
           [ "effect"
           , "console"

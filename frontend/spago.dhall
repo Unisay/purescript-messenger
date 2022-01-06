@@ -5,6 +5,7 @@
   , "argonaut-codecs"
   , "codec-argonaut"
   , "console"
+  , "common"
   , "effect"
   , "either"
   , "halogen"
@@ -19,5 +20,5 @@
   , "web-html"
   ]
 , packages = ./packages.dhall
-, sources = [ "src/**/*.purs", "test/**/*.purs", "../common/src/**/*.purs" ]
+, sources = [ "src/**/*.purs", "test/**/*.purs" ]
 }

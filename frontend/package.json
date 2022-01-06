@@ -16,7 +16,7 @@
     "gen:tailwind": "",
     "gen": "npm run gen:tailwind",
     "build:purescript": "spago -P build",
-    "build:tailwind": "tailwindcss build assets/styles/tailwind_inputs.css -c tailwind.config.js -o output/tailwind.css",
+    "build:tailwind": "tailwindcss build tailwind_inputs.css -c tailwind.config.js -o assets/styles/tailwind.css",
     "build": "npm run build:purescript && npm run build:tailwind",
     "watch": "spago -P build --watch",
     "bundle:build": "spago -P build --purs-args '--codegen corefn'",

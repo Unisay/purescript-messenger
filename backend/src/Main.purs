@@ -2,24 +2,16 @@ module Main where
 
 import Prelude
 
-import Auth
-  ( SigninResult(..)
-  , SignoutReason(..)
-  , SignoutResult(..)
-  , SignupResult(..)
-  , Username(..)
-  , signin
-  , signout
-  , signup
-  , tokenInfo
-  )
-import Auth.Hash (Password)
+import Auth (SigninResult(..), SignoutReason(..), SignoutResult(..), SignupResult(..), signin, signout, signup, tokenInfo)
 import Chat as Chat
 import Data.Either (Either(..))
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), maybe)
+import Data.Password (Password)
+import Data.Username (Username)
+import Data.Username as Username
 import Database as Db
 import Effect (Effect)
-import Effect.Aff (Aff, launchAff_, never)
+import Effect.Aff (Aff, launchAff_, never, throwError)
 import Effect.Class (liftEffect)
 import Effect.Class.Console (log, logShow)
 import Middleware as Middleware
@@ -28,16 +20,7 @@ import Node.Express.Response as Response
 import Node.Jwt as Jwt
 import Node.Process (lookupEnv)
 import SQLite3 as SQLite
-import ServerM
-  ( ServerM
-  , readBody
-  , readPathParam
-  , readToken
-  , reply
-  , replyJson
-  , replyStatus
-  , runServerM
-  )
+import ServerM (Error(..), ServerM, readBody, readPathParam, readToken, reply, replyJson, replyStatus, runServerM)
 
 type Resources =
   { dbConn :: SQLite.DBConnection
@@ -89,7 +72,10 @@ app { dbConn, jwtSecret } = do
   delete "/chat/users/:username" $ runServerM dbConn $ withAuthUsername \username ->
     Chat.exit username *> replyStatus 200
   where
-  readUsername = Username <$> readPathParam "username"
+  readUsername :: ServerM Username
+  readUsername = do
+    s <- readPathParam "username"
+    maybe (throwError RouteParamIsMissing) pure (Username.parse s)
 
   withAuthUsername :: (Username -> ServerM Unit) -> ServerM Unit
   withAuthUsername callback = withTokenInfo \username -> do

@@ -9,7 +9,11 @@ import Data.Either (Either(..))
 import Data.HTTP.Method (Method(..))
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Newtype (unwrap)
+import Data.Password (Password(..))
+import Data.Password as Password
 import Data.String (null)
+import Data.Username (Username)
+import Data.Username as Username
 import Effect (Effect)
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class.Console (log)
@@ -33,13 +37,13 @@ main =
 type State
   =
   { loading :: Boolean
-  , login :: Maybe String
-  , password :: Maybe String
+  , usernameValue :: String
+  , passwordValue :: String
   , result :: Maybe String
   }
 
 data Action
-  = SetLogin String
+  = SetUsername String
   | SetPassword String
   | SubmitForm Event
 
@@ -55,8 +59,8 @@ component =
 initialState :: forall input. input -> State
 initialState _input =
   { loading: false
-  , login: Nothing
-  , password: Nothing
+  , usernameValue: ""
+  , passwordValue: ""
   , result: Nothing
   }
 
@@ -101,24 +105,26 @@ render state = signinFormContainer
           [ HH.text "Sign in to your account" ]
       ]
 
+  pseudoInvalid :: HH.ClassName -> HH.ClassName
+  pseudoInvalid (HH.ClassName c) = HH.ClassName ("invalid:" <> c)
+
   signinForm =
     HH.form
-      [ HP.id "form-login"
+      [ HP.id "form-username"
       , HE.onSubmit SubmitForm
       , HP.classes [ TW.mt8, TW.spaceY6 ]
       ]
       [ HH.div [ HP.classes [ TW.roundedMd, TW.shadowSm, TW.spaceYPx ] ]
           [ HH.div_
-              [ HH.label [ HP.for "input-email", HP.class_ TW.srOnly ]
-                  [ HH.text "Email address" ]
+              [ HH.label [ HP.for "input-username", HP.class_ TW.srOnly ]
+                  [ HH.text "Username" ]
               , HH.input
-                  [ HP.id "input-email"
-                  , HP.type_ HP.InputEmail
+                  [ HP.id "input-username"
                   , HP.required true
                   , HP.autocomplete true
-                  , HP.placeholder "Email address"
-                  , HP.value $ fromMaybe "" state.login
-                  , HE.onValueInput SetLogin
+                  , HP.placeholder "Username"
+                  , HP.value state.usernameValue
+                  , HE.onValueInput SetUsername
                   , HP.classes
                       [ TW.appearanceNone
                       , TW.roundedNone
@@ -137,6 +143,7 @@ render state = signinFormContainer
                       , TW.focusBorderIndigo500
                       , TW.focusZ10
                       , TW.smTextSm
+                      , pseudoInvalid TW.borderRed500
                       ]
                   ]
               ]
@@ -149,7 +156,7 @@ render state = signinFormContainer
                   , HP.required true
                   , HP.autocomplete true
                   , HP.type_ HP.InputPassword
-                  , HP.value $ fromMaybe "" state.password
+                  , HP.value state.passwordValue
                   , HE.onValueInput SetPassword
                   , HP.classes
                       [ TW.appearanceNone
@@ -178,7 +185,6 @@ render state = signinFormContainer
                   , HP.type_ HP.ButtonSubmit
                   , HP.classes
                       [ TW.group
-                      , TW.relative
                       , TW.wFull
                       , TW.flex
                       , TW.justifyCenter
@@ -200,9 +206,7 @@ render state = signinFormContainer
                   ]
                   [ HH.span
                       [ HP.classes
-                          [ TW.absolute
-                          , TW.left0
-                          , TW.insetY0
+                          [ TW.left0
                           , TW.flex
                           , TW.itemsCenter
                           , TW.pl3
@@ -217,53 +221,52 @@ render state = signinFormContainer
       ]
 
 handleAction
-  :: forall output m
+  :: forall input output m
    . MonadAff m
   => Action
-  -> H.HalogenM State Action () output m Unit
+  -> H.HalogenM State Action input output m Unit
 handleAction = case _ of
-  SetLogin str -> do
-    log $ "Login " <> show str <> " was set"
-    H.modify_ _ { login = if null str then Nothing else Just str }
-  SetPassword str -> do
-    log $ "Password " <> show str <> " was set"
-    H.modify_ _ { password = if null str then Nothing else Just str }
+  SetUsername str -> H.modify_ _ { usernameValue = str }
+  SetPassword str -> H.modify_ _ { passwordValue = str }
   SubmitForm ev -> do
     liftEffect $ Event.preventDefault ev
-    { login, password } <- H.get
-    signInResponse <- sendRequestToServer login password
-    case signInResponse of
-      SignedIn -> log "Successfully signed in"
-      Forbidden -> log "Forbidden"
-      Failure err -> log $ "Sign in failed: " <> err
+    { usernameValue, passwordValue } <- H.get
+    case Username.parse usernameValue, Password.parse passwordValue of
+      Just username, Just password -> do
+        signInResponse <- createSession username password
+        case signInResponse of
+          SignedIn -> log "Successfully signed in"
+          Forbidden -> log "Forbidden"
+          Failure err -> log $ "Sign in failed: " <> err
+      _, _ -> pure unit
 
 data SignInResponse
   = SignedIn
   | Forbidden
   | Failure String
 
-instance showSignInResponse :: Show SignInResponse where
+instance Show SignInResponse where
   show = case _ of
     SignedIn -> "Signed In"
     Forbidden -> "Sign in is forbidden"
     Failure statusCode -> "Failure: " <> show statusCode
 
-sendRequestToServer
-  :: forall m. MonadAff m => Maybe String -> Maybe String -> m SignInResponse
-sendRequestToServer username password = do
+createSession
+  :: forall m. MonadAff m => Username -> Password -> m SignInResponse
+createSession username password = do
   log "Form is being submitted...."
   response <- liftAff $
     AX.request
       AX.defaultRequest
-        { method = Left POST
-        , url = "http://localhost:8081/signin"
+        { method = Left PUT
+        , url = "http://localhost:8081/users/" <> Username.toString username <> "/session"
         , content = Just $ AX.Json $ Json.encodeJson { username, password }
         }
   let
     serverResponse =
       case response of
         Left err -> Failure (AX.printError err)
-        Right { status } ->
+        Right { status, body } ->
           case unwrap status of
             200 -> SignedIn
             403 -> Forbidden

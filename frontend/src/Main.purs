@@ -6,10 +6,6 @@ import Halogen.Aff (awaitBody, runHalogenAff)
 import Halogen.VDom.Driver (runUI)
 import Component.Signin as Signin
 
-data Action
-  = Increment
-  | Decrement
-
 main :: Effect Unit
 main =
   runHalogenAff do

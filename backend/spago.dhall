@@ -6,6 +6,7 @@
   , "arrays"
   , "bifunctors"
   , "console"
+  , "common"
   , "datetime"
   , "effect"
   , "either"
@@ -29,5 +30,5 @@
   , "unfoldable"
   ]
 , packages = ./packages.dhall
-, sources = [ "src/**/*.purs", "test/**/*.purs", "../common/src/**/*.purs" ]
+, sources = [ "src/**/*.purs", "test/**/*.purs" ]
 }

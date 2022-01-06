@@ -11,6 +11,4 @@ if ("serviceWorker" in navigator) {
   });
 }
 
-require("../assets/styles/styles.css");
-require("../assets/styles/tailwind_inputs.css");
 require("./Main.purs").main();
