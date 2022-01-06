@@ -5,13 +5,13 @@ import Prelude
 import Affjax (defaultRequest, printError, request) as AX
 import Affjax.RequestBody (RequestBody(..)) as AX
 import Data.Argonaut.Encode (encodeJson) as Json
+import Data.Array as Array
 import Data.Either (Either(..))
 import Data.HTTP.Method (Method(..))
-import Data.Maybe (Maybe(..), fromMaybe)
+import Data.Maybe (Maybe(..), maybe)
 import Data.Newtype (unwrap)
-import Data.Password (Password(..))
+import Data.Password (Password)
 import Data.Password as Password
-import Data.String (null)
 import Data.Username (Username)
 import Data.Username as Username
 import Effect (Effect)
@@ -38,7 +38,9 @@ type State
   =
   { loading :: Boolean
   , usernameValue :: String
+  , usernameValidationError :: Maybe String
   , passwordValue :: String
+  , passwordValidationError :: Maybe String
   , result :: Maybe String
   }
 
@@ -60,7 +62,9 @@ initialState :: forall input. input -> State
 initialState _input =
   { loading: false
   , usernameValue: ""
+  , usernameValidationError: Nothing
   , passwordValue: ""
+  , passwordValidationError: Nothing
   , result: Nothing
   }
 
@@ -105,9 +109,6 @@ render state = signinFormContainer
           [ HH.text "Sign in to your account" ]
       ]
 
-  pseudoInvalid :: HH.ClassName -> HH.ClassName
-  pseudoInvalid (HH.ClassName c) = HH.ClassName ("invalid:" <> c)
-
   signinForm =
     HH.form
       [ HP.id "form-username"
@@ -115,40 +116,41 @@ render state = signinFormContainer
       , HP.classes [ TW.mt8, TW.spaceY6 ]
       ]
       [ HH.div [ HP.classes [ TW.roundedMd, TW.shadowSm, TW.spaceYPx ] ]
-          [ HH.div_
-              [ HH.label [ HP.for "input-username", HP.class_ TW.srOnly ]
-                  [ HH.text "Username" ]
-              , HH.input
-                  [ HP.id "input-username"
-                  , HP.required true
-                  , HP.autocomplete true
-                  , HP.placeholder "Username"
-                  , HP.value state.usernameValue
-                  , HE.onValueInput SetUsername
-                  , HP.classes
-                      [ TW.appearanceNone
-                      , TW.roundedNone
-                      , TW.relative
-                      , TW.block
-                      , TW.wFull
-                      , TW.px3
-                      , TW.py2
-                      , TW.border
-                      , TW.borderGray300
-                      , TW.placeholderGray500
-                      , TW.textGray900
-                      , TW.roundedTMd
-                      , TW.focusOutlineNone
-                      , TW.focusRingIndigo500
-                      , TW.focusBorderIndigo500
-                      , TW.focusZ10
-                      , TW.smTextSm
-                      , pseudoInvalid TW.borderRed500
-                      ]
-                  ]
+          [ HH.div_ $ Array.concat
+              [ [ HH.label [ HP.for "input-username" ] [ HH.text "Username" ] ]
+              , ( maybe [] pure state.usernameValidationError <#> \errorMessage ->
+                    HH.div [ HP.classes [ TW.textRed800 ] ] [ HH.text errorMessage ]
+                )
+              , [ HH.input
+                    [ HP.id "input-username"
+                    , HP.required true
+                    , HP.autocomplete true
+                    , HP.placeholder "Username"
+                    , HP.value state.usernameValue
+                    , HE.onValueInput SetUsername
+                    , HP.classes
+                        [ TW.appearanceNone
+                        , TW.roundedNone
+                        , TW.relative
+                        , TW.block
+                        , TW.wFull
+                        , TW.px3
+                        , TW.py2
+                        , TW.border
+                        , TW.borderGray300
+                        , TW.placeholderGray500
+                        , TW.textGray900
+                        , TW.focusOutlineNone
+                        , TW.focusRingIndigo500
+                        , TW.focusBorderIndigo500
+                        , TW.focusZ10
+                        , TW.smTextSm
+                        ]
+                    ]
+                ]
               ]
           , HH.div_
-              [ HH.label [ HP.for "input-password", HP.class_ TW.srOnly ]
+              [ HH.label [ HP.for "input-password" ]
                   [ HH.text "Password " ]
               , HH.input
                   [ HP.id "input-password"
@@ -170,7 +172,6 @@ render state = signinFormContainer
                       , TW.borderGray300
                       , TW.placeholderGray500
                       , TW.textGray900
-                      , TW.roundedBMd
                       , TW.focusOutlineNone
                       , TW.focusRingIndigo500
                       , TW.focusBorderIndigo500
@@ -196,8 +197,8 @@ render state = signinFormContainer
                       , TW.fontMedium
                       , TW.roundedMd
                       , TW.textWhite
-                      , TW.bgIndigo600
-                      , TW.hoverBgIndigo700
+                      , if state.loading then TW.bgGray500 else TW.bgIndigo600
+                      , if state.loading then TW.hoverBgGray600 else TW.hoverBgIndigo700
                       , TW.focusOutlineNone
                       , TW.focusRing2
                       , TW.focusRingOffset2
@@ -212,12 +213,13 @@ render state = signinFormContainer
                           , TW.pl3
                           ]
                       ]
-                      [ HH.text "Sign In" ]
+                      [ HH.text
+                          if state.loading then "Signing in..." else "Sign In"
+                      ]
                   ]
               ]
           ]
-      , HH.whenElem state.loading \_ ->
-          HH.p_ [ HH.text "Please wait" ]
+
       ]
 
 handleAction
@@ -231,14 +233,22 @@ handleAction = case _ of
   SubmitForm ev -> do
     liftEffect $ Event.preventDefault ev
     { usernameValue, passwordValue } <- H.get
-    case Username.parse usernameValue, Password.parse passwordValue of
-      Just username, Just password -> do
-        signInResponse <- createSession username password
-        case signInResponse of
-          SignedIn -> log "Successfully signed in"
-          Forbidden -> log "Forbidden"
-          Failure err -> log $ "Sign in failed: " <> err
-      _, _ -> pure unit
+    case Username.parse usernameValue of
+      Nothing ->
+        H.modify_ _ { usernameValidationError = Just "Invalid Username" }
+      Just username -> do
+        H.modify_ _ { usernameValidationError = Nothing }
+        case Password.parse passwordValue of
+          Nothing ->
+            H.modify_ _ { passwordValidationError = Just "Invalid Password" }
+          Just password -> do
+            H.modify_ _ { passwordValidationError = Nothing, loading = true }
+            signInResponse <- createSession username password
+            H.modify_ _ { loading = false }
+            case signInResponse of
+              SignedIn -> log "Successfully signed in"
+              Forbidden -> log "Forbidden"
+              Failure err -> log $ "Sign in failed: " <> err
 
 data SignInResponse
   = SignedIn
@@ -266,7 +276,7 @@ createSession username password = do
     serverResponse =
       case response of
         Left err -> Failure (AX.printError err)
-        Right { status, body } ->
+        Right { status } ->
           case unwrap status of
             200 -> SignedIn
             403 -> Forbidden
