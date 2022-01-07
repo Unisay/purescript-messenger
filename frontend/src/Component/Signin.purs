@@ -22,9 +22,8 @@ import Halogen as H
 import Halogen.Aff (awaitBody, runHalogenAff)
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Extended as HH
-import Halogen.HTML.Properties as HP
+import Halogen.HTML.Properties.Extended as HP
 import Halogen.VDom.Driver (runUI)
-import Tailwind as TW
 import Web.Event.Event (Event)
 import Web.Event.Event as Event
 
@@ -71,34 +70,42 @@ initialState _input =
 render :: forall m. State -> H.ComponentHTML Action () m
 render state = signinFormContainer
   where
+
   signinFormContainer =
     HH.div
-      [ HP.classes
-          [ TW.minHScreen
-          , TW.flex
-          , TW.itemsCenter
-          , TW.justifyCenter
-          , TW.bgGray50
-          , TW.py12
-          , TW.px4
-          , TW.smPx6
-          , TW.lgPx8
+      [ HP.classNames
+          [ "min-h-screen"
+          , "flex"
+          , "items-center"
+          , "justify-center"
+          , "bg-gray-50"
           ]
       ]
       [ HH.div
-          [ HP.classes [ TW.maxWMd, TW.wFull, TW.spaceY8 ] ]
+          [ HP.classNames
+              [ "max-w-md"
+              , "w-full"
+              , "space-y-8"
+              , "rounded"
+              , "border"
+              , "border-slate-300"
+              , "p-5"
+              , "shadow-xl"
+              , "bg-white"
+              ]
+          ]
           [ signinFormHeader, signinForm ]
       ]
 
   signinFormHeader =
     HH.div_
       [ HH.h2
-          [ HP.classes
-              [ TW.mt6
-              , TW.textCenter
-              , TW.text3Xl
-              , TW.fontExtrabold
-              , TW.textGray900
+          [ HP.classNames
+              [ "mt-6"
+              , "text-center"
+              , "text-3-xl"
+              , "font-extrabold"
+              , "text-gray-900"
               ]
           ]
           [ HH.text "Sign in to your account" ]
@@ -108,13 +115,14 @@ render state = signinFormContainer
     HH.form
       [ HP.id "form-username"
       , HE.onSubmit SubmitForm
-      , HP.classes [ TW.mt8, TW.spaceY6 ]
+      , HP.classNames [ "mt-8" ]
       ]
-      [ HH.div [ HP.classes [ TW.roundedMd, TW.shadowSm, TW.spaceYPx ] ]
+      [ HH.div
+          [ HP.classNames [ "rounded-md", "shadow-sm", "space-y-6" ] ]
           [ HH.div_ $ Array.concat
               [ [ HH.label [ HP.for "input-username" ] [ HH.text "Username" ] ]
               , ( maybe [] pure state.usernameValidationError <#> \errorMessage ->
-                    HH.div [ HP.classes [ TW.textRed800 ] ] [ HH.text errorMessage ]
+                    HH.div [ HP.classNames [ "text-red-800" ] ] [ HH.text errorMessage ]
                 )
               , [ HH.input
                     [ HP.id "input-username"
@@ -123,23 +131,23 @@ render state = signinFormContainer
                     , HP.placeholder "Username"
                     , HP.value state.usernameValue
                     , HE.onValueInput SetUsername
-                    , HP.classes
-                        [ TW.appearanceNone
-                        , TW.roundedNone
-                        , TW.relative
-                        , TW.block
-                        , TW.wFull
-                        , TW.px3
-                        , TW.py2
-                        , TW.border
-                        , TW.borderGray300
-                        , TW.placeholderGray500
-                        , TW.textGray900
-                        , TW.focusOutlineNone
-                        , TW.focusRingIndigo500
-                        , TW.focusBorderIndigo500
-                        , TW.focusZ10
-                        , TW.smTextSm
+                    , HP.classNames
+                        [ "appearance-none"
+                        , "rounded"
+                        , "relative"
+                        , "block"
+                        , "w-full"
+                        , "px-3"
+                        , "py-2"
+                        , "border"
+                        , "border-gray-300"
+                        , "placeholder-gray-500"
+                        , "text-gray-900"
+                        , "focus-outline-none"
+                        , "focus-ring-indigo-500"
+                        , "focus-border-indigo-500"
+                        , "focus-z-10"
+                        , "sm-text-sm"
                         ]
                     ]
                 ]
@@ -155,23 +163,23 @@ render state = signinFormContainer
                   , HP.type_ HP.InputPassword
                   , HP.value state.passwordValue
                   , HE.onValueInput SetPassword
-                  , HP.classes
-                      [ TW.appearanceNone
-                      , TW.roundedNone
-                      , TW.relative
-                      , TW.block
-                      , TW.wFull
-                      , TW.px3
-                      , TW.py2
-                      , TW.border
-                      , TW.borderGray300
-                      , TW.placeholderGray500
-                      , TW.textGray900
-                      , TW.focusOutlineNone
-                      , TW.focusRingIndigo500
-                      , TW.focusBorderIndigo500
-                      , TW.focusZ10
-                      , TW.smTextSm
+                  , HP.classNames
+                      [ "appearance-none"
+                      , "rounded"
+                      , "relative"
+                      , "block"
+                      , "w-full"
+                      , "px-3"
+                      , "py-2"
+                      , "border"
+                      , "border-gray-300"
+                      , "placeholder-gray-500"
+                      , "text-gray-900"
+                      , "focus-outline-none"
+                      , "focus-ring-indigo-500"
+                      , "focus-border-indigo-500"
+                      , "focus-z-10"
+                      , "sm-text-sm"
                       ]
                   ]
               ]
@@ -179,35 +187,31 @@ render state = signinFormContainer
               [ HH.button
                   [ HP.disabled state.loading
                   , HP.type_ HP.ButtonSubmit
-                  , HP.classes
-                      [ TW.group
-                      , TW.wFull
-                      , TW.flex
-                      , TW.justifyCenter
-                      , TW.py2
-                      , TW.px4
-                      , TW.border
-                      , TW.borderTransparent
-                      , TW.textSm
-                      , TW.fontMedium
-                      , TW.roundedMd
-                      , TW.textWhite
-                      , if state.loading then TW.bgGray500 else TW.bgIndigo600
-                      , if state.loading then TW.hoverBgGray600 else TW.hoverBgIndigo700
-                      , TW.focusOutlineNone
-                      , TW.focusRing2
-                      , TW.focusRingOffset2
-                      , TW.focusRingIndigo500
+                  , HP.classNames
+                      [ "group"
+                      , "w-full"
+                      , "flex"
+                      , "justify-center"
+                      , "py-2"
+                      , "px-4"
+                      , "border"
+                      , "border-transparent"
+                      , "text-sm"
+                      , "font-medium"
+                      , "rounded-md"
+                      , "text-white"
+                      , if state.loading then "bg-gray-500"
+                        else "bg-indigo-600"
+                      , if state.loading then "hover-bg-gray-600"
+                        else "hover-bg-indigo-700"
+                      , "focus-outline-none"
+                      , "focus-ring-2"
+                      , "focus-ring-offset-2"
+                      , "focus-ring-indigo-500"
                       ]
                   ]
                   [ HH.span
-                      [ HP.classes
-                          [ TW.left0
-                          , TW.flex
-                          , TW.itemsCenter
-                          , TW.pl3
-                          ]
-                      ]
+                      [ HP.classNames [ "left-0", "flex", "items-center", "pl-3" ] ]
                       [ HH.text
                           if state.loading then "Signing in..." else "Sign In"
                       ]

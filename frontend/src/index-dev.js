@@ -11,4 +11,4 @@ if ("serviceWorker" in navigator) {
   });
 }
 
-require("./Main.purs").main();
+require("../output/Main").main();

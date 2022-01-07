@@ -1,12 +1,15 @@
 module.exports = {
-  purge: [],
-  darkMode: false, // or 'media' or 'class'
+  content: {
+    files: ["src/**/*.purs"],
+    // extract: {
+    //   purs: (content) => {
+    //     console.log(content);
+    //     return content.match(/[^<>"'`\s]*/);
+    //   },
+    // },
+  },
   theme: {
     extend: {},
   },
-  variants: {
-    extend: {},
-  },
   plugins: [],
-  content: ["./output/**/*.{html,js}", "./assets/styles/**/*.css"],  
-}
+};

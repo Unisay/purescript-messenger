@@ -1,1 +1,0 @@
-../tailwind-gen/dist/Tailwind.purs

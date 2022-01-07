@@ -3,9 +3,10 @@
   [ "aff"
   , "affjax"
   , "argonaut-codecs"
+  , "arrays"
   , "codec-argonaut"
-  , "console"
   , "common"
+  , "console"
   , "effect"
   , "either"
   , "halogen"
@@ -15,9 +16,7 @@
   , "prelude"
   , "profunctor"
   , "psci-support"
-  , "strings"
   , "web-events"
-  , "web-html"
   ]
 , packages = ./packages.dhall
 , sources = [ "src/**/*.purs", "test/**/*.purs" ]

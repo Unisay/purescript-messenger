@@ -17,13 +17,5 @@ module.exports = mergeWithCustomize({
   output: {
     filename: "main.js",
     path: path.resolve(__dirname, "dist"),
-  },
-  module: {
-    rules: [
-      {
-        test: /\.purs$/,
-        use: { loader: "purs-loader", options: { spago: true } },
-      },
-    ],
-  },
+  }
 });
