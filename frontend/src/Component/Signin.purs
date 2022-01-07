@@ -92,12 +92,7 @@ render state = signinFormContainer
 
   signinFormHeader =
     HH.div_
-      [ HH.img
-          [ HP.src "images/chat.svg"
-          , HP.alt "Chat Logo"
-          , HP.classes [ TW.mxAuto, TW.h28 ]
-          ]
-      , HH.h2
+      [ HH.h2
           [ HP.classes
               [ TW.mt6
               , TW.textCenter
