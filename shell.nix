@@ -22,16 +22,15 @@ in
 pkgs.stdenv.mkDerivation {
   name = "purescript-webpack-template";
   buildInputs = with pursPkgs; [
+    pkgs.dhall
+    pkgs.dhall-lsp-server
+    pkgs.httpie
     pkgs.nix-prefetch-git
+    pkgs.nixpkgs-fmt
+    pkgs.nodejs
+    pkgs.wrangler
     pursPkgs.purs
     pursPkgs.spago
     pursPkgs.zephyr
-    # pursPkgs.purs-tidy
-    pkgs.dhall-lsp-server
-    pkgs.dhall
-    pkgs.nodejs
-    pkgs.nixpkgs-fmt
-    pkgs.httpie
-    pkgs.wrangler
   ];
 }
