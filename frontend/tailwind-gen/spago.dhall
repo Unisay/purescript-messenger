@@ -1,4 +1,4 @@
-{ name = "my-project"
+{ name = "tailwind-gen"
 , dependencies =
   [ "aff"
   , "arrays"
@@ -17,8 +17,9 @@
   , "psci-support"
   , "strings"
   , "strings-extra"
+  , "stringutils"
   , "tuples"
   ]
-, packages = ../../packages.dhall
+, packages = ./packages.dhall
 , sources = [ "src/**/*.purs", "test/**/*.purs" ]
 }

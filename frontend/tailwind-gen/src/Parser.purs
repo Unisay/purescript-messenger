@@ -13,8 +13,7 @@ import Text.Parsing.Parser.Language (emptyDef)
 import Text.Parsing.Parser.String (char, eof, oneOf, satisfy, string)
 import Text.Parsing.Parser.Token (GenLanguageDef(..), TokenParser, alphaNum, digit, letter, makeTokenParser, unGenLanguageDef)
 
-type Parse
-  = Parser String
+type Parse = Parser String
 
 classNames :: Parse (Array String)
 classNames =
@@ -26,26 +25,23 @@ rule :: Parse (Array String)
 rule = selectors <* block <* lang.whiteSpace
 
 atRule :: Parse (Array String)
-atRule =
-  asErrorMessage "atRule"
-    $ lang.lexeme
-        ( char '@'
-            *> choice
-                [ string "media"
-                , string "keyframes"
-                , string "-webkit-keyframes"
-                ]
-        )
+atRule = asErrorMessage "atRule" $
+  lang.lexeme
+    ( char '@'
+        *> choice
+          [ string "media"
+          , string "keyframes"
+          , string "-webkit-keyframes"
+          ]
+    )
     *> optional argsParser
     *> optional (lang.lexeme (Array.some alphaNum))
     *> rules
     <* lang.whiteSpace
   where
   rules :: Parse (Array String)
-  rules =
-    asErrorMessage "rules"
-      $ Array.concat
-      <$> lang.braces (Array.many (rule <|> defer \_ -> atRule))
+  rules = asErrorMessage "rules" $
+    Array.concat <$> lang.braces (Array.many (rule <|> defer \_ -> atRule))
 
 argsParser :: Parse Unit
 argsParser =
@@ -53,27 +49,23 @@ argsParser =
     $ Array.many (satisfy (_ /= ')'))
 
 selectors :: Parse (Array String)
-selectors =
-  Array.concat <<< Array.concat <<< Array.fromFoldable
-    <$> lang.commaSep (Array.many selector)
+selectors = Array.concat <<< Array.concat <<< Array.fromFoldable
+  <$> lang.commaSep (Array.many (selector))
 
 block :: Parse Unit
-block =
-  asErrorMessage "block" <<< lang.braces <<< void
-    $ Array.many (satisfy (_ /= '}'))
+block = asErrorMessage "block" <<< lang.braces <<< void
+  $ Array.many (satisfy (_ /= '}'))
 
 selector :: Parse (Array String)
-selector =
-  asErrorMessage "selector"
-    $ map Array.concat ado
-        s <- Array.fromFoldable <$> simpleSelector
-        ss <- Array.many (operator *> defer (\_ -> selector))
-        in s : ss
+selector = asErrorMessage "selector"
+  $ map Array.concat ado
+      s <- Array.fromFoldable <$> simpleSelector
+      ss <- Array.many (operator *> defer (\_ -> selector))
+      in s : ss
 
 operator :: Parse Unit
-operator =
-  asErrorMessage "operator" <<< void
-    $ lang.lexeme (oneOf [ '>', '+', '~' ])
+operator = asErrorMessage "operator" <<< void
+  $ lang.lexeme (oneOf [ '>', '+', '~' ])
 
 simpleSelector :: Parse (Maybe String)
 simpleSelector =
@@ -105,12 +97,12 @@ simpleSelector =
   pseudo =
     Nothing
       <$ asErrorMessage "pseudo element selector"
-          (char ':' *> optional (char ':') *> cssIdent <* optional argsParser)
+        (char ':' *> optional (char ':') *> cssIdent <* optional argsParser)
 
   percent =
     Nothing
       <$ asErrorMessage "percent"
-          (lang.lexeme (Array.some lang.integer <* char '%'))
+        (lang.lexeme (Array.some lang.integer <* char '%'))
 
 cssIdent :: Parse String
 cssIdent = lang.identifier
