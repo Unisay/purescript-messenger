@@ -1,34 +1,15 @@
+{ sources ? import ./nix/sources.nix }:
 let
-  pkgs = import
-    (builtins.fetchTarball {
-      url = "https://github.com/NixOS/nixpkgs/archive/21.05.tar.gz";
-    })
-    { };
-
-  # To update to a newer version of easy-purescript-nix, run:
-  # nix-prefetch-git https://github.com/justinwoo/easy-purescript-nix
-  #
-  # Then, copy the resulting rev and sha256 here.
-  pursPkgs = import
-    (pkgs.fetchFromGitHub {
-      owner = "justinwoo";
-      repo = "easy-purescript-nix";
-      rev = "678070816270726e2f428da873fe3f2736201f42";
-      sha256 = "13l9c1sgakpmh9f23201s8d1lnv0zz0q1wsr1lc92wdpkxs9nii4";
-    })
-    { inherit pkgs; };
-
+  pkgs = import sources.nixpkgs { overlays = [ ]; config = { }; };
+  pursPkgs = import sources.easy-purescript-nix { inherit pkgs; };
 in
 pkgs.stdenv.mkDerivation {
-  name = "purescript-webpack-template";
+  name = "purescript-messenger";
   buildInputs = with pursPkgs; [
     pkgs.dhall
-    pkgs.dhall-lsp-server
     pkgs.httpie
-    pkgs.nix-prefetch-git
     pkgs.nixpkgs-fmt
-    pkgs.nodejs
-    pkgs.wrangler
+    pkgs.nodejs_latest
     pursPkgs.purs
     pursPkgs.spago
     pursPkgs.zephyr
