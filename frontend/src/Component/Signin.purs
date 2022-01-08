@@ -120,7 +120,10 @@ render state = signinFormContainer
       [ HH.div
           [ HP.classNames [ "rounded-md", "shadow-sm", "space-y-6" ] ]
           [ HH.div_ $ Array.concat
-              [ [ HH.label [ HP.for "input-username" ] [ HH.text "Username" ] ]
+              [ [ HH.label
+                    [ HP.for "input-username", HP.classNames [ "font-bold" ] ]
+                    [ HH.text "Username" ]
+                ]
               , ( maybe [] pure state.usernameValidationError <#> \errorMessage ->
                     HH.div [ HP.classNames [ "text-red-800" ] ] [ HH.text errorMessage ]
                 )
