@@ -8,7 +8,7 @@ import Data.Argonaut.Encode (encodeJson) as Json
 import Data.Array as Array
 import Data.Either (Either(..))
 import Data.HTTP.Method (Method(..))
-import Data.Maybe (Maybe(..), maybe)
+import Data.Maybe (Maybe(..))
 import Data.Newtype (unwrap)
 import Data.Password (Password)
 import Data.Password as Password
@@ -37,9 +37,9 @@ type State
   =
   { loading :: Boolean
   , usernameValue :: String
-  , usernameValidationError :: Maybe String
+  , usernameValidationErrors :: Array String
   , passwordValue :: String
-  , passwordValidationError :: Maybe String
+  , passwordValidationErrors :: Array String
   , result :: Maybe String
   }
 
@@ -61,9 +61,9 @@ initialState :: forall input. input -> State
 initialState _input =
   { loading: false
   , usernameValue: ""
-  , usernameValidationError: Nothing
+  , usernameValidationErrors: []
   , passwordValue: ""
-  , passwordValidationError: Nothing
+  , passwordValidationErrors: []
   , result: Nothing
   }
 
@@ -123,18 +123,14 @@ render state = signinFormContainer
               [ [ HH.label
                     [ HP.for "input-username", HP.classNames [ "font-bold" ] ]
                     [ HH.text "Username" ]
-                ]
-              , ( maybe [] pure state.usernameValidationError <#> \errorMessage ->
-                    HH.div [ HP.classNames [ "text-red-800" ] ] [ HH.text errorMessage ]
-                )
-              , [ HH.input
+                , HH.input
                     [ HP.id "input-username"
                     , HP.required true
                     , HP.autocomplete true
                     , HP.placeholder "Username"
                     , HP.value state.usernameValue
                     , HE.onValueInput SetUsername
-                    , HP.classNames
+                    , HP.classNames $
                         [ "appearance-none"
                         , "rounded"
                         , "relative"
@@ -151,40 +147,45 @@ render state = signinFormContainer
                         , "focus-border-indigo-500"
                         , "focus-z-10"
                         , "sm-text-sm"
-                        ]
+                        ] <> validationClasses (Array.null state.usernameValidationErrors)
                     ]
                 ]
+              , state.usernameValidationErrors <#> \errorMessage ->
+                  HH.div [ HP.classNames [ "text-red-800" ] ] [ HH.text errorMessage ]
               ]
-          , HH.div_
-              [ HH.label [ HP.for "input-password" ]
-                  [ HH.text "Password " ]
-              , HH.input
-                  [ HP.id "input-password"
-                  , HP.placeholder "Password"
-                  , HP.required true
-                  , HP.autocomplete true
-                  , HP.type_ HP.InputPassword
-                  , HP.value state.passwordValue
-                  , HE.onValueInput SetPassword
-                  , HP.classNames
-                      [ "appearance-none"
-                      , "rounded"
-                      , "relative"
-                      , "block"
-                      , "w-full"
-                      , "px-3"
-                      , "py-2"
-                      , "border"
-                      , "border-gray-300"
-                      , "placeholder-gray-500"
-                      , "text-gray-900"
-                      , "focus-outline-none"
-                      , "focus-ring-indigo-500"
-                      , "focus-border-indigo-500"
-                      , "focus-z-10"
-                      , "sm-text-sm"
-                      ]
-                  ]
+          , HH.div_ $ Array.concat
+              [ [ HH.label [ HP.for "input-password" ] [ HH.text "Password " ]
+                , HH.input
+                    [ HP.id "input-password"
+                    , HP.placeholder "Password"
+                    , HP.required true
+                    , HP.autocomplete true
+                    , HP.type_ HP.InputPassword
+                    , HP.value state.passwordValue
+                    , HE.onValueInput SetPassword
+                    , HP.classNames $
+                        [ "appearance-none"
+                        , "rounded"
+                        , "relative"
+                        , "block"
+                        , "w-full"
+                        , "px-3"
+                        , "py-2"
+                        , "border"
+                        , "border-gray-300"
+                        , "placeholder-gray-500"
+                        , "text-gray-900"
+                        , "focus-outline-none"
+                        , "focus-ring-indigo-500"
+                        , "focus-border-indigo-500"
+                        , "focus-z-10"
+                        , "sm-text-sm"
+                        ] <> validationClasses (Array.null state.passwordValidationErrors)
+                    ]
+                ]
+              , ( state.passwordValidationErrors <#> \errorMessage ->
+                    HH.div [ HP.classNames [ "text-red-800" ] ] [ HH.text errorMessage ]
+                ) :: Array _
               ]
           , HH.div_
               [ HH.button
@@ -221,8 +222,10 @@ render state = signinFormContainer
                   ]
               ]
           ]
-
       ]
+
+  validationClasses :: Boolean -> Array String
+  validationClasses b = if b then [] else [ "border-red-200", "border-2" ]
 
 handleAction
   :: forall input output m
@@ -237,14 +240,13 @@ handleAction = case _ of
     { usernameValue, passwordValue } <- H.get
     case Username.parse usernameValue of
       Nothing ->
-        H.modify_ _ { usernameValidationError = Just "Invalid Username" }
+        H.modify_ _ { usernameValidationErrors = pure "Invalid Username" }
       Just username -> do
-        H.modify_ _ { usernameValidationError = Nothing }
+        H.modify_ _ { usernameValidationErrors = [] }
         case Password.parse passwordValue of
-          Nothing ->
-            H.modify_ _ { passwordValidationError = Just "Invalid Password" }
-          Just password -> do
-            H.modify_ _ { passwordValidationError = Nothing, loading = true }
+          Left err -> H.modify_ _ { passwordValidationErrors = [ err ] }
+          Right password -> do
+            H.modify_ _ { passwordValidationErrors = [], loading = true }
             signInResponse <- createSession username password
             H.modify_ _ { loading = false }
             case signInResponse of

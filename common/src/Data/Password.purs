@@ -6,12 +6,14 @@ module Data.Password
   ) where
 
 import Prelude
-import Data.Maybe (Maybe(..))
-import Foreign.Class (class Decode)
+
+import Data.Argonaut.Encode (class EncodeJson)
 import Data.Codec.Argonaut (JsonCodec)
 import Data.Codec.Argonaut as CA
+import Data.Either (Either(..))
+import Data.String.CodePoints as String
 import Data.Profunctor (dimap)
-import Data.Argonaut.Encode (class EncodeJson)
+import Foreign.Class (class Decode)
 
 newtype Password = Password String
 
@@ -22,10 +24,11 @@ derive newtype instance EncodeJson Password
 codec :: JsonCodec Password
 codec = dimap toString Password CA.string
 
-parse :: String -> Maybe Password
+parse :: String -> Either String Password
 parse = case _ of
-  "" -> Nothing
-  s -> Just (Password s)
+  "" -> Left "Password is empty"
+  s | String.length s < 8 -> Left "Password must be at least 8 characters long"
+  s -> Right (Password s)
 
 toString :: Password -> String
 toString (Password s) = s
