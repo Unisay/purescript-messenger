@@ -9,6 +9,7 @@
   , "console"
   , "effect"
   , "either"
+  , "errors"
   , "halogen"
   , "http-methods"
   , "maybe"

@@ -6,7 +6,10 @@ import Affjax (defaultRequest, printError, request) as AX
 import Affjax.RequestBody (RequestBody(..)) as AX
 import Data.Argonaut.Encode (encodeJson) as Json
 import Data.Array as Array
-import Data.Either (Either(..))
+import Data.Array.NonEmpty (NonEmptyArray)
+import Data.Array.NonEmpty as NEA
+import Data.Either (Either(..), hush, isLeft)
+import Data.EitherR (flipEither)
 import Data.HTTP.Method (Method(..))
 import Data.Maybe (Maybe(..))
 import Data.Newtype (unwrap)
@@ -33,19 +36,43 @@ main =
     body <- awaitBody
     runUI component unit body
 
+{-
+
+Idea: what if we create a type like this:
+
+type Validation a = 
+  { inputValue :: String
+  , result :: Maybe (Either (NonEmpty Array String) a)
+  }
+  
+  and then 
+
+  type State
+    =
+    { loading :: Boolean
+    , username :: Validation Username
+    , password :: Validation Password
+    , result :: Maybe String
+    }
+  
+  ?
+-}
+
 type State
   =
   { loading :: Boolean
   , usernameValue :: String
-  , usernameValidationErrors :: Array String
+  , usernameValidation :: Maybe (Either (NonEmptyArray String) Username)
   , passwordValue :: String
-  , passwordValidationErrors :: Array String
+  , passwordValidation :: Maybe (Either (NonEmptyArray String) Password)
   , result :: Maybe String
   }
 
 data Action
   = SetUsername String
+  | ValidateUsername
   | SetPassword String
+  | ValidatePassword
   | SubmitForm Event
 
 component
@@ -61,9 +88,9 @@ initialState :: forall input. input -> State
 initialState _input =
   { loading: false
   , usernameValue: ""
-  , usernameValidationErrors: []
+  , usernameValidation: Nothing
   , passwordValue: ""
-  , passwordValidationErrors: []
+  , passwordValidation: Nothing
   , result: Nothing
   }
 
@@ -118,7 +145,7 @@ render state = signinFormContainer
       , HP.classNames [ "mt-8" ]
       ]
       [ HH.div
-          [ HP.classNames [ "rounded-md", "shadow-sm", "space-y-6" ] ]
+          [ HP.classNames [ "rounded-md", "space-y-6" ] ]
           [ HH.div_ $ Array.concat
               [ [ HH.label
                     [ HP.for "input-username", HP.classNames [ "font-bold" ] ]
@@ -147,14 +174,14 @@ render state = signinFormContainer
                         , "focus-border-indigo-500"
                         , "focus-z-10"
                         , "sm-text-sm"
-                        ] <> validationClasses (Array.null state.usernameValidationErrors)
+                        ] <> if isLeft state.usernameValidation then errorClasses else []
                     ]
                 ]
-              , state.usernameValidationErrors <#> \errorMessage ->
-                  HH.div [ HP.classNames [ "text-red-800" ] ] [ HH.text errorMessage ]
+              , validationErrors state.usernameValidation
               ]
           , HH.div_ $ Array.concat
-              [ [ HH.label [ HP.for "input-password" ] [ HH.text "Password " ]
+              [ [ HH.label [ HP.for "input-password", HP.classNames [ "font-bold" ] ]
+                    [ HH.text "Password" ]
                 , HH.input
                     [ HP.id "input-password"
                     , HP.placeholder "Password"
@@ -163,6 +190,7 @@ render state = signinFormContainer
                     , HP.type_ HP.InputPassword
                     , HP.value state.passwordValue
                     , HE.onValueInput SetPassword
+                    , HE.onBlur ValidatePassword
                     , HP.classNames $
                         [ "appearance-none"
                         , "rounded"
@@ -180,12 +208,10 @@ render state = signinFormContainer
                         , "focus-border-indigo-500"
                         , "focus-z-10"
                         , "sm-text-sm"
-                        ] <> validationClasses (Array.null state.passwordValidationErrors)
+                        ] <> if isLeft state.passwordValidation then errorClasses else []
                     ]
                 ]
-              , ( state.passwordValidationErrors <#> \errorMessage ->
-                    HH.div [ HP.classNames [ "text-red-800" ] ] [ HH.text errorMessage ]
-                ) :: Array _
+              , validationErrors state.passwordValidation
               ]
           , HH.div_
               [ HH.button
@@ -224,29 +250,41 @@ render state = signinFormContainer
           ]
       ]
 
-  validationClasses :: Boolean -> Array String
-  validationClasses b = if b then [] else [ "border-red-200", "border-2" ]
+  errorClasses = [ "border-red-200", "border-2" ]
 
-handleAction
+  validationErrors
+    :: forall a
+     . Maybe (Either (NonEmptyArray String) a)
+    -> Array (H.ComponentHTML Action () m)
+  validationErrors  = case _ of
+    Nothing -> []
+    Just result -> (flipEither >>> hush >>> Array.fromFoldable >>> flip bind NEA.toArray) result
+      <#> \errorMessage -> HH.div
+        [ HP.classNames [ "text-red-800" ] ]
+        [ HH.text errorMessage ]
+
+  handleAction
   :: forall input output m
    . MonadAff m
   => Action
   -> H.HalogenM State Action input output m Unit
+
 handleAction = case _ of
   SetUsername str -> H.modify_ _ { usernameValue = str }
   SetPassword str -> H.modify_ _ { passwordValue = str }
+  ValidatePassword -> ?recordValidationResultInState
   SubmitForm ev -> do
     liftEffect $ Event.preventDefault ev
     { usernameValue, passwordValue } <- H.get
     case Username.parse usernameValue of
       Nothing ->
-        H.modify_ _ { usernameValidationErrors = pure "Invalid Username" }
+        H.modify_ _ { usernameValidation = Left (NEA.singleton "Invalid Username") }
       Just username -> do
-        H.modify_ _ { usernameValidationErrors = [] }
+        H.modify_ _ { usernameValidation = Right username }
         case Password.parse passwordValue of
-          Left err -> H.modify_ _ { passwordValidationErrors = [ err ] }
+          Left err -> H.modify_ _ { passwordValidation = Left (NEA.singleton err) }
           Right password -> do
-            H.modify_ _ { passwordValidationErrors = [], loading = true }
+            H.modify_ _ { passwordValidation = Right password, loading = true }
             signInResponse <- createSession username password
             H.modify_ _ { loading = false }
             case signInResponse of
