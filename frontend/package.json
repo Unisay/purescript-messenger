@@ -11,9 +11,8 @@
     "test": "test"
   },
   "scripts": {
-    "postinstall": "spago install && npm run gen",
+    "postinstall": "spago install",
     "clean": "rm -rf node_modules output dce-output .spago dist/* *.lock .cache",
-    "gen": "npm run gen:tailwind",
     "build:purescript": "spago -P build",
     "watch:purescript": "spago -P build --watch",
     "build:tailwind": "tailwindcss -c tailwind.config.js -i tailwind_inputs.css -o assets/styles/tailwind.css",
