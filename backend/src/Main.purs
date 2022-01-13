@@ -4,7 +4,7 @@ import Prelude
 
 import Auth (SigninResult(..), SignoutReason(..), SignoutResult(..), SignupResult(..), signin, signout, signup, tokenInfo)
 import Chat as Chat
-import Data.Either (Either(..))
+import Data.Either (Either(..), hush)
 import Data.Maybe (Maybe(..), maybe)
 import Data.Password (Password)
 import Data.Username (Username)
@@ -75,7 +75,7 @@ app { dbConn, jwtSecret } = do
   readUsername :: ServerM Username
   readUsername = do
     s <- readPathParam "username"
-    maybe (throwError RouteParamIsMissing) pure (Username.parse s)
+    maybe (throwError RouteParamIsMissing) pure $ hush (Username.parse s)
 
   withAuthUsername :: (Username -> ServerM Unit) -> ServerM Unit
   withAuthUsername callback = withTokenInfo \username -> do

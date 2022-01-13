@@ -7,7 +7,7 @@ import Control.Monad.Error.Class (throwError)
 import Control.Monad.Except (runExcept)
 import Data.Array as Array
 import Data.DateTime (adjust)
-import Data.Either (Either(..), note)
+import Data.Either (Either(..), hush, note)
 import Data.Enum (enumFromTo)
 import Data.List.NonEmpty (NonEmptyList)
 import Data.Maybe (Maybe(..), fromMaybe)
@@ -128,5 +128,5 @@ type TokenErrors = NonEmptyList String
 tokenInfo :: Token -> Jwt.Secret -> Either TokenErrors Username
 tokenInfo token secret = do
   tok :: Jwt.Token () _ <- Jwt.verify secret (unwrap token)
-  strUsername <- note (pure "sub claim not found") tok.claims.sub 
-  note (pure "sub claim is invalid") (Username.parse strUsername) 
+  strUsername <- note (pure "sub claim not found") tok.claims.sub
+  note (pure "sub claim is invalid") $ hush (Username.parse strUsername)
