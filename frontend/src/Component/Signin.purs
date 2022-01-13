@@ -4,7 +4,7 @@ import Prelude
 
 import Affjax (defaultRequest, printError, request) as AX
 import Affjax.RequestBody (RequestBody(..)) as AX
-import Control.Monad.Except.Trans (ExceptT, runExceptT)
+import Control.Monad.Except.Trans (runExceptT)
 import Data.Argonaut.Encode (encodeJson) as Json
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
@@ -121,7 +121,7 @@ render state = signinFormContainer
               , "bg-white"
               ]
           ]
-          [ signinFormHeader, ?signinResultMessage, signinForm ]
+          [ signinFormHeader, signinResultMessage, signinForm ]
       ]
 
   signinFormHeader =
@@ -137,7 +137,23 @@ render state = signinFormContainer
           ]
           [ HH.text "Sign in to your account" ]
       ]
-
+  signinResultMessage =
+    HH.div_
+      [ HH.h3
+          [ HP.classNames
+              [ "text-center"
+              , "text-gray-800"
+              , "font-bold"
+              , "text-3-xl"
+              ]
+          ]
+          [ HH.text $ case state.response of
+              Just SignedIn -> "You successfully signed in!"
+              Just Forbidden -> "Incorrect username or password!"
+              Just (Failure str) -> "Got an error: " <> str
+              Nothing -> ""
+          ]
+      ]
   signinForm =
     HH.form
       [ HP.id "form-username"
@@ -280,6 +296,7 @@ handleAction
    . MonadAff m
   => Action
   -> H.HalogenM State Action input output m Unit
+
 handleAction = case _ of
   SetUsername str -> H.modify_ _ { usernameValue = str }
   SetPassword str -> H.modify_ _ { passwordValue = str }
@@ -304,7 +321,11 @@ handleAction = case _ of
     maybe pass (either (const pass) identity) $ runExceptT ado
       password <- wrap passwordValidation
       username <- wrap usernameValidation
-      in createSession username password >>= ?persistSignInResponseInState
+      in
+        createSession username password >>= case _ of
+          SignedIn -> H.modify_ _ { response = Just SignedIn }
+          Forbidden -> H.modify_ _ { response = Just Forbidden }
+          Failure str -> H.modify_ _ { response = Just (Failure str) }
 
 data SignInResponse
   = SignedIn
