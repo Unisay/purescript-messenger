@@ -45,7 +45,8 @@
     "webpack": "^5.31.2",
     "webpack-cli": "^4.6.0",
     "webpack-dev-server": "^3.11.2",
-    "workbox-webpack-plugin": "^6.1.2"
+    "workbox-webpack-plugin": "^6.1.2",
+    "purs-tidy": "^0.6.4"
   },
   "dependencies": {
     "xhr2": "^0.2.1"
