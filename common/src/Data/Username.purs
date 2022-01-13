@@ -7,19 +7,22 @@ module Data.Username
   ) where
 
 import Prelude
+
+import Control.Monad.Except.Trans (except)
+import Data.Argonaut.Encode (class EncodeJson)
+import Data.Array (any)
+import Data.Array.NonEmpty as NEA
+import Data.Array.NonEmpty.Internal (NonEmptyArray)
+import Data.Bifunctor (lmap)
+import Data.CodePoint.Unicode as Unicode
 import Data.Codec.Argonaut (JsonCodec)
 import Data.Codec.Argonaut as CA
-import Data.Argonaut.Encode (class EncodeJson)
-import Data.Maybe (Maybe(..))
-import Data.Either (note)
+import Data.Either (Either(..), isRight)
 import Data.Profunctor (dimap)
-import Foreign.Generic.Class (class Encode, class Decode, decode)
-import Control.Monad.Except.Trans (except)
-import Foreign (ForeignError(..))
 import Data.String (null, trim) as String
 import Data.String.CodePoints (codePointFromChar, toCodePointArray) as String
-import Data.CodePoint.Unicode as Unicode
-import Data.Array (all)
+import Foreign (ForeignError(..))
+import Foreign.Generic.Class (class Encode, class Decode, decode)
 
 newtype Username = Username String
 
@@ -29,9 +32,10 @@ derive newtype instance Encode Username
 derive newtype instance EncodeJson Username
 
 instance Decode Username where
-  decode f = do
-    s <- decode f
-    except $ note (pure (ForeignError "Invalid Username")) (parse s)
+  decode f = decode f >>=
+    parse
+      >>> lmap (NEA.toUnfoldable1 >>> map ForeignError)
+      >>> except
 
 instance Show Username where
   show username = "(Username " <> toString username <> ")"
@@ -39,19 +43,20 @@ instance Show Username where
 codec :: JsonCodec Username
 codec = dimap toString Username CA.string
 
-parse :: String -> Maybe Username
+parse :: String -> Either (NonEmptyArray String) Username
 parse s = case String.trim s of
-  str | isValid str -> Just (Username str)
-  _ -> Nothing
-
-isValid :: String -> Boolean
-isValid s =
-  not (String.null s) && all isValidCodePoint (String.toCodePointArray s)
+  str | String.null str -> Left (pure "Username can't be empty")
+  str | any (not <<< isValidCodePoint) (String.toCodePointArray str) ->
+    Left (pure "Username must contain only alphanumeric characters, _ and -")
+  str -> Right (Username str)
   where
   isValidCodePoint cp =
     Unicode.isAlphaNum cp
       || cp == String.codePointFromChar '_'
       || cp == String.codePointFromChar '-'
+
+isValid :: String -> Boolean
+isValid = isRight <<< parse
 
 toString :: Username -> String
 toString (Username str) = str

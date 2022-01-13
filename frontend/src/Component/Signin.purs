@@ -4,15 +4,16 @@ import Prelude
 
 import Affjax (defaultRequest, printError, request) as AX
 import Affjax.RequestBody (RequestBody(..)) as AX
+import Control.Monad.Except.Trans (ExceptT, runExceptT)
 import Data.Argonaut.Encode (encodeJson) as Json
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NEA
-import Data.Either (Either(..), hush, isLeft)
+import Data.Either (Either(..), either, hush, isLeft)
 import Data.EitherR (flipEither)
 import Data.HTTP.Method (Method(..))
 import Data.Maybe (Maybe(..), maybe)
-import Data.Newtype (unwrap)
+import Data.Newtype (unwrap, wrap)
 import Data.Password (Password)
 import Data.Password as Password
 import Data.Username (Username)
@@ -42,7 +43,7 @@ Idea: what if we create a type like this:
 
 type Validation a = 
   { inputValue :: String
-  , result :: Maybe (Either (NonEmpty Array String) a)
+  , response :: Maybe (Either (NonEmpty Array String) a)
   }
   
   and then 
@@ -52,7 +53,7 @@ type Validation a =
     { loading :: Boolean
     , username :: Validation Username
     , password :: Validation Password
-    , result :: Maybe String
+    , response :: Maybe String
     }
   
   ?
@@ -64,7 +65,7 @@ type State =
   , usernameValidation :: Maybe (Either (NonEmptyArray String) Username)
   , passwordValue :: String
   , passwordValidation :: Maybe (Either (NonEmptyArray String) Password)
-  , result :: Maybe String
+  , response :: Maybe SignInResponse
   }
 
 data Action
@@ -90,7 +91,7 @@ initialState _input =
   , usernameValidation: Nothing
   , passwordValue: ""
   , passwordValidation: Nothing
-  , result: Nothing
+  , response: Nothing
   }
 
 render :: forall m. State -> H.ComponentHTML Action () m
@@ -120,7 +121,7 @@ render state = signinFormContainer
               , "bg-white"
               ]
           ]
-          [ signinFormHeader, signinForm ]
+          [ signinFormHeader, ?signinResultMessage, signinForm ]
       ]
 
   signinFormHeader =
@@ -267,9 +268,9 @@ render state = signinFormContainer
     -> Array (H.ComponentHTML Action () m)
   validationErrors = case _ of
     Nothing -> []
-    Just result ->
+    Just response ->
       (flipEither >>> hush >>> Array.fromFoldable >>> flip bind NEA.toArray)
-        result
+        response
         <#> \errorMessage -> HH.div
           [ HP.classNames [ "text-red-800" ] ]
           [ HH.text errorMessage ]
@@ -279,19 +280,15 @@ handleAction
    . MonadAff m
   => Action
   -> H.HalogenM State Action input output m Unit
-
 handleAction = case _ of
   SetUsername str -> H.modify_ _ { usernameValue = str }
   SetPassword str -> H.modify_ _ { passwordValue = str }
   ValidateUsername -> do
     { usernameValue } <- H.get
     case Username.parse usernameValue of
-      Nothing ->
-        H.modify_ _
-          { usernameValidation =
-              pure $ Left (NEA.singleton "Invalid Username")
-          }
-      Just username ->
+      Left errors ->
+        H.modify_ _ { usernameValidation = pure $ Left errors }
+      Right username ->
         H.modify_ _ { usernameValidation = pure $ Right username }
   ValidatePassword -> do
     { passwordValue } <- H.get
@@ -303,20 +300,11 @@ handleAction = case _ of
   SubmitForm ev -> do
     liftEffect $ Event.preventDefault ev
     { passwordValidation, usernameValidation } <- H.get
-    case passwordValidation of
-      Nothing -> pure unit
-      Just passwordResult -> case passwordResult of
-        Left _ -> pure unit
-        Right password -> case usernameValidation of
-          Nothing -> pure unit
-          Just usernameResult -> case usernameResult of
-            Left _ -> pure unit
-            Right username -> do
-              signInResponse <- createSession username password
-              case signInResponse of
-                SignedIn -> log "Successfully signed in"
-                Forbidden -> log "Forbidden"
-                Failure err -> log $ "Sign in failed: " <> err
+    let pass = pure unit
+    maybe pass (either (const pass) identity) $ runExceptT ado
+      password <- wrap passwordValidation
+      username <- wrap usernameValidation
+      in createSession username password >>= ?persistSignInResponseInState
 
 data SignInResponse
   = SignedIn
