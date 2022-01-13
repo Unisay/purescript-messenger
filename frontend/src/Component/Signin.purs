@@ -11,7 +11,7 @@ import Data.Array.NonEmpty as NEA
 import Data.Either (Either(..), hush, isLeft)
 import Data.EitherR (flipEither)
 import Data.HTTP.Method (Method(..))
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), maybe)
 import Data.Newtype (unwrap)
 import Data.Password (Password)
 import Data.Password as Password
@@ -58,8 +58,7 @@ type Validation a =
   ?
 -}
 
-type State
-  =
+type State =
   { loading :: Boolean
   , usernameValue :: String
   , usernameValidation :: Maybe (Either (NonEmptyArray String) Username)
@@ -157,6 +156,7 @@ render state = signinFormContainer
                     , HP.placeholder "Username"
                     , HP.value state.usernameValue
                     , HE.onValueInput SetUsername
+                    , HE.onBlur \_ -> ValidateUsername
                     , HP.classNames $
                         [ "appearance-none"
                         , "rounded"
@@ -174,13 +174,16 @@ render state = signinFormContainer
                         , "focus-border-indigo-500"
                         , "focus-z-10"
                         , "sm-text-sm"
-                        ] <> if isLeft state.usernameValidation then errorClasses else []
+                        ] <>
+                          if maybe false isLeft state.usernameValidation then errorClasses
+                          else []
                     ]
                 ]
               , validationErrors state.usernameValidation
               ]
           , HH.div_ $ Array.concat
-              [ [ HH.label [ HP.for "input-password", HP.classNames [ "font-bold" ] ]
+              [ [ HH.label
+                    [ HP.for "input-password", HP.classNames [ "font-bold" ] ]
                     [ HH.text "Password" ]
                 , HH.input
                     [ HP.id "input-password"
@@ -190,7 +193,7 @@ render state = signinFormContainer
                     , HP.type_ HP.InputPassword
                     , HP.value state.passwordValue
                     , HE.onValueInput SetPassword
-                    , HE.onBlur ValidatePassword
+                    , HE.onBlur \_ -> ValidatePassword
                     , HP.classNames $
                         [ "appearance-none"
                         , "rounded"
@@ -208,7 +211,10 @@ render state = signinFormContainer
                         , "focus-border-indigo-500"
                         , "focus-z-10"
                         , "sm-text-sm"
-                        ] <> if isLeft state.passwordValidation then errorClasses else []
+                        ] <>
+                          if maybe false isLeft state.passwordValidation then
+                            errorClasses
+                          else []
                     ]
                 ]
               , validationErrors state.passwordValidation
@@ -241,7 +247,9 @@ render state = signinFormContainer
                       ]
                   ]
                   [ HH.span
-                      [ HP.classNames [ "left-0", "flex", "items-center", "pl-3" ] ]
+                      [ HP.classNames
+                          [ "left-0", "flex", "items-center", "pl-3" ]
+                      ]
                       [ HH.text
                           if state.loading then "Signing in..." else "Sign In"
                       ]
@@ -250,20 +258,23 @@ render state = signinFormContainer
           ]
       ]
 
-  errorClasses = [ "border-red-200", "border-2" ]
+  errorClasses =
+    [ "border-red-200", "border-2" ]
 
   validationErrors
     :: forall a
      . Maybe (Either (NonEmptyArray String) a)
     -> Array (H.ComponentHTML Action () m)
-  validationErrors  = case _ of
+  validationErrors = case _ of
     Nothing -> []
-    Just result -> (flipEither >>> hush >>> Array.fromFoldable >>> flip bind NEA.toArray) result
-      <#> \errorMessage -> HH.div
-        [ HP.classNames [ "text-red-800" ] ]
-        [ HH.text errorMessage ]
+    Just result ->
+      (flipEither >>> hush >>> Array.fromFoldable >>> flip bind NEA.toArray)
+        result
+        <#> \errorMessage -> HH.div
+          [ HP.classNames [ "text-red-800" ] ]
+          [ HH.text errorMessage ]
 
-  handleAction
+handleAction
   :: forall input output m
    . MonadAff m
   => Action
@@ -272,25 +283,40 @@ render state = signinFormContainer
 handleAction = case _ of
   SetUsername str -> H.modify_ _ { usernameValue = str }
   SetPassword str -> H.modify_ _ { passwordValue = str }
-  ValidatePassword -> ?recordValidationResultInState
-  SubmitForm ev -> do
-    liftEffect $ Event.preventDefault ev
-    { usernameValue, passwordValue } <- H.get
+  ValidateUsername -> do
+    { usernameValue } <- H.get
     case Username.parse usernameValue of
       Nothing ->
-        H.modify_ _ { usernameValidation = Left (NEA.singleton "Invalid Username") }
-      Just username -> do
-        H.modify_ _ { usernameValidation = Right username }
-        case Password.parse passwordValue of
-          Left err -> H.modify_ _ { passwordValidation = Left (NEA.singleton err) }
-          Right password -> do
-            H.modify_ _ { passwordValidation = Right password, loading = true }
-            signInResponse <- createSession username password
-            H.modify_ _ { loading = false }
-            case signInResponse of
-              SignedIn -> log "Successfully signed in"
-              Forbidden -> log "Forbidden"
-              Failure err -> log $ "Sign in failed: " <> err
+        H.modify_ _
+          { usernameValidation =
+              pure $ Left (NEA.singleton "Invalid Username")
+          }
+      Just username ->
+        H.modify_ _ { usernameValidation = pure $ Right username }
+  ValidatePassword -> do
+    { passwordValue } <- H.get
+    case Password.parse passwordValue of
+      Left err ->
+        H.modify_ _ { passwordValidation = pure $ Left (NEA.singleton err) }
+      Right password ->
+        H.modify_ _ { passwordValidation = pure $ Right password }
+  SubmitForm ev -> do
+    liftEffect $ Event.preventDefault ev
+    { passwordValidation, usernameValidation } <- H.get
+    case passwordValidation of
+      Nothing -> pure unit
+      Just passwordResult -> case passwordResult of
+        Left _ -> pure unit
+        Right password -> case usernameValidation of
+          Nothing -> pure unit
+          Just usernameResult -> case usernameResult of
+            Left _ -> pure unit
+            Right username -> do
+              signInResponse <- createSession username password
+              case signInResponse of
+                SignedIn -> log "Successfully signed in"
+                Forbidden -> log "Forbidden"
+                Failure err -> log $ "Sign in failed: " <> err
 
 data SignInResponse
   = SignedIn
@@ -311,7 +337,9 @@ createSession username password = do
     AX.request
       AX.defaultRequest
         { method = Left PUT
-        , url = "http://localhost:8081/users/" <> Username.toString username <> "/session"
+        , url = "http://localhost:8081/users/"
+            <> Username.toString username
+            <> "/session"
         , content = Just $ AX.Json $ Json.encodeJson { username, password }
         }
   let
