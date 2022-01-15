@@ -2,7 +2,16 @@ module Main where
 
 import Prelude
 
-import Auth (SigninResult(..), SignoutReason(..), SignoutResult(..), SignupResult(..), signin, signout, signup, tokenInfo)
+import Auth
+  ( SigninResult(..)
+  , SignoutReason(..)
+  , SignoutResult(..)
+  , SignupResult(..)
+  , signin
+  , signout
+  , signup
+  , tokenInfo
+  )
 import Chat as Chat
 import Data.Either (Either(..), hush)
 import Data.Maybe (Maybe(..), maybe)
@@ -20,7 +29,17 @@ import Node.Express.Response as Response
 import Node.Jwt as Jwt
 import Node.Process (lookupEnv)
 import SQLite3 as SQLite
-import ServerM (Error(..), ServerM, readBody, readPathParam, readToken, reply, replyJson, replyStatus, runServerM)
+import ServerM
+  ( Error(..)
+  , ServerM
+  , readBody
+  , readPathParam
+  , readToken
+  , reply
+  , replyJson
+  , replyStatus
+  , runServerM
+  )
 
 type Resources =
   { dbConn :: SQLite.DBConnection

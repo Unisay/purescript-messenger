@@ -37,34 +37,15 @@ main =
     body <- awaitBody
     runUI component unit body
 
-{-
-
-Idea: what if we create a type like this:
-
-type Validation a = 
+type Validation a =
   { inputValue :: String
-  , response :: Maybe (Either (NonEmpty Array String) a)
+  , response :: Maybe (Either (NonEmptyArray String) a)
   }
-  
-  and then 
-
-  type State
-    =
-    { loading :: Boolean
-    , username :: Validation Username
-    , password :: Validation Password
-    , response :: Maybe String
-    }
-  
-  ?
--}
 
 type State =
   { loading :: Boolean
-  , usernameValue :: String
-  , usernameValidation :: Maybe (Either (NonEmptyArray String) Username)
-  , passwordValue :: String
-  , passwordValidation :: Maybe (Either (NonEmptyArray String) Password)
+  , username :: Validation Username
+  , password :: Validation Password
   , response :: Maybe SignInResponse
   }
 
@@ -87,10 +68,8 @@ component =
 initialState :: forall input. input -> State
 initialState _input =
   { loading: false
-  , usernameValue: ""
-  , usernameValidation: Nothing
-  , passwordValue: ""
-  , passwordValidation: Nothing
+  , username: { inputValue: "", response: Nothing }
+  , password: { inputValue: "", response: Nothing }
   , response: Nothing
   }
 
@@ -171,7 +150,7 @@ render state = signinFormContainer
                     , HP.required true
                     , HP.autocomplete true
                     , HP.placeholder "Username"
-                    , HP.value state.usernameValue
+                    , HP.value state.username.inputValue
                     , HE.onValueInput SetUsername
                     , HE.onBlur \_ -> ValidateUsername
                     , HP.classNames $
@@ -192,11 +171,13 @@ render state = signinFormContainer
                         , "focus-z-10"
                         , "sm-text-sm"
                         ] <>
-                          if maybe false isLeft state.usernameValidation then errorClasses
+                          if
+                            maybe false isLeft state.username.response then
+                            errorClasses
                           else []
                     ]
                 ]
-              , validationErrors state.usernameValidation
+              , validationErrors state.username.response
               ]
           , HH.div_ $ Array.concat
               [ [ HH.label
@@ -208,7 +189,7 @@ render state = signinFormContainer
                     , HP.required true
                     , HP.autocomplete true
                     , HP.type_ HP.InputPassword
-                    , HP.value state.passwordValue
+                    , HP.value state.password.inputValue
                     , HE.onValueInput SetPassword
                     , HE.onBlur \_ -> ValidatePassword
                     , HP.classNames $
@@ -229,12 +210,12 @@ render state = signinFormContainer
                         , "focus-z-10"
                         , "sm-text-sm"
                         ] <>
-                          if maybe false isLeft state.passwordValidation then
+                          if maybe false isLeft state.password.response then
                             errorClasses
                           else []
                     ]
                 ]
-              , validationErrors state.passwordValidation
+              , validationErrors state.password.response
               ]
           , HH.div_
               [ HH.button
@@ -298,29 +279,31 @@ handleAction
   -> H.HalogenM State Action input output m Unit
 
 handleAction = case _ of
-  SetUsername str -> H.modify_ _ { usernameValue = str }
-  SetPassword str -> H.modify_ _ { passwordValue = str }
+  SetUsername str -> H.modify_ $ \state ->
+    state { username = state.username { inputValue = str } }
+  SetPassword str -> H.modify_ $ \state ->
+    state { password = state.password { inputValue = str } }
   ValidateUsername -> do
-    { usernameValue } <- H.get
-    case Username.parse usernameValue of
-      Left errors ->
-        H.modify_ _ { usernameValidation = pure $ Left errors }
-      Right username ->
-        H.modify_ _ { usernameValidation = pure $ Right username }
+    { username } <- H.get
+    case Username.parse username.inputValue of
+      Left errors -> H.modify_ $ \state ->
+        state { username = state.username { response = pure $ Left errors } }
+      Right username' -> H.modify_ $ \state ->
+        state { username = state.username { response = pure $ Right username' } }
   ValidatePassword -> do
-    { passwordValue } <- H.get
-    case Password.parse passwordValue of
-      Left err ->
-        H.modify_ _ { passwordValidation = pure $ Left (NEA.singleton err) }
-      Right password ->
-        H.modify_ _ { passwordValidation = pure $ Right password }
+    { password } <- H.get
+    case Password.parse password.inputValue of
+      Left err -> H.modify_ $ \state ->
+        state { password = state.password { response = pure $ Left $ pure err } }
+      Right password' -> H.modify_ $ \state ->
+        state { password = state.password { response = pure $ Right password' } }
   SubmitForm ev -> do
     liftEffect $ Event.preventDefault ev
-    { passwordValidation, usernameValidation } <- H.get
+    { password, username } <- H.get
     let pass = pure unit
     maybe pass (either (const pass) identity) $ runExceptT ado
-      password <- wrap passwordValidation
-      username <- wrap usernameValidation
+      password <- wrap password.response
+      username <- wrap username.response
       in
         createSession username password >>= case _ of
           SignedIn -> H.modify_ _ { response = Just SignedIn }
@@ -340,6 +323,7 @@ instance Show SignInResponse where
 
 createSession
   :: forall m. MonadAff m => Username -> Password -> m SignInResponse
+
 createSession username password = do
   log "Form is being submitted...."
   response <- liftAff $
