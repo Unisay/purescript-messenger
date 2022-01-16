@@ -476,20 +476,12 @@ Ensure the default browser behavior of the `hidden` attribute.
   left: 0px;
 }
 
-.m-0 {
-  margin: 0px;
-}
-
 .mt-6 {
   margin-top: 1.5rem;
 }
 
 .mt-8 {
   margin-top: 2rem;
-}
-
-.mt-1 {
-  margin-top: 0.25rem;
 }
 
 .block {
@@ -624,10 +616,6 @@ Ensure the default browser behavior of the `hidden` attribute.
   text-align: center;
 }
 
-.align-top {
-  vertical-align: top;
-}
-
 .text-sm {
   font-size: 0.875rem;
   line-height: 1.25rem;
@@ -645,10 +633,6 @@ Ensure the default browser behavior of the `hidden` attribute.
   font-weight: 500;
 }
 
-.font-semibold {
-  font-weight: 600;
-}
-
 .text-gray-900 {
   --tw-text-opacity: 1;
   color: rgb(17 24 39 / var(--tw-text-opacity));
@@ -662,11 +646,6 @@ Ensure the default browser behavior of the `hidden` attribute.
 .text-red-800 {
   --tw-text-opacity: 1;
   color: rgb(153 27 27 / var(--tw-text-opacity));
-}
-
-.text-gray-800 {
-  --tw-text-opacity: 1;
-  color: rgb(31 41 55 / var(--tw-text-opacity));
 }
 
 .placeholder-gray-500::-moz-placeholder {
