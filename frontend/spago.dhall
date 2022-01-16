@@ -17,7 +17,6 @@
   , "prelude"
   , "profunctor"
   , "psci-support"
-  , "transformers"
   , "web-events"
   ]
 , packages = ./packages.dhall
