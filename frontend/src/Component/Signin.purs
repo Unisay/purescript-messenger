@@ -280,23 +280,23 @@ handleAction
 
 handleAction = case _ of
   SetUsername str -> H.modify_ $ \state ->
-    state { username { inputValue = str } }
+    state { username = state.username { inputValue = str } }
   SetPassword str -> H.modify_ $ \state ->
-    state { password { inputValue = str } }
+    state { password = state.password { inputValue = str } }
   ValidateUsername -> do
     { username } <- H.get
     case Username.parse username.inputValue of
       Left errors -> H.modify_ $ \state ->
-        state { username { response = pure $ Left errors } }
+        state { username = state.username { response = pure $ Left errors } }
       Right username' -> H.modify_ $ \state ->
-        state { username { response = pure $ Right username' } }
+        state { username = state.username { response = pure $ Right username' } }
   ValidatePassword -> do
     { password } <- H.get
     case Password.parse password.inputValue of
       Left err -> H.modify_ $ \state ->
-        state { password { response = pure $ Left $ pure err } }
+        state { password = state.password { response = pure $ Left $ pure err } }
       Right password' -> H.modify_ $ \state ->
-        state { password { response = pure $ Right password' } }
+        state { password = state.password { response = pure $ Right password' } }
   SubmitForm ev -> do
     liftEffect $ Event.preventDefault ev
     { password, username } <- H.get
