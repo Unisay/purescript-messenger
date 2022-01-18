@@ -57,7 +57,7 @@ data Action
   | SubmitForm Event
 
 component
-  :: forall query input output m. MonadAff m => H.Component query input output m
+  :: ∀ query input output m. MonadAff m => H.Component query input output m
 component =
   H.mkComponent
     { initialState
@@ -65,7 +65,7 @@ component =
     , eval: H.mkEval $ H.defaultEval { handleAction = handleAction }
     }
 
-initialState :: forall input. input -> State
+initialState :: ∀ input. input -> State
 initialState _input =
   { loading: false
   , username: { inputValue: "", result: Nothing }
@@ -73,7 +73,7 @@ initialState _input =
   , response: Nothing
   }
 
-render :: forall m. State -> H.ComponentHTML Action () m
+render :: ∀ m. State -> H.ComponentHTML Action () m
 render state = signinFormContainer
   where
 
@@ -171,8 +171,7 @@ render state = signinFormContainer
                         , "focus-z-10"
                         , "sm-text-sm"
                         ] <>
-                          if
-                            maybe false isLeft state.username.result then
+                          if maybe false isLeft state.username.result then
                             errorClasses
                           else []
                     ]
@@ -260,7 +259,7 @@ render state = signinFormContainer
     [ "border-red-200", "border-2" ]
 
   validationErrors
-    :: forall a
+    :: ∀ a
      . Maybe (Either (NonEmptyArray String) a)
     -> Array (H.ComponentHTML Action () m)
   validationErrors = case _ of
@@ -273,7 +272,7 @@ render state = signinFormContainer
           [ HH.text errorMessage ]
 
 handleAction
-  :: forall input output m
+  :: ∀ input output m
    . MonadAff m
   => Action
   -> H.HalogenM State Action input output m Unit
@@ -321,9 +320,7 @@ instance Show SignInResponse where
     Forbidden -> "Sign in is forbidden"
     Failure statusCode -> "Failure: " <> show statusCode
 
-createSession
-  :: forall m. MonadAff m => Username -> Password -> m SignInResponse
-
+createSession :: ∀ m. MonadAff m => Username -> Password -> m SignInResponse
 createSession username password = do
   log "Form is being submitted...."
   response <- liftAff $
