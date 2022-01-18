@@ -100,7 +100,7 @@ render state = signinFormContainer
               , "bg-white"
               ]
           ]
-          [ signinFormHeader, signinResultMessage, signinForm ]
+          [ signinFormHeader, signinForm ]
       ]
 
   signinFormHeader =
@@ -116,143 +116,131 @@ render state = signinFormContainer
           ]
           [ HH.text "Sign in to your account" ]
       ]
-  signinResultMessage =
-    HH.div_
-      [ HH.h3
-          [ HP.classNames
-              [ "text-center"
-              , "text-gray-800"
-              , "font-bold"
-              , "text-3-xl"
-              ]
-          ]
-          [ HH.text $ case state.response of
+  signinForm =
+    HH.form
+      [ HP.id "form-username"
+      , HE.onSubmit SubmitForm
+      , HP.classNames [ "mt-8", "space-y-6" ]
+      ]
+      [ HH.div [ HP.classNames [ "text-red-600" ] ]
+          [ HH.text case state.response of
               Just SignedIn -> "You successfully signed in!"
               Just Forbidden -> "Incorrect username or password!"
               Just (Failure str) -> "Got an error: " <> str
               Nothing -> ""
           ]
-      ]
-  signinForm =
-    HH.form
-      [ HP.id "form-username"
-      , HE.onSubmit SubmitForm
-      , HP.classNames [ "mt-8" ]
-      ]
-      [ HH.div
-          [ HP.classNames [ "rounded-md", "space-y-6" ] ]
-          [ HH.div_ $ Array.concat
-              [ [ HH.label
-                    [ HP.for "input-username", HP.classNames [ "font-bold" ] ]
-                    [ HH.text "Username" ]
-                , HH.input
-                    [ HP.id "input-username"
-                    , HP.required true
-                    , HP.autocomplete true
-                    , HP.placeholder "Username"
-                    , HP.value state.username.inputValue
-                    , HE.onValueInput SetUsername
-                    , HE.onBlur \_ -> ValidateUsername
-                    , HP.classNames $
-                        [ "appearance-none"
-                        , "rounded"
-                        , "relative"
-                        , "block"
-                        , "w-full"
-                        , "px-3"
-                        , "py-2"
-                        , "border"
-                        , "border-gray-300"
-                        , "placeholder-gray-500"
-                        , "text-gray-900"
-                        , "focus-outline-none"
-                        , "focus-ring-indigo-500"
-                        , "focus-border-indigo-500"
-                        , "focus-z-10"
-                        , "sm-text-sm"
-                        ] <>
-                          if maybe false isLeft state.username.result then
-                            errorClasses
-                          else []
-                    ]
+      , HH.div_ $ Array.concat
+          [ [ HH.label
+                [ HP.for "input-username", HP.classNames [ "font-bold" ] ]
+                [ HH.text "Username" ]
+            , HH.input
+                [ HP.id "input-username"
+                , HP.required true
+                , HP.autocomplete true
+                , HP.placeholder "Username"
+                , HP.value state.username.inputValue
+                , HE.onValueInput SetUsername
+                , HE.onBlur \_ -> ValidateUsername
+                , HP.classNames $
+                    [ "appearance-none"
+                    , "rounded"
+                    , "relative"
+                    , "block"
+                    , "w-full"
+                    , "px-3"
+                    , "py-2"
+                    , "border"
+                    , "border-gray-300"
+                    , "placeholder-gray-500"
+                    , "text-gray-900"
+                    , "focus-outline-none"
+                    , "focus-ring-indigo-500"
+                    , "focus-border-indigo-500"
+                    , "focus-z-10"
+                    , "sm-text-sm"
+                    ] <>
+                      if maybe false isLeft state.username.result then
+                        errorClasses
+                      else []
                 ]
-              , validationErrors state.username.result
-              ]
-          , HH.div_ $ Array.concat
-              [ [ HH.label
-                    [ HP.for "input-password", HP.classNames [ "font-bold" ] ]
-                    [ HH.text "Password" ]
-                , HH.input
-                    [ HP.id "input-password"
-                    , HP.placeholder "Password"
-                    , HP.required true
-                    , HP.autocomplete true
-                    , HP.type_ HP.InputPassword
-                    , HP.value state.password.inputValue
-                    , HE.onValueInput SetPassword
-                    , HE.onBlur \_ -> ValidatePassword
-                    , HP.classNames $
-                        [ "appearance-none"
-                        , "rounded"
-                        , "relative"
-                        , "block"
-                        , "w-full"
-                        , "px-3"
-                        , "py-2"
-                        , "border"
-                        , "border-gray-300"
-                        , "placeholder-gray-500"
-                        , "text-gray-900"
-                        , "focus-outline-none"
-                        , "focus-ring-indigo-500"
-                        , "focus-border-indigo-500"
-                        , "focus-z-10"
-                        , "sm-text-sm"
-                        ] <>
-                          if maybe false isLeft state.password.result then
-                            errorClasses
-                          else []
-                    ]
+            ]
+          , validationErrors state.username.result
+          ]
+      , HH.div_ $ Array.concat
+          [ [ HH.label
+                [ HP.for "input-password", HP.classNames [ "font-bold" ] ]
+                [ HH.text "Password" ]
+            , HH.input
+                [ HP.id "input-password"
+                , HP.placeholder "Password"
+                , HP.required true
+                , HP.autocomplete true
+                , HP.type_ HP.InputPassword
+                , HP.value state.password.inputValue
+                , HE.onValueInput SetPassword
+                , HE.onBlur \_ -> ValidatePassword
+                , HP.classNames $
+                    [ "appearance-none"
+                    , "rounded"
+                    , "relative"
+                    , "block"
+                    , "w-full"
+                    , "px-3"
+                    , "py-2"
+                    , "border"
+                    , "border-gray-300"
+                    , "placeholder-gray-500"
+                    , "text-gray-900"
+                    , "focus-outline-none"
+                    , "focus-ring-indigo-500"
+                    , "focus-border-indigo-500"
+                    , "focus-z-10"
+                    , "sm-text-sm"
+                    ] <>
+                      if maybe false isLeft state.password.result then
+                        errorClasses
+                      else []
                 ]
-              , validationErrors state.password.result
-              ]
-          , HH.div_
-              [ HH.button
-                  [ HP.disabled state.loading
-                  , HP.type_ HP.ButtonSubmit
-                  , HP.classNames
-                      [ "group"
-                      , "w-full"
-                      , "flex"
-                      , "justify-center"
-                      , "py-2"
-                      , "px-4"
-                      , "border"
-                      , "border-transparent"
-                      , "text-sm"
-                      , "font-medium"
-                      , "rounded-md"
-                      , "text-white"
-                      , if state.loading then "bg-gray-500"
-                        else "bg-indigo-600"
-                      , if state.loading then "hover-bg-gray-600"
-                        else "hover-bg-indigo-700"
-                      , "focus-outline-none"
-                      , "focus-ring-2"
-                      , "focus-ring-offset-2"
-                      , "focus-ring-indigo-500"
-                      ]
+            ]
+          , validationErrors state.password.result
+          ]
+      , HH.div_
+          [ HH.button
+              [ HP.disabled state.loading
+              , HP.type_ HP.ButtonSubmit
+              , HP.classNames
+                  [ "group"
+                  , "w-full"
+                  , "flex"
+                  , "justify-center"
+                  , "py-2"
+                  , "px-4"
+                  , "border"
+                  , "border-transparent"
+                  , "text-sm"
+                  , "font-medium"
+                  , "rounded-md"
+                  , "text-white"
+                  , if state.loading then "bg-gray-500"
+                    else "bg-indigo-600"
+                  , if state.loading then "hover-bg-gray-600"
+                    else "hover-bg-indigo-700"
+                  , "focus-outline-none"
+                  , "focus-ring-2"
+                  , "focus-ring-offset-2"
+                  , "focus-ring-indigo-500"
                   ]
-                  [ HH.span
-                      [ HP.classNames
-                          [ "left-0", "flex", "items-center", "pl-3" ]
-                      ]
-                      [ HH.text
-                          if state.loading then "Signing in..." else "Sign In"
-                      ]
+              ]
+              [ HH.span
+                  [ HP.classNames
+                      [ "left-0", "flex", "items-center", "pl-3" ]
+                  ]
+                  [ HH.text
+                      if state.loading then "Signing in..." else "Sign In"
                   ]
               ]
           ]
+
       ]
 
   errorClasses =
@@ -322,7 +310,6 @@ instance Show SignInResponse where
 
 createSession :: ∀ m. MonadAff m => Username -> Password -> m SignInResponse
 createSession username password = do
-  log "Form is being submitted...."
   response <- liftAff $
     AX.request
       AX.defaultRequest
@@ -341,6 +328,4 @@ createSession username password = do
             200 -> SignedIn
             403 -> Forbidden
             _ -> Failure (show status)
-
-  log ("Received server response: " <> show serverResponse)
   pure serverResponse
