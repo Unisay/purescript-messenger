@@ -17,7 +17,7 @@ module.exports = {
   plugins: [
     new HtmlWebpackPlugin({
       alwaysWriteToDisk: true,
-      title: "Webpack/Purescript Starter",
+      title: "Messenger",
       template: "src/index.html",
     }),
     // new WorkboxPlugin.GenerateSW({ clientsClaim: true, skipWaiting: true }),
