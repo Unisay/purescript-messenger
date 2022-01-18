@@ -39,7 +39,7 @@ main =
 
 type Validation a =
   { inputValue :: String
-  , response :: Maybe (Either (NonEmptyArray String) a)
+  , result :: Maybe (Either (NonEmptyArray String) a)
   }
 
 type State =
@@ -68,8 +68,8 @@ component =
 initialState :: forall input. input -> State
 initialState _input =
   { loading: false
-  , username: { inputValue: "", response: Nothing }
-  , password: { inputValue: "", response: Nothing }
+  , username: { inputValue: "", result: Nothing }
+  , password: { inputValue: "", result: Nothing }
   , response: Nothing
   }
 
@@ -172,12 +172,12 @@ render state = signinFormContainer
                         , "sm-text-sm"
                         ] <>
                           if
-                            maybe false isLeft state.username.response then
+                            maybe false isLeft state.username.result then
                             errorClasses
                           else []
                     ]
                 ]
-              , validationErrors state.username.response
+              , validationErrors state.username.result
               ]
           , HH.div_ $ Array.concat
               [ [ HH.label
@@ -210,12 +210,12 @@ render state = signinFormContainer
                         , "focus-z-10"
                         , "sm-text-sm"
                         ] <>
-                          if maybe false isLeft state.password.response then
+                          if maybe false isLeft state.password.result then
                             errorClasses
                           else []
                     ]
                 ]
-              , validationErrors state.password.response
+              , validationErrors state.password.result
               ]
           , HH.div_
               [ HH.button
@@ -287,23 +287,23 @@ handleAction = case _ of
     { username } <- H.get
     case Username.parse username.inputValue of
       Left errors -> H.modify_ $ \state ->
-        state { username { response = pure $ Left errors } }
+        state { username { result = pure $ Left errors } }
       Right username' -> H.modify_ $ \state ->
-        state { username { response = pure $ Right username' } }
+        state { username { result = pure $ Right username' } }
   ValidatePassword -> do
     { password } <- H.get
     case Password.parse password.inputValue of
       Left err -> H.modify_ $ \state ->
-        state { password { response = pure $ Left $ pure err } }
+        state { password { result = pure $ Left $ pure err } }
       Right password' -> H.modify_ $ \state ->
-        state { password { response = pure $ Right password' } }
+        state { password { result = pure $ Right password' } }
   SubmitForm ev -> do
     liftEffect $ Event.preventDefault ev
     { password, username } <- H.get
     let pass = pure unit
     maybe pass (either (const pass) identity) $ runExceptT ado
-      password <- wrap password.response
-      username <- wrap username.response
+      password <- wrap password.result
+      username <- wrap username.result
       in
         createSession username password >>= case _ of
           SignedIn -> H.modify_ _ { response = Just SignedIn }
