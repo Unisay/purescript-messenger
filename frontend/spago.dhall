@@ -17,6 +17,8 @@
   , "prelude"
   , "profunctor"
   , "psci-support"
+  , "routing-duplex"
+  , "test-unit"
   , "transformers"
   , "web-events"
   ]
