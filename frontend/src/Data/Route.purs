@@ -8,13 +8,16 @@ import Data.Show.Generic (genericShow)
 import Routing.Duplex (RouteDuplex', optional, path, root)
 import Routing.Duplex.Generic as G
 
+-- import Data.Username (Username)
+
 -- https://github.com/natefaubion/purescript-routing-duplex/blob/v0.2.0/README.md
 
 data Route
   = Home -- /
   | SignIn -- /signin 
   | SignUp -- /signup
-  | Profile Username -- /profile/:username
+
+-- | Profile Username -- /profile/:username
 
 derive instance Generic Route _
 derive instance Eq Route
