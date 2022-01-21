@@ -4,6 +4,7 @@
   , "affjax"
   , "argonaut-codecs"
   , "arrays"
+  , "bifunctors"
   , "codec-argonaut"
   , "common"
   , "effect"

@@ -2,11 +2,16 @@ module Data.Route where
 
 import Prelude
 
+import Data.Array.NonEmpty (intercalate)
+import Data.Bifunctor (lmap)
 import Data.Generic.Rep (class Generic)
 import Data.Maybe (Maybe)
 import Data.Show.Generic (genericShow)
-import Routing.Duplex (RouteDuplex', optional, path, root)
+import Data.Username (Username)
+import Data.Username as Username
+import Routing.Duplex (RouteDuplex(..), as, path, root, segment)
 import Routing.Duplex.Generic as G
+import Routing.Duplex.Parser as Parser
 
 -- import Data.Username (Username)
 
@@ -24,10 +29,13 @@ derive instance Eq Route
 instance Show Route where
   show = genericShow
 
-route :: RouteDuplex' (Maybe Route)
-route = optional $ root $ G.sum
-  { "Home": G.noArgs
-  , "SignIn": path "signin" G.noArgs
-  , "SignUp": path "signup" G.noArgs
-  -- , "Profile": path "profile" (username segment)
-  }
+codec :: RouteDuplex Route (Maybe Route)
+codec = RouteDuplex i (Parser.optional o)
+  where
+  username = as Username.toString (Username.parse >>> lmap (intercalate ";"))
+  RouteDuplex i o = root $ G.sum
+    { "Home": G.noArgs
+    , "SignIn": path "signin" G.noArgs
+    , "SignUp": path "signup" G.noArgs
+    , "Profile": path "profile" (username segment)
+    }
