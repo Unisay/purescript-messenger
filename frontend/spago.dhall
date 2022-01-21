@@ -6,7 +6,6 @@
   , "arrays"
   , "codec-argonaut"
   , "common"
-  , "console"
   , "effect"
   , "either"
   , "errors"

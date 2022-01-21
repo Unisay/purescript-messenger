@@ -6,6 +6,7 @@ import Data.String as Str
 import Effect.Class.Console (log)
 import Node.Express.App (App, use, useExternal)
 import Node.Express.Handler (Handler, next)
+import Node.Express.Middleware.Static (static)
 import Node.Express.Request (getMethod, getOriginalUrl)
 import Node.Express.Types (Middleware)
 
@@ -20,8 +21,11 @@ requestLogging = do
   log $ Str.toUpper (show method) <> " " <> url
   next
 
-init :: App
-init = do
+type StaticPath = String
+
+init :: StaticPath -> App
+init path = do
+  use $ static path
   use requestLogging
   useExternal cors
   useExternal json

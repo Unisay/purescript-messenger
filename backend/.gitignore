@@ -1,2 +1,3 @@
 .envrc
 db/*
+dist/*.js
