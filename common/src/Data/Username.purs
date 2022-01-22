@@ -4,6 +4,7 @@ module Data.Username
   , toString
   , codec
   , isValid
+  , unsafe
   ) where
 
 import Prelude
@@ -59,5 +60,7 @@ isValid :: String -> Boolean
 isValid = isRight <<< parse
 
 toString :: Username -> String
-toString (Username str) = str
+toString (Username name) = name
 
+unsafe :: String -> Username
+unsafe = Username
