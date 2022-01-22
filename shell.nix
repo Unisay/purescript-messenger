@@ -9,7 +9,7 @@ pkgs.stdenv.mkDerivation {
     pkgs.dhall
     pkgs.httpie
     pkgs.nixpkgs-fmt
-    pkgs.nodejs_latest
+    pkgs.nodejs-16_x
     pursPkgs.purs
     pursPkgs.spago
     pursPkgs.zephyr

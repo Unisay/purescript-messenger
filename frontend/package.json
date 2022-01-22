@@ -11,44 +11,34 @@
     "test": "test"
   },
   "scripts": {
-    "postinstall": "spago install",
-    "clean": "rm -rf node_modules output dce-output .spago dist/* *.lock .cache",
     "build:purescript": "spago -P build",
-    "watch:purescript": "spago -P build --watch",
     "build:tailwind": "tailwindcss -c tailwind.config.js -i tailwind_inputs.css -o assets/styles/tailwind.css",
-    "watch:tailwind": "tailwindcss -c tailwind.config.js -i tailwind_inputs.css -o assets/styles/tailwind.css --watch",
     "build": "npm run build:purescript && npm run build:tailwind",
     "bundle:build": "spago -P build --purs-args '--codegen corefn'",
     "bundle:dce": "zephyr -f Main.main",
-    "bundle:webpack": "webpack -c webpack-bundle.config.js",
-    "bundle": "npm run bundle:build && npm run bundle:dce && npm run bundle:webpack",
-    "dev": "concurrently \"npm run watch:purescript\" \"npm run watch:tailwind\" \"webpack serve -c webpack-dev.config.js\"",
-    "test": "spago -P test"
+    "bundle:esbuild": "npm run esbuild -- --bundle index.js --minify",
+    "bundle": "npm run bundle:build && npm run bundle:dce && npm run bundle:esbuild",
+    "clean": "rm -rf node_modules output dce-output .spago dist/* *.lock .cache",
+    "esbuild": "esbuild --external:url --external:xhr2 --outfile=dist/main.js",
+    "postinstall": "spago install",
+    "dev": "npm run esbuild -- --bundle index-dev.js --servedir=dist",
+    "prod": "npm run bundle && http-server dist",
+    "test": "spago -P test",
+    "watch:purescript": "spago -P build --watch",
+    "watch:tailwind": "tailwindcss -c tailwind.config.js -i tailwind_inputs.css -o assets/styles/tailwind.css --watch"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "devDependencies": {
-    "autoprefixer": "^10.2.5",
-    "clean-webpack-plugin": "^3.0.0",
-    "concurrently": "^7.0.0",
-    "copy-webpack-plugin": "^8.1.1",
-    "css-loader": "^5.2.2",
-    "html-webpack-plugin": "^5.3.1",
-    "postcss": "^8.2.10",
-    "postcss-import": "^14.0.1",
-    "postcss-loader": "^5.2.0",
-    "postcss-preset-env": "^6.7.0",
-    "purs-loader": "^3.7.2",
-    "style-loader": "^2.0.0",
-    "tailwindcss": "^3.0.12",
-    "webpack": "^5.31.2",
-    "webpack-cli": "^4.6.0",
-    "webpack-dev-server": "^3.11.2",
-    "workbox-webpack-plugin": "^6.1.2",
-    "purs-tidy": "^0.6.4"
-  },
   "dependencies": {
     "xhr2": "^0.2.1"
+  },
+  "devDependencies": {
+    "esbuild": "^0.14.10",
+    "http-server": "^14.0.0",
+    "purescript": "^0.14.5",
+    "purs-tidy": "^0.6.4",
+    "spago": "^0.20.3",
+    "tailwindcss": "^3.0.12"
   }
 }

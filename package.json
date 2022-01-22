@@ -1,0 +1,49 @@
+{
+  "name": "purescript-messenger",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "zephyr": "wget https://github.com/MaybeJustJames/zephyr/releases/download/c074270/Linux.tar.gz && tar -xzvf Linux.tar.gz && rm Linux.tar.gz && mv zephyr/zephyr node_modules/.bin/zephyr && rm -rf zephyr",
+    "postinstall": "npm run zephyr && npm i -g spago purescript && (cd common && spago build); npm run bundle -w frontend; npm run bundle -w backend && ln -sf ../backend/dist/main.js dist/backend.js",
+    "start": "node dist/backend.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Unisay/purescript-messenger.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Unisay/purescript-messenger/issues"
+  },
+  "homepage": "https://github.com/Unisay/purescript-messenger#readme",
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "dependencies": {
+    "argon2-ffi": "^2.0.0",
+    "cors": "^2.8.5",
+    "express": "^4.17.2",
+    "jsonwebtoken": "^8.5.1",
+    "sqlite3": "^5.0.2"
+  },
+  "cacheDirectories": [
+    "node_modules",
+    "common/.spago",
+    "common/output",
+    "frontend/node_modules",
+    "frontend/.spago",
+    "frontend/output",
+    "backend/node_modules",
+    "backend/.spago",
+    "backend/output"
+  ],
+  "engines": {
+    "node": "16.x"
+  }
+}

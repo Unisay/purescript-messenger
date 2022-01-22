@@ -13,14 +13,19 @@ to generate this file without the comments in this block.
 { name = "my-project"
 , dependencies =
   [ "argonaut-codecs"
+  , "arrays"
+  , "bifunctors"
   , "codec-argonaut"
   , "console"
   , "effect"
+  , "either"
   , "foreign"
   , "foreign-generic"
-  , "maybe"
   , "prelude"
+  , "profunctor"
   , "psci-support"
+  , "strings"
+  , "transformers"
   , "unicode"
   ]
 , packages = ./packages.dhall

@@ -20,7 +20,6 @@ import Data.Username (Username)
 import Data.Username as Username
 import Effect (Effect)
 import Effect.Aff.Class (class MonadAff)
-import Effect.Class.Console (log)
 import Halogen (liftAff, liftEffect)
 import Halogen as H
 import Halogen.Aff (awaitBody, runHalogenAff)
@@ -57,7 +56,7 @@ data Action
   | SubmitForm Event
 
 component
-  :: ∀ query input output m. MonadAff m => H.Component query input output m
+  :: forall query input output m. MonadAff m => H.Component query input output m
 component =
   H.mkComponent
     { initialState
@@ -65,7 +64,7 @@ component =
     , eval: H.mkEval $ H.defaultEval { handleAction = handleAction }
     }
 
-initialState :: ∀ input. input -> State
+initialState :: forall input. input -> State
 initialState _input =
   { loading: false
   , username: { inputValue: "", result: Nothing }
@@ -73,7 +72,7 @@ initialState _input =
   , response: Nothing
   }
 
-render :: ∀ m. State -> H.ComponentHTML Action () m
+render :: forall m. State -> H.ComponentHTML Action () m
 render state = signinFormContainer
   where
 
@@ -247,7 +246,7 @@ render state = signinFormContainer
     [ "border-red-200", "border-2" ]
 
   validationErrors
-    :: ∀ a
+    :: forall a
      . Maybe (Either (NonEmptyArray String) a)
     -> Array (H.ComponentHTML Action () m)
   validationErrors = case _ of
@@ -260,7 +259,7 @@ render state = signinFormContainer
           [ HH.text errorMessage ]
 
 handleAction
-  :: ∀ input output m
+  :: forall input output m
    . MonadAff m
   => Action
   -> H.HalogenM State Action input output m Unit
@@ -308,7 +307,7 @@ instance Show SignInResponse where
     Forbidden -> "Sign in is forbidden"
     Failure statusCode -> "Failure: " <> show statusCode
 
-createSession :: ∀ m. MonadAff m => Username -> Password -> m SignInResponse
+createSession :: forall m. MonadAff m => Username -> Password -> m SignInResponse
 createSession username password = do
   response <- liftAff $
     AX.request

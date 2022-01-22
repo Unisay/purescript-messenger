@@ -14,18 +14,18 @@ import Auth
   )
 import Chat as Chat
 import Data.Either (Either(..), hush)
+import Data.Int as Int
 import Data.Maybe (Maybe(..), maybe)
 import Data.Password (Password)
 import Data.Username (Username)
 import Data.Username as Username
 import Database as Db
 import Effect (Effect)
-import Effect.Aff (Aff, launchAff_, never, throwError)
+import Effect.Aff (Aff, error, launchAff_, never, throwError)
 import Effect.Class (liftEffect)
 import Effect.Class.Console (log, logShow)
 import Middleware as Middleware
 import Node.Express.App (App, delete, get, listenHttp, post, put)
-import Node.Express.Response as Response
 import Node.Jwt as Jwt
 import Node.Process (lookupEnv)
 import SQLite3 as SQLite
@@ -42,30 +42,41 @@ import ServerM
   )
 
 type Resources =
-  { dbConn :: SQLite.DBConnection
+  { port :: Int
+  , dbConn :: SQLite.DBConnection
   , jwtSecret :: Jwt.Secret
+  , staticPath :: String
   }
 
 main :: Effect Unit
-main = launchAff_ $ Db.withConnection \dbConn -> do
-  liftEffect (lookupEnv "JWT_SECRET") >>= case _ of
-    Nothing ->
-      log "Please specify JWT_SECRET env variable"
-    Just jwtSecret ->
-      mainWithResources { dbConn, jwtSecret: Jwt.Secret jwtSecret }
+main = launchAff_ $ initResources mainWithResources
+
+initResources :: ∀ a. (Resources -> Aff a) -> Aff a
+initResources callback = do
+  port <- env "PORT" >>= case _ of
+    Nothing -> throwError $ error "Please specify PORT env var"
+    Just tcpPort -> case Int.fromString tcpPort of
+      Nothing -> throwError $ error "Please specify valid PORT env var"
+      Just intPort -> pure intPort
+  jwtSecret <- env "JWT_SECRET" >>= case _ of
+    Nothing -> throwError $ error "Please specify JWT_SECRET env var"
+    Just jwtSecret -> pure $ Jwt.Secret jwtSecret
+  staticPath <- env "STATIC_PATH" >>= case _ of
+    Nothing -> throwError $ error "Please specify STATIC_PATH env var"
+    Just path -> pure path
+  Db.withConnection \dbConn -> callback { port, dbConn, jwtSecret, staticPath }
+  where
+  env = liftEffect <<< lookupEnv
 
 mainWithResources :: Resources -> Aff Unit
-mainWithResources resources = do
-  liftEffect $ void $ listenHttp (app resources) tcpPort \_ ->
-    log $ "Listening on " <> show tcpPort
+mainWithResources res@{ port } = do
+  liftEffect $ void $ listenHttp (app res) port \_ ->
+    log $ "Listening on " <> show port
   never
-  where
-  tcpPort = 8081
 
 app :: Resources -> App
-app { dbConn, jwtSecret } = do
-  Middleware.init
-  get "/" $ Response.send "Messenger API"
+app { dbConn, jwtSecret, staticPath } = do
+  Middleware.init staticPath
   put "/users/:username" $ runServerM dbConn do
     username <- readUsername
     { email, password } ::

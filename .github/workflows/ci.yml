@@ -1,0 +1,35 @@
+name: CI
+
+on: push
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: purescript-contrib/setup-purescript@main
+
+      - name: Cache PureScript dependencies
+        uses: actions/cache@v2
+        # This cache uses the .dhall files to know when it should reinstall
+        # and rebuild packages. It caches both the installed packages from
+        # the `.spago` directory and compilation artifacts from the `output`
+        # directory. When restored the compiler will rebuild any files that
+        # have changed. If you do not want to cache compiled output, remove
+        # the `output` path.
+        with:
+          key: ${{ runner.os }}-spago-${{ hashFiles('**/*.dhall') }}
+          path: |
+            frontend/.spago
+            frontend/output
+            backend/.spago
+            backend/output
+            common/.spago
+            common/output
+      - name: Build and test common
+        run: cd common && spago build && spago test --no-install
+      - name: Build and test frontend
+        run: cd frontend && spago build && spago test --no-install
+      - name: Build and test backend
+        run: cd backend && spago build && spago test --no-install
