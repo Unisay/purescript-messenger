@@ -21,11 +21,15 @@ to generate this file without the comments in this block.
   , "either"
   , "foreign"
   , "foreign-generic"
+  , "lcg"
+  , "lists"
   , "prelude"
   , "profunctor"
   , "psci-support"
+  , "quickcheck"
   , "strings"
   , "transformers"
+  , "tuples"
   , "unicode"
   ]
 , packages = ./packages.dhall

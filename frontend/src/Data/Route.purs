@@ -23,6 +23,7 @@ data Route
 
 derive instance Generic Route _
 derive instance Eq Route
+derive instance Ord Route
 instance Show Route where
   show = genericShow
 
