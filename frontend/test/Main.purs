@@ -5,52 +5,75 @@ import Prelude
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
 import Data.Route (Route(..), codec)
-import Data.Traversable (traverse_)
 import Data.Username as Username
 import Effect (Effect)
+import Effect.Class (liftEffect)
+import Effect.Class.Console (log)
 import Routing.Duplex as Routing
+import Test.QuickCheck
+  ( class Testable
+  , Result(..)
+  , Seed
+  , quickCheckWithSeed
+  , randomSeed
+  , (===)
+  )
 import Test.Unit (TestSuite, describe, test)
 import Test.Unit.Assert (shouldEqual)
 import Test.Unit.Main (runTest)
 
-main :: Effect Unit
-main = runTest do
-  describe "Route parser" routeParsing
-  describe "Route printer" routePrinting
-  describe "Route roundtrip" routeRoundtrip
+main ∷ Effect Unit
+main = withSeed >>= \seed → runTest do
+  describe "Route printer" do
+    let printRoute r s = Routing.print codec r `shouldEqual` s
+    test "Home" do
+      printRoute Home "/"
+    test "SignIn" do
+      printRoute SignIn "/signin"
+    test "SignUp" do
+      printRoute SignUp "/signup"
+    test "Profile" do
+      printRoute (Profile (Username.unsafe "yura")) "/profile/yura"
 
-routeParsing :: TestSuite
-routeParsing = do
-  let checkRoute s r = Routing.parse codec s `shouldEqual` Right r
-  test "Home" do
-    checkRoute "/" (Just Home)
-  test "SignIn" do
-    checkRoute "/signin" (Just SignIn)
-  test "SignUp" do
-    checkRoute "/signup" (Just SignUp)
-  test "Profile" do
-    checkRoute "/profile/yura" (Just fixture.profile)
-  test "Unknown" do
-    checkRoute "/unknown" Nothing
+  describe "Route properties" do
 
-routePrinting :: TestSuite
-routePrinting = do
-  let printRoute r s = Routing.print codec r `shouldEqual` s
-  test "Home" do
-    printRoute Home "/"
-  test "SignIn" do
-    printRoute SignIn "/signin"
-  test "SignUp" do
-    printRoute SignUp "/signup"
-  test "Profile" do
-    printRoute fixture.profile "/profile/yura"
+    property "All routes roundrip" seed \route →
+      case Routing.parse codec (Routing.print codec route) of
+        Right (Just route') → route === route'
+        Right Nothing → Failed $ "Unknown route: " <> show route
+        Left err → Failed (show err)
 
-routeRoundtrip :: TestSuite
-routeRoundtrip = test "All routes" $
-  fixture.allRoutes # traverse_ \r ->
-    Routing.parse codec (Routing.print codec r) `shouldEqual` Right (Just r)
+    property "All routes are not empty strings" seed $
+      propAllRoutesPrintNonEmptyString
 
-fixture :: { profile :: Route, allRoutes :: Array Route }
-fixture = { profile, allRoutes: [ Home, SignIn, SignUp, profile ] }
-  where
-  profile = Profile (Username.unsafe "yura")
+    property "All routes printed start from /" seed $
+      propAllRoutesStartFromSlash
+
+    property "Different routes always print into different strings" seed $
+      propDifferentRoutesPrintDifferentStrings
+
+    property "Different strings always parse into different routes" seed $
+      propDifferentStringsParseIntoDifferentRoutes
+
+propAllRoutesPrintNonEmptyString ∷ Route → Result
+propAllRoutesPrintNonEmptyString _route = Failed "Not implemented"
+
+propAllRoutesStartFromSlash ∷ Route → Result
+propAllRoutesStartFromSlash _route = Failed "Homework"
+
+propDifferentRoutesPrintDifferentStrings ∷ Route → Route → Result
+propDifferentRoutesPrintDifferentStrings _r1 _r2 = Failed "Homework"
+
+propDifferentStringsParseIntoDifferentRoutes ∷ String → String → Result
+propDifferentStringsParseIntoDifferentRoutes _s1 _s2 = Failed "Homework"
+
+-- Helper functions:
+
+withSeed ∷ Effect Seed
+withSeed = do
+  seed ← randomSeed
+  log $ "Using " <> show seed
+  pure seed
+
+property ∷ ∀ prop. Testable prop ⇒ String → Seed → prop → TestSuite
+property name seed = test name <<< liftEffect <<< quickCheckWithSeed seed 100

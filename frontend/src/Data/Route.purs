@@ -2,7 +2,7 @@ module Data.Route where
 
 import Prelude
 
-import Data.Array.NonEmpty (intercalate)
+import Data.Array.NonEmpty as NEA
 import Data.Bifunctor (lmap)
 import Data.Generic.Rep (class Generic)
 import Data.Maybe (Maybe)
@@ -12,6 +12,8 @@ import Data.Username as Username
 import Routing.Duplex (RouteDuplex(..), as, path, root, segment)
 import Routing.Duplex.Generic as G
 import Routing.Duplex.Parser as Parser
+import Test.QuickCheck.Arbitrary (class Arbitrary, arbitrary)
+import Test.QuickCheck.Gen as Gen
 
 -- https://github.com/natefaubion/purescript-routing-duplex/blob/v0.2.0/README.md
 
@@ -27,10 +29,17 @@ derive instance Ord Route
 instance Show Route where
   show = genericShow
 
+instance Arbitrary Route where
+  arbitrary = Gen.oneOf $ NEA.cons' (pure Home)
+    [ pure SignIn
+    , pure SignUp
+    , Profile <$> arbitrary
+    ]
+
 codec :: RouteDuplex Route (Maybe Route)
 codec = RouteDuplex i (Parser.optional o)
   where
-  username = as Username.toString (Username.parse >>> lmap (intercalate ";"))
+  username = as Username.toString (Username.parse >>> lmap (NEA.intercalate ";"))
   RouteDuplex i o = root $ G.sum
     { "Home": G.noArgs
     , "SignIn": path "signin" G.noArgs
