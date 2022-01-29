@@ -10,14 +10,9 @@ import Effect (Effect)
 import Effect.Class (liftEffect)
 import Effect.Class.Console (log)
 import Routing.Duplex as Routing
-import Test.QuickCheck
-  ( class Testable
-  , Result(..)
-  , Seed
-  , quickCheckWithSeed
-  , randomSeed
-  , (===)
-  )
+import Test.QuickCheck (class Testable, Result(..), Seed, quickCheckWithSeed, randomSeed, (===))
+import Test.QuickCheck.Arbitrary (class Arbitrary, arbitrary)
+import Test.QuickCheck.Gen (suchThat)
 import Test.Unit (TestSuite, describe, test)
 import Test.Unit.Assert (shouldEqual)
 import Test.Unit.Main (runTest)
@@ -61,11 +56,12 @@ propAllRoutesPrintNonEmptyString _route = Failed "Not implemented"
 propAllRoutesStartFromSlash ∷ Route → Result
 propAllRoutesStartFromSlash _route = Failed "Homework"
 
-propDifferentRoutesPrintDifferentStrings ∷ Route → Route → Result
-propDifferentRoutesPrintDifferentStrings _r1 _r2 = Failed "Homework"
+propDifferentRoutesPrintDifferentStrings ∷ Different Route → Result
+propDifferentRoutesPrintDifferentStrings (Different _r1 _r2) = Failed "Homework"
 
-propDifferentStringsParseIntoDifferentRoutes ∷ String → String → Result
-propDifferentStringsParseIntoDifferentRoutes _s1 _s2 = Failed "Homework"
+propDifferentStringsParseIntoDifferentRoutes ∷ Different String → Result
+propDifferentStringsParseIntoDifferentRoutes (Different _s1 _s2) =
+  Failed "Homework"
 
 -- Helper functions:
 
@@ -77,3 +73,14 @@ withSeed = do
 
 property ∷ ∀ prop. Testable prop ⇒ String → Seed → prop → TestSuite
 property name seed = test name <<< liftEffect <<< quickCheckWithSeed seed 100
+
+data Different a = Different a a
+
+instance Show a => Show (Different a) where
+  show (Different a1 a2) = "Different " <> show a1 <> " " <> show a2
+
+instance (Eq a, Arbitrary a) => Arbitrary (Different a) where
+  arbitrary = do
+    a1 <- arbitrary
+    a2 <- suchThat arbitrary \a -> a /= a1
+    pure $ Different a1 a2
