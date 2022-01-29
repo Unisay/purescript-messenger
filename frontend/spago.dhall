@@ -20,8 +20,10 @@
   , "psci-support"
   , "quickcheck"
   , "routing-duplex"
+  , "strings"
   , "test-unit"
   , "transformers"
+  , "unicode"
   , "web-events"
   ]
 , packages = ./packages.dhall
