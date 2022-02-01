@@ -9,7 +9,7 @@ import Data.Maybe (Maybe)
 import Data.Show.Generic (genericShow)
 import Data.Username (Username)
 import Data.Username as Username
-import Routing.Duplex (RouteDuplex(..), as, path, root, segment)
+import Routing.Duplex (RouteDuplex(..), RouteDuplex', as, path, root, segment)
 import Routing.Duplex.Generic as G
 import Routing.Duplex.Parser as Parser
 import Test.QuickCheck.Arbitrary (class Arbitrary, arbitrary)
@@ -36,8 +36,8 @@ instance Arbitrary Route where
     , Profile <$> arbitrary
     ]
 
-codec :: RouteDuplex Route (Maybe Route)
-codec = RouteDuplex i (Parser.optional o)
+codec :: RouteDuplex' Route
+codec = RouteDuplex i o
   where
   username = as Username.toString (Username.parse >>> lmap (NEA.intercalate ";"))
   RouteDuplex i o = root $ G.sum

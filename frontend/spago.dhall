@@ -19,6 +19,7 @@
   , "profunctor"
   , "psci-support"
   , "quickcheck"
+  , "routing"
   , "routing-duplex"
   , "test-unit"
   , "transformers"

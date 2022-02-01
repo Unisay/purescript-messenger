@@ -56,7 +56,9 @@ data Action
   | SubmitForm Event
 
 component
-  :: forall query input output m. MonadAff m => H.Component query input output m
+  :: forall query input output m
+   . MonadAff m
+  => H.Component query input output m
 component =
   H.mkComponent
     { initialState
@@ -263,7 +265,6 @@ handleAction
    . MonadAff m
   => Action
   -> H.HalogenM State Action input output m Unit
-
 handleAction = case _ of
   SetUsername str -> H.modify_ $ \state ->
     state { username { inputValue = str } }
