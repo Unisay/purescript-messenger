@@ -5,10 +5,10 @@
         "homepage": "",
         "owner": "justinwoo",
         "repo": "easy-purescript-nix",
-        "rev": "ebf07d08ed55ce2fc2cf871a062474c6ad2b49a3",
-        "sha256": "0vyyvhn3q755lhbhhrv8xgmgbpzk7fgj88falpzwyci7vqj1la8q",
+        "rev": "b6d056937dd6851110574462aac92afc77334301",
+        "sha256": "144hh196s9829hlp8pld7g8s3m0ikznvkdibm70flv7c3gmjr3nj",
         "type": "tarball",
-        "url": "https://github.com/justinwoo/easy-purescript-nix/archive/ebf07d08ed55ce2fc2cf871a062474c6ad2b49a3.tar.gz",
+        "url": "https://github.com/justinwoo/easy-purescript-nix/archive/b6d056937dd6851110574462aac92afc77334301.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "niv": {
@@ -29,10 +29,10 @@
         "homepage": "",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "8bd55a6a5ab05942af769c2aa2494044bff7f625",
-        "sha256": "0ijb0gawhvb1lm4ll1605d7p5w2fd2iqwn9l7jx9wkzz0gp85dqj",
+        "rev": "7f65e4abd5ecaad12d2d26e4380d1a7d8edafea7",
+        "sha256": "14rw3x9w8ligkxc4bgc655cxf316gwwvhlm4qh4bdffll324yddb",
         "type": "tarball",
-        "url": "https://github.com/NixOS/nixpkgs/archive/8bd55a6a5ab05942af769c2aa2494044bff7f625.tar.gz",
+        "url": "https://github.com/NixOS/nixpkgs/archive/7f65e4abd5ecaad12d2d26e4380d1a7d8edafea7.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     }
 }
