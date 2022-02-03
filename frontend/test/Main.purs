@@ -99,4 +99,4 @@ withSeed = do
   pure seed
 
 property ∷ ∀ prop. Testable prop ⇒ String → Seed → prop → TestSuite
-property name seed = test name <<< liftEffect <<< quickCheckWithSeed seed 1000
+property name seed = test name <<< liftEffect <<< quickCheckWithSeed seed 100
