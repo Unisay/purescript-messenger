@@ -2,21 +2,19 @@ module Test.Main where
 
 import Prelude
 
-import Data.Array (all, head, length)
+import Data.Array (all, length)
 import Data.CodePoint.Unicode (isPrint)
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
 import Data.Route (Route(..), codec)
 import Data.String (toCodePointArray)
-import Data.String.CodeUnits (singleton, toCharArray)
+import Data.String as String
 import Data.Username as Username
 import Effect (Effect)
 import Effect.Class (liftEffect)
 import Effect.Class.Console (log)
 import Routing.Duplex as Routing
-import Test.QuickCheck (class Testable, Result(..), Seed, quickCheckWithSeed, randomSeed, (/==), (===))
-import Test.QuickCheck.Arbitrary (class Arbitrary, arbitrary)
-import Test.QuickCheck.Gen (suchThat)
+import Test.QuickCheck (class Testable, Result(..), Seed, quickCheckWithSeed, randomSeed, (===))
 import Test.Unit (TestSuite, describe, test)
 import Test.Unit.Assert (shouldEqual)
 import Test.Unit.Main (runTest)
@@ -47,11 +45,11 @@ main = withSeed >>= \seed → runTest do
     property "All routes printed start from /" seed $
       propAllRoutesStartFromSlash
 
-    property "Different routes always print into different strings" seed $
-      propDifferentRoutesPrintDifferentStrings
+    property "Route equality under printing" seed $
+      propRouteEqualityUnderPrinting
 
-    property "Different strings always parse into different routes" seed $
-      propDifferentStringsParseIntoDifferentRoutes
+    property "Route equality under parsing" seed $
+      propEqualityUnderParsing
 
 propAllRoutesPrintNonBlankString ∷ Route → Result
 propAllRoutesPrintNonBlankString route =
@@ -62,40 +60,43 @@ propAllRoutesPrintNonBlankString route =
 
 propAllRoutesStartFromSlash ∷ Route → Result
 propAllRoutesStartFromSlash route =
-  case head $ toCharArray $ Routing.print codec route of
-    Nothing -> Failed "Route is empty"
-    Just char ->
-      if char == '/' then Success
-      else Failed $ "Expected '/', but got: " <> singleton char
+  case String.uncons (Routing.print codec route) of
+    Just { head } | head == String.codePointFromChar '/' -> Success
+    _ -> Failed "Printed route doesn't start with slash"
 
-propDifferentRoutesPrintDifferentStrings ∷ Different Route → Result
-propDifferentRoutesPrintDifferentStrings (Different r1 r2) =
-  Routing.print codec r1 /== Routing.print codec r2
+propRouteEqualityUnderPrinting ∷ Route -> Route → Result
+propRouteEqualityUnderPrinting route1 route2 =
+  routeEquality === printedEquality
+  where
+  printedEquality = printRoute route1 == printRoute route2
+  routeEquality = route1 == route2
+  printRoute = Routing.print codec
 
-propDifferentStringsParseIntoDifferentRoutes ∷ Different String → Result
-propDifferentStringsParseIntoDifferentRoutes (Different _s1 _s2) =
-  Failed
-    """As strings dont belong to parse cases of Route, 
-   it always prints the same result - unknown route """
+propEqualityUnderParsing ∷ String -> String → Result
+propEqualityUnderParsing str1 str2 =
+  if stringEquality == resultEquality then Success
+  else Failed $ String.joinWith "\n"
+    [ "String equality: " <> show stringEquality
+    , "Result equality: " <> show resultEquality
+    , "String #1: " <> str1
+    , "String #2: " <> str2
+    , "Result #1: " <> show (parseRoute str1)
+    , "Result #2: " <> show (parseRoute str2)
+    ]
+  where
+  parseRoute = Routing.parse codec
+  resultEquality = case parseRoute str1, parseRoute str2 of
+    Right route1, Right route2 -> route1 == route2
+    _, _ -> stringEquality
+  stringEquality = str1 == str2
 
 -- Helper functions:
 
 withSeed ∷ Effect Seed
 withSeed = do
-  seed ← randomSeed
-  log $ "Using " <> show seed
+  seed <- randomSeed
+  log ("Using " <> show seed)
   pure seed
 
 property ∷ ∀ prop. Testable prop ⇒ String → Seed → prop → TestSuite
-property name seed = test name <<< liftEffect <<< quickCheckWithSeed seed 100
-
-data Different a = Different a a
-
-instance Show a => Show (Different a) where
-  show (Different a1 a2) = "Different " <> show a1 <> " " <> show a2
-
-instance (Eq a, Arbitrary a) => Arbitrary (Different a) where
-  arbitrary = do
-    a1 <- arbitrary
-    a2 <- suchThat arbitrary \a -> a /= a1
-    pure $ Different a1 a2
+property name seed = test name <<< liftEffect <<< quickCheckWithSeed seed 1000
