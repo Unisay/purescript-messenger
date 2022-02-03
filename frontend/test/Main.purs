@@ -2,25 +2,19 @@ module Test.Main where
 
 import Prelude
 
-import Data.Array (any)
+import Data.Array (all, length)
 import Data.CodePoint.Unicode (isPrint)
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
 import Data.Route (Route(..), codec)
+import Data.String (toCodePointArray)
 import Data.String as String
 import Data.Username as Username
 import Effect (Effect)
 import Effect.Class (liftEffect)
 import Effect.Class.Console (log)
 import Routing.Duplex as Routing
-import Test.QuickCheck
-  ( class Testable
-  , Result(..)
-  , Seed
-  , quickCheckWithSeed
-  , randomSeed
-  , (===)
-  )
+import Test.QuickCheck (class Testable, Result(..), Seed, quickCheckWithSeed, randomSeed, (===))
 import Test.Unit (TestSuite, describe, test)
 import Test.Unit.Assert (shouldEqual)
 import Test.Unit.Main (runTest)
@@ -42,12 +36,11 @@ main = withSeed >>= \seed → runTest do
 
     property "All routes roundrip" seed \route →
       case Routing.parse codec (Routing.print codec route) of
-        Right (Just route') → route === route'
-        Right Nothing → Failed $ "Unknown route: " <> show route
+        Right route' → route === route'
         Left err → Failed (show err)
 
     property "All routes are not empty strings" seed $
-      propAllRoutesPrintNonEmptyString
+      propAllRoutesPrintNonBlankString
 
     property "All routes printed start from /" seed $
       propAllRoutesStartFromSlash
@@ -58,11 +51,12 @@ main = withSeed >>= \seed → runTest do
     property "Route equality under parsing" seed $
       propEqualityUnderParsing
 
-propAllRoutesPrintNonEmptyString ∷ Route → Result
-propAllRoutesPrintNonEmptyString route =
-  case any isPrint (String.toCodePointArray (Routing.print codec route)) of
-    true -> Success
-    false -> Failed "Printed route doesn't contain printable characters"
+propAllRoutesPrintNonBlankString ∷ Route → Result
+propAllRoutesPrintNonBlankString route =
+  if all isPrint cs && length cs > 0 then Success
+  else Failed "Route is empty"
+  where
+  cs = toCodePointArray $ Routing.print codec route
 
 propAllRoutesStartFromSlash ∷ Route → Result
 propAllRoutesStartFromSlash route =
@@ -92,7 +86,7 @@ propEqualityUnderParsing str1 str2 =
   where
   parseRoute = Routing.parse codec
   resultEquality = case parseRoute str1, parseRoute str2 of
-    Right (Just route1), Right (Just route2) -> route1 == route2
+    Right route1, Right route2 -> route1 == route2
     _, _ -> stringEquality
   stringEquality = str1 == str2
 
