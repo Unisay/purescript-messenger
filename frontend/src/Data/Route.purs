@@ -9,9 +9,11 @@ import Data.Maybe (Maybe)
 import Data.Show.Generic (genericShow)
 import Data.Username (Username)
 import Data.Username as Username
-import Routing.Duplex (RouteDuplex(..), RouteDuplex', as, path, root, segment)
+import Effect.Class (class MonadEffect, liftEffect)
+import Routing.Duplex (RouteDuplex(..), RouteDuplex', as, path, print, root, segment)
 import Routing.Duplex.Generic as G
 import Routing.Duplex.Parser as Parser
+import Routing.Hash (setHash)
 import Test.QuickCheck.Arbitrary (class Arbitrary, arbitrary)
 import Test.QuickCheck.Gen as Gen
 
@@ -46,3 +48,6 @@ codec = RouteDuplex i o
     , "SignUp": path "signup" G.noArgs
     , "Profile": path "profile" (username segment)
     }
+
+goTo :: forall m. MonadEffect m => Route -> m Unit
+goTo = liftEffect <<< setHash <<< print codec

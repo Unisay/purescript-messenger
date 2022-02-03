@@ -17,7 +17,7 @@ import Routing.Hash (matchesWith)
 main :: Effect Unit
 main = runHalogenAff do
   body <- awaitBody
-  halogenIO <- runUI Router.component unit body
-  void $ liftEffect $ matchesWith (RD.parse Route.codec) \old new -> do
+  router <- runUI Router.component unit body
+  void $ liftEffect $ matchesWith (RD.parse Route.codec) \old new ->
     when (old /= Just new) do
-      launchAff_ $ halogenIO.query $ H.mkTell $ Router.Navigate new
+      launchAff_ $ router.query $ H.mkTell $ Router.Navigate new

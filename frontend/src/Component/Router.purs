@@ -27,6 +27,7 @@ data Action = Initialize
 type ChildSlots =
   ( home :: OpaqueSlot Unit
   , signin :: OpaqueSlot Unit
+  , navigation :: OpaqueSlot Unit
   )
 
 component :: forall m. MonadAff m => H.Component Query Unit Void m
@@ -76,16 +77,20 @@ render
    . MonadAff m
   => State
   -> H.ComponentHTML action ChildSlots m
-render { route } = case route of
-  Nothing ->
-    HH.div_ [ HH.text "Oh no! That page wasn't found." ]
-  Just r -> case r of
-    Home ->
-      HH.slot_ (Proxy :: _ "home") unit Home.component unit
-    SignIn ->
-      HH.slot_ (Proxy :: _ "signin") unit Signin.component unit
-    SignUp ->
-      HH.slot_ (Proxy :: _ "signin") unit Signin.component unit
-    Profile _username ->
-      HH.slot_ (Proxy :: _ "signin") unit Signin.component unit
-
+render { route } = HH.div_
+  [ -- display navigation component in the slot
+    -- HH.slot_ (Proxy :: _ "navigation") unit Navigation.component unit,
+    -- then display one of the children
+    case route of
+      Nothing ->
+        HH.div_ [ HH.text "Oh no! That page wasn't found." ]
+      Just r -> case r of
+        Home ->
+          HH.slot_ (Proxy :: _ "home") unit Home.component unit
+        SignIn ->
+          HH.slot_ (Proxy :: _ "signin") unit Signin.component unit
+        SignUp ->
+          HH.slot_ (Proxy :: _ "signin") unit Signin.component unit
+        Profile _username ->
+          HH.slot_ (Proxy :: _ "signin") unit Signin.component unit
+  ]

@@ -2,8 +2,8 @@ module Component.Home where
 
 import Prelude
 
+import Data.Route (Route(..), goTo)
 import Effect.Aff.Class (class MonadAff)
-import Effect.Class.Console (log)
 import Halogen as H
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Extended as HH
@@ -13,15 +13,15 @@ type State = Unit
 
 data Action = ButtonClicked
 
-component :: forall query input output m. H.Component query input output m
+component :: forall q i o m. MonadAff m => H.Component q i o m
 component =
   H.mkComponent
     { initialState
     , render
-    , eval: H.mkEval H.defaultEval
+    , eval: H.mkEval $ H.defaultEval { handleAction = handleAction }
     }
 
-initialState :: forall input. input -> State
+initialState :: forall i. i -> State
 initialState _input = unit
 
 render :: forall m. State -> H.ComponentHTML Action () m
@@ -55,26 +55,19 @@ render _state = HH.div
               , "font-extrabold"
               ]
           ]
-          [ HH.text "PureMess Messanger" ]
-      ]
-  , HH.div_
-      [ HH.button
+          [ HH.text "Pure Mess" ]
+      , HH.button
           [ HP.type_ HP.ButtonButton
           , HE.onClick \_ -> ButtonClicked
           , HP.classNames
               [ "justify-center"
               , "flex"
               , "font-medium"
+              , "w-full"
               ]
           ]
           [ HH.span
-              [ HP.classNames
-                  [ "left-0"
-                  , "flex"
-                  , "items-center"
-                  , "pl-3"
-                  ]
-              ]
+              [ HP.classNames [] ]
               [ HH.text "Go to SignIn" ]
           ]
       ]
@@ -82,5 +75,5 @@ render _state = HH.div
 
 handleAction
   :: forall i o m. MonadAff m => Action -> H.HalogenM State Action i o m Unit
-handleAction ButtonClicked = log "Go to SignIn"
+handleAction ButtonClicked = goTo SignIn
 
