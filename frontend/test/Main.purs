@@ -2,15 +2,20 @@ module Test.Main where
 
 import Prelude
 
+import Data.Array (head)
+import Data.CodePoint.Unicode (isPrint)
 import Data.Either (Either(..))
+import Data.Foldable (any)
 import Data.Maybe (Maybe(..))
 import Data.Route (Route(..), codec)
+import Data.String (toCodePointArray)
+import Data.String.CodeUnits (singleton, toCharArray)
 import Data.Username as Username
 import Effect (Effect)
 import Effect.Class (liftEffect)
 import Effect.Class.Console (log)
 import Routing.Duplex as Routing
-import Test.QuickCheck (class Testable, Result(..), Seed, quickCheckWithSeed, randomSeed, (===))
+import Test.QuickCheck (class Testable, Result(..), Seed, quickCheckWithSeed, randomSeed, (/==), (===))
 import Test.QuickCheck.Arbitrary (class Arbitrary, arbitrary)
 import Test.QuickCheck.Gen (suchThat)
 import Test.Unit (TestSuite, describe, test)
@@ -34,8 +39,7 @@ main = withSeed >>= \seed → runTest do
 
     property "All routes roundrip" seed \route →
       case Routing.parse codec (Routing.print codec route) of
-        Right (Just route') → route === route'
-        Right Nothing → Failed $ "Unknown route: " <> show route
+        Right route' → route === route'
         Left err → Failed (show err)
 
     property "All routes are not empty strings" seed $
@@ -51,17 +55,31 @@ main = withSeed >>= \seed → runTest do
       propDifferentStringsParseIntoDifferentRoutes
 
 propAllRoutesPrintNonEmptyString ∷ Route → Result
-propAllRoutesPrintNonEmptyString _route = Failed "Not implemented"
+propAllRoutesPrintNonEmptyString route =
+  if
+    any isPrint
+      $ toCodePointArray
+      $ Routing.print codec route then Success
+  else Failed "Route is empty"
 
 propAllRoutesStartFromSlash ∷ Route → Result
-propAllRoutesStartFromSlash _route = Failed "Homework"
+propAllRoutesStartFromSlash route =
+  case head $ toCharArray $ Routing.print codec route of
+    Nothing -> Failed "Route is empty"
+    Just char ->
+      if char == '/' then Success
+      else Failed
+        $ "Expected '/', but got: " <> singleton char
 
 propDifferentRoutesPrintDifferentStrings ∷ Different Route → Result
-propDifferentRoutesPrintDifferentStrings (Different _r1 _r2) = Failed "Homework"
+propDifferentRoutesPrintDifferentStrings (Different r1 r2) =
+  Routing.print codec r1 /== Routing.print codec r2
 
 propDifferentStringsParseIntoDifferentRoutes ∷ Different String → Result
 propDifferentStringsParseIntoDifferentRoutes (Different _s1 _s2) =
-  Failed "Homework"
+  Failed
+    """As strings dont belong to parse cases of Route, 
+   it always prints the same result - unknown route """
 
 -- Helper functions:
 
