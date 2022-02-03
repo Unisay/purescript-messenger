@@ -2,10 +2,9 @@ module Test.Main where
 
 import Prelude
 
-import Data.Array (head)
+import Data.Array (all, head, length)
 import Data.CodePoint.Unicode (isPrint)
 import Data.Either (Either(..))
-import Data.Foldable (any)
 import Data.Maybe (Maybe(..))
 import Data.Route (Route(..), codec)
 import Data.String (toCodePointArray)
@@ -43,7 +42,7 @@ main = withSeed >>= \seed → runTest do
         Left err → Failed (show err)
 
     property "All routes are not empty strings" seed $
-      propAllRoutesPrintNonEmptyString
+      propAllRoutesPrintNonBlankString
 
     property "All routes printed start from /" seed $
       propAllRoutesStartFromSlash
@@ -54,13 +53,12 @@ main = withSeed >>= \seed → runTest do
     property "Different strings always parse into different routes" seed $
       propDifferentStringsParseIntoDifferentRoutes
 
-propAllRoutesPrintNonEmptyString ∷ Route → Result
-propAllRoutesPrintNonEmptyString route =
-  if
-    any isPrint
-      $ toCodePointArray
-      $ Routing.print codec route then Success
+propAllRoutesPrintNonBlankString ∷ Route → Result
+propAllRoutesPrintNonBlankString route =
+  if all isPrint cs && length cs > 0 then Success
   else Failed "Route is empty"
+  where
+  cs = toCodePointArray $ Routing.print codec route
 
 propAllRoutesStartFromSlash ∷ Route → Result
 propAllRoutesStartFromSlash route =
@@ -68,8 +66,7 @@ propAllRoutesStartFromSlash route =
     Nothing -> Failed "Route is empty"
     Just char ->
       if char == '/' then Success
-      else Failed
-        $ "Expected '/', but got: " <> singleton char
+      else Failed $ "Expected '/', but got: " <> singleton char
 
 propDifferentRoutesPrintDifferentStrings ∷ Different Route → Result
 propDifferentRoutesPrintDifferentStrings (Different r1 r2) =
