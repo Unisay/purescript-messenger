@@ -42,8 +42,7 @@ main = withSeed >>= \seed → runTest do
 
     property "All routes roundrip" seed \route →
       case Routing.parse codec (Routing.print codec route) of
-        Right (Just route') → route === route'
-        Right Nothing → Failed $ "Unknown route: " <> show route
+        Right route' → route === route'
         Left err → Failed (show err)
 
     property "All routes are not empty strings" seed $
@@ -92,7 +91,7 @@ propEqualityUnderParsing str1 str2 =
   where
   parseRoute = Routing.parse codec
   resultEquality = case parseRoute str1, parseRoute str2 of
-    Right (Just route1), Right (Just route2) -> route1 == route2
+    Right route1, Right route2 -> route1 == route2
     _, _ -> stringEquality
   stringEquality = str1 == str2
 
@@ -105,4 +104,4 @@ withSeed = do
   pure seed
 
 property ∷ ∀ prop. Testable prop ⇒ String → Seed → prop → TestSuite
-property name seed = test name <<< liftEffect <<< quickCheckWithSeed seed 1000
+property name seed = test name <<< liftEffect <<< quickCheckWithSeed seed 100
