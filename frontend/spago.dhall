@@ -11,6 +11,7 @@
   , "effect"
   , "either"
   , "errors"
+  , "foldable-traversable"
   , "halogen"
   , "http-methods"
   , "maybe"
@@ -21,8 +22,10 @@
   , "quickcheck"
   , "routing"
   , "routing-duplex"
+  , "strings"
   , "test-unit"
   , "transformers"
+  , "unicode"
   , "web-events"
   ]
 , packages = ./packages.dhall
