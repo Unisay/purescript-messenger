@@ -4,7 +4,6 @@ import Prelude
 
 import Component.Home as Home
 import Component.Signin as Signin
-import Component.Utils (OpaqueSlot)
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
 import Data.Route (Route(..))
@@ -12,7 +11,7 @@ import Data.Route as Route
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class (class MonadEffect, liftEffect)
 import Effect.Class.Console (log)
-import Halogen as H
+import Halogen.Extended as H
 import Halogen.HTML as HH
 import Routing.Duplex as RD
 import Routing.Hash (getHash, setHash)
@@ -25,9 +24,9 @@ type State = { route :: Maybe Route }
 data Action = Initialize
 
 type ChildSlots =
-  ( home :: OpaqueSlot Unit
-  , signin :: OpaqueSlot Unit
-  , navigation :: OpaqueSlot Unit
+  ( home :: H.OpaqueSlot Unit
+  , signin :: H.OpaqueSlot Unit
+  , navigation :: H.OpaqueSlot Unit
   )
 
 component :: forall m. MonadAff m => H.Component Query Unit Void m
