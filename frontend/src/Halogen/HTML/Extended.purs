@@ -4,6 +4,9 @@ module Halogen.HTML.Extended
   , whenElem
   ) where
 
+import Prelude
+
+import Data.Maybe (Maybe(..))
 import Halogen.HTML
   ( class IsProp
   , AttrName(..)
@@ -236,17 +239,14 @@ import Halogen.HTML
   , wbr
   , withKeys
   , withKeys_
-  )
-  as HH
-import Prelude
-import Data.Maybe (Maybe(..))
+  ) as HH
 
-maybeElem :: forall w idx a. Maybe a -> (a -> HH.HTML w idx) -> HH.HTML w idx
+maybeElem ∷ ∀ w idx a. Maybe a → (a → HH.HTML w idx) → HH.HTML w idx
 maybeElem val f = case val of
-  Just x -> f x
-  Nothing -> HH.text ""
+  Just x → f x
+  Nothing → HH.text ""
 
-whenElem :: forall w idx. Boolean -> (Unit -> HH.HTML w idx) -> HH.HTML w idx
+whenElem ∷ ∀ w idx. Boolean → (Unit → HH.HTML w idx) → HH.HTML w idx
 whenElem cond f = case cond of
-  true -> f unit
-  false -> HH.text ""
+  true → f unit
+  false → HH.text ""

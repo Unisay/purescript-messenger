@@ -61,10 +61,10 @@ propAllRoutesPrintNonBlankString route =
 propAllRoutesStartFromSlash ∷ Route → Result
 propAllRoutesStartFromSlash route =
   case String.uncons (Routing.print codec route) of
-    Just { head } | head == String.codePointFromChar '/' -> Success
-    _ -> Failed "Printed route doesn't start with slash"
+    Just { head } | head == String.codePointFromChar '/' → Success
+    _ → Failed "Printed route doesn't start with slash"
 
-propRouteEqualityUnderPrinting ∷ Route -> Route → Result
+propRouteEqualityUnderPrinting ∷ Route → Route → Result
 propRouteEqualityUnderPrinting route1 route2 =
   routeEquality === printedEquality
   where
@@ -72,7 +72,7 @@ propRouteEqualityUnderPrinting route1 route2 =
   routeEquality = route1 == route2
   printRoute = Routing.print codec
 
-propEqualityUnderParsing ∷ String -> String → Result
+propEqualityUnderParsing ∷ String → String → Result
 propEqualityUnderParsing str1 str2 =
   if stringEquality == resultEquality then Success
   else Failed $ String.joinWith "\n"
@@ -86,15 +86,15 @@ propEqualityUnderParsing str1 str2 =
   where
   parseRoute = Routing.parse codec
   resultEquality = case parseRoute str1, parseRoute str2 of
-    Right route1, Right route2 -> route1 == route2
-    _, _ -> stringEquality
+    Right route1, Right route2 → route1 == route2
+    _, _ → stringEquality
   stringEquality = str1 == str2
 
 -- Helper functions:
 
 withSeed ∷ Effect Seed
 withSeed = do
-  seed <- randomSeed
+  seed ← randomSeed
   log ("Using " <> show seed)
   pure seed
 

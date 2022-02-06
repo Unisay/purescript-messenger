@@ -81,5 +81,5 @@ import Halogen.HTML.Properties
   , width
   ) as HP
 
-classNames :: forall r i. Array String -> HP.IProp (class :: String | r) i
+classNames ∷ ∀ r i. Array String → HP.IProp (class ∷ String | r) i
 classNames = HP.classes <<< map ClassName

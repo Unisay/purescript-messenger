@@ -30,22 +30,22 @@ import Halogen.VDom.Driver (runUI)
 import Web.Event.Event (Event)
 import Web.Event.Event as Event
 
-main :: Effect Unit
+main ∷ Effect Unit
 main =
   runHalogenAff do
-    body <- awaitBody
+    body ← awaitBody
     runUI component unit body
 
 type Validation a =
-  { inputValue :: String
-  , result :: Maybe (Either (NonEmptyArray String) a)
+  { inputValue ∷ String
+  , result ∷ Maybe (Either (NonEmptyArray String) a)
   }
 
 type State =
-  { loading :: Boolean
-  , username :: Validation Username
-  , password :: Validation Password
-  , response :: Maybe SignInResponse
+  { loading ∷ Boolean
+  , username ∷ Validation Username
+  , password ∷ Validation Password
+  , response ∷ Maybe SignInResponse
   }
 
 data Action
@@ -56,9 +56,9 @@ data Action
   | SubmitForm Event
 
 component
-  :: forall query input output m
-   . MonadAff m
-  => H.Component query input output m
+  ∷ ∀ query input output m
+  . MonadAff m
+  ⇒ H.Component query input output m
 component =
   H.mkComponent
     { initialState
@@ -66,7 +66,7 @@ component =
     , eval: H.mkEval $ H.defaultEval { handleAction = handleAction }
     }
 
-initialState :: forall input. input -> State
+initialState ∷ ∀ input. input → State
 initialState _input =
   { loading: false
   , username: { inputValue: "", result: Nothing }
@@ -74,7 +74,7 @@ initialState _input =
   , response: Nothing
   }
 
-render :: forall m. State -> H.ComponentHTML Action () m
+render ∷ ∀ m. State → H.ComponentHTML Action () m
 render state = signinFormContainer
   where
 
@@ -125,10 +125,10 @@ render state = signinFormContainer
       ]
       [ HH.div [ HP.classNames [ "text-red-600" ] ]
           [ HH.text case state.response of
-              Just SignedIn -> "You successfully signed in!"
-              Just Forbidden -> "Incorrect username or password!"
-              Just (Failure str) -> "Got an error: " <> str
-              Nothing -> ""
+              Just SignedIn → "You successfully signed in!"
+              Just Forbidden → "Incorrect username or password!"
+              Just (Failure str) → "Got an error: " <> str
+              Nothing → ""
           ]
       , HH.div_ $ Array.concat
           [ [ HH.label
@@ -141,7 +141,7 @@ render state = signinFormContainer
                 , HP.placeholder "Username"
                 , HP.value state.username.inputValue
                 , HE.onValueInput SetUsername
-                , HE.onBlur \_ -> ValidateUsername
+                , HE.onBlur \_ → ValidateUsername
                 , HP.classNames $
                     [ "appearance-none"
                     , "rounded"
@@ -179,7 +179,7 @@ render state = signinFormContainer
                 , HP.type_ HP.InputPassword
                 , HP.value state.password.inputValue
                 , HE.onValueInput SetPassword
-                , HE.onBlur \_ -> ValidatePassword
+                , HE.onBlur \_ → ValidatePassword
                 , HP.classNames $
                     [ "appearance-none"
                     , "rounded"
@@ -248,54 +248,54 @@ render state = signinFormContainer
     [ "border-red-200", "border-2" ]
 
   validationErrors
-    :: forall a
-     . Maybe (Either (NonEmptyArray String) a)
-    -> Array (H.ComponentHTML Action () m)
+    ∷ ∀ a
+    . Maybe (Either (NonEmptyArray String) a)
+    → Array (H.ComponentHTML Action () m)
   validationErrors = case _ of
-    Nothing -> []
-    Just response ->
+    Nothing → []
+    Just response →
       (flipEither >>> hush >>> Array.fromFoldable >>> flip bind NEA.toArray)
         response
-        <#> \errorMessage -> HH.div
+        <#> \errorMessage → HH.div
           [ HP.classNames [ "text-red-800" ] ]
           [ HH.text errorMessage ]
 
 handleAction
-  :: forall input output m
-   . MonadAff m
-  => Action
-  -> H.HalogenM State Action input output m Unit
+  ∷ ∀ input output m
+  . MonadAff m
+  ⇒ Action
+  → H.HalogenM State Action input output m Unit
 handleAction = case _ of
-  SetUsername str -> H.modify_ $ \state ->
+  SetUsername str → H.modify_ $ \state →
     state { username { inputValue = str } }
-  SetPassword str -> H.modify_ $ \state ->
+  SetPassword str → H.modify_ $ \state →
     state { password { inputValue = str } }
-  ValidateUsername -> do
-    { username } <- H.get
+  ValidateUsername → do
+    { username } ← H.get
     case Username.parse username.inputValue of
-      Left errors -> H.modify_ $ \state ->
+      Left errors → H.modify_ $ \state →
         state { username { result = pure $ Left errors } }
-      Right username' -> H.modify_ $ \state ->
+      Right username' → H.modify_ $ \state →
         state { username { result = pure $ Right username' } }
-  ValidatePassword -> do
-    { password } <- H.get
+  ValidatePassword → do
+    { password } ← H.get
     case Password.parse password.inputValue of
-      Left err -> H.modify_ $ \state ->
+      Left err → H.modify_ $ \state →
         state { password { result = pure $ Left $ pure err } }
-      Right password' -> H.modify_ $ \state ->
+      Right password' → H.modify_ $ \state →
         state { password { result = pure $ Right password' } }
-  SubmitForm ev -> do
+  SubmitForm ev → do
     liftEffect $ Event.preventDefault ev
-    { password, username } <- H.get
+    { password, username } ← H.get
     let pass = pure unit
     maybe pass (either (const pass) identity) $ runExceptT ado
-      password <- wrap password.result
-      username <- wrap username.result
+      password ← wrap password.result
+      username ← wrap username.result
       in
         createSession username password >>= case _ of
-          SignedIn -> H.modify_ _ { response = Just SignedIn }
-          Forbidden -> H.modify_ _ { response = Just Forbidden }
-          Failure str -> H.modify_ _ { response = Just (Failure str) }
+          SignedIn → H.modify_ _ { response = Just SignedIn }
+          Forbidden → H.modify_ _ { response = Just Forbidden }
+          Failure str → H.modify_ _ { response = Just (Failure str) }
 
 data SignInResponse
   = SignedIn
@@ -304,13 +304,13 @@ data SignInResponse
 
 instance Show SignInResponse where
   show = case _ of
-    SignedIn -> "Signed In"
-    Forbidden -> "Sign in is forbidden"
-    Failure statusCode -> "Failure: " <> show statusCode
+    SignedIn → "Signed In"
+    Forbidden → "Sign in is forbidden"
+    Failure statusCode → "Failure: " <> show statusCode
 
-createSession :: forall m. MonadAff m => Username -> Password -> m SignInResponse
+createSession ∷ ∀ m. MonadAff m ⇒ Username → Password → m SignInResponse
 createSession username password = do
-  response <- liftAff $
+  response ← liftAff $
     AX.request
       AX.defaultRequest
         { method = Left PUT
@@ -322,10 +322,10 @@ createSession username password = do
   let
     serverResponse =
       case response of
-        Left err -> Failure (AX.printError err)
-        Right { status } ->
+        Left err → Failure (AX.printError err)
+        Right { status } →
           case unwrap status of
-            200 -> SignedIn
-            403 -> Forbidden
-            _ -> Failure (show status)
+            200 → SignedIn
+            403 → Forbidden
+            _ → Failure (show status)
   pure serverResponse

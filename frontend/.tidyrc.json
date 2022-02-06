@@ -5,6 +5,6 @@
   "operatorsFile": null,
   "ribbon": 1,
   "typeArrowPlacement": "first",
-  "unicode": "source",
+  "unicode": "always",
   "width": null
 }

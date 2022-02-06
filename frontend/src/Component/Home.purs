@@ -13,7 +13,7 @@ type State = Unit
 
 data Action = ButtonClicked
 
-component :: forall q i o m. MonadAff m => H.Component q i o m
+component ∷ ∀ q i o m. MonadAff m ⇒ H.Component q i o m
 component =
   H.mkComponent
     { initialState
@@ -21,10 +21,10 @@ component =
     , eval: H.mkEval $ H.defaultEval { handleAction = handleAction }
     }
 
-initialState :: forall i. i -> State
+initialState ∷ ∀ i. i → State
 initialState _input = unit
 
-render :: forall m. State -> H.ComponentHTML Action () m
+render ∷ ∀ m. State → H.ComponentHTML Action () m
 render _state = HH.div
   [ HP.classNames
       [ "flex"
@@ -58,7 +58,7 @@ render _state = HH.div
           [ HH.text "Pure Mess" ]
       , HH.button
           [ HP.type_ HP.ButtonButton
-          , HE.onClick \_ -> ButtonClicked
+          , HE.onClick \_ → ButtonClicked
           , HP.classNames
               [ "justify-center"
               , "flex"
@@ -74,6 +74,6 @@ render _state = HH.div
   ]
 
 handleAction
-  :: forall i o m. MonadAff m => Action -> H.HalogenM State Action i o m Unit
+  ∷ ∀ i o m. MonadAff m ⇒ Action → H.HalogenM State Action i o m Unit
 handleAction ButtonClicked = goTo SignIn
 

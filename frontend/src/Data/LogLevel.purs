@@ -6,6 +6,6 @@ data LogLevel
   = Dev
   | Prod
 
-derive instance eqLogLevel :: Eq LogLevel
+derive instance eqLogLevel ∷ Eq LogLevel
 
-derive instance ordLogLevel :: Ord LogLevel
+derive instance ordLogLevel ∷ Ord LogLevel

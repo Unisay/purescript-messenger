@@ -5,14 +5,20 @@ import Prelude
 import Data.Array.NonEmpty as NEA
 import Data.Bifunctor (lmap)
 import Data.Generic.Rep (class Generic)
-import Data.Maybe (Maybe)
 import Data.Show.Generic (genericShow)
 import Data.Username (Username)
 import Data.Username as Username
 import Effect.Class (class MonadEffect, liftEffect)
-import Routing.Duplex (RouteDuplex(..), RouteDuplex', as, path, print, root, segment)
+import Routing.Duplex
+  ( RouteDuplex(..)
+  , RouteDuplex'
+  , as
+  , path
+  , print
+  , root
+  , segment
+  )
 import Routing.Duplex.Generic as G
-import Routing.Duplex.Parser as Parser
 import Routing.Hash (setHash)
 import Test.QuickCheck.Arbitrary (class Arbitrary, arbitrary)
 import Test.QuickCheck.Gen as Gen
@@ -38,7 +44,7 @@ instance Arbitrary Route where
     , Profile <$> arbitrary
     ]
 
-codec :: RouteDuplex' Route
+codec ∷ RouteDuplex' Route
 codec = RouteDuplex i o
   where
   username = as Username.toString (Username.parse >>> lmap (NEA.intercalate ";"))
@@ -49,5 +55,5 @@ codec = RouteDuplex i o
     , "Profile": path "profile" (username segment)
     }
 
-goTo :: forall m. MonadEffect m => Route -> m Unit
+goTo ∷ ∀ m. MonadEffect m ⇒ Route → m Unit
 goTo = liftEffect <<< setHash <<< print codec
