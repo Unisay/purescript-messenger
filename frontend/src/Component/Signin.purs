@@ -56,9 +56,7 @@ data Action
   | SubmitForm Event
 
 component
-  ∷ ∀ query input output m
-  . MonadAff m
-  ⇒ H.Component query input output m
+  ∷ ∀ query input output m. MonadAff m ⇒ H.Component query input output m
 component =
   H.mkComponent
     { initialState
@@ -77,7 +75,6 @@ initialState _input =
 render ∷ ∀ m. State → H.ComponentHTML Action () m
 render state = signinFormContainer
   where
-
   signinFormContainer =
     HH.div
       [ HP.classNames
@@ -233,9 +230,7 @@ render state = signinFormContainer
                   ]
               ]
               [ HH.span
-                  [ HP.classNames
-                      [ "left-0", "flex", "items-center", "pl-3" ]
-                  ]
+                  [ HP.classNames [ "left-0", "flex", "items-center", "pl-3" ] ]
                   [ HH.text
                       if state.loading then "Signing in..." else "Sign In"
                   ]
@@ -244,8 +239,7 @@ render state = signinFormContainer
 
       ]
 
-  errorClasses =
-    [ "border-red-200", "border-2" ]
+  errorClasses = [ "border-red-200", "border-2" ]
 
   validationErrors
     ∷ ∀ a
@@ -308,7 +302,8 @@ instance Show SignInResponse where
     Forbidden → "Sign in is forbidden"
     Failure statusCode → "Failure: " <> show statusCode
 
-createSession ∷ ∀ m. MonadAff m ⇒ Username → Password → m SignInResponse
+createSession
+  ∷ ∀ m. MonadAff m ⇒ Username → Password → m SignInResponse
 createSession username password = do
   response ← liftAff $
     AX.request

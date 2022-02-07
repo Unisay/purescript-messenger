@@ -72,10 +72,10 @@ navigate r = do
   H.put { route: Just r }
 
 render
-  ∷ ∀ m action
+  ∷ ∀ m a
   . MonadAff m
   ⇒ State
-  → H.ComponentHTML action ChildSlots m
+  → H.ComponentHTML a ChildSlots m
 render { route } = HH.div_
   [ -- display navigation component in the slot
     -- HH.slot_ (Proxy :: _ "navigation") unit Navigation.component unit,
