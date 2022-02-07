@@ -11,3 +11,4 @@ generated-docs/
 *.code-workspace
 .psci_modules
 .vscode/
+.direnv/
