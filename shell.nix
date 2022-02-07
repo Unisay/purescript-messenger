@@ -13,5 +13,6 @@ pkgs.stdenv.mkDerivation {
     pursPkgs.purs
     pursPkgs.spago
     pursPkgs.zephyr
+    pursPkgs.purs-tidy
   ];
 }
