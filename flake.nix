@@ -23,7 +23,6 @@
               nixpkgs-fmt
               nodejs-16_x
               purescript
-              purs-tidy
               spago
             ];
             shellHook = ''
