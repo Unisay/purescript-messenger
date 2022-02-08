@@ -471,11 +471,35 @@ Ensure the default browser behavior of the `hidden` attribute.
 .relative {
   position: relative;
 }
-
+.overline {
+  text-decoration-line: overline;
+}
+.text-blue-800 {
+  color: rgb(30 64 175);
+}
+.text-xl {
+  font-size: 1.25rem;
+  line-height: 1.75rem;
+}
+.text-2xl {
+  font-size: 1.5rem;
+  line-height: 2rem;
+}
+.align-center {
+  align-content: center;
+}
 .left-0 {
   left: 0px;
 }
-
+.ml-8 {
+  margin-left: 2rem;
+}
+.mr-16 {
+  margin-right: 4rem;
+}
+.mr-auto {
+  margin-right: auto;
+}
 .mt-6 {
   margin-top: 1.5rem;
 }
@@ -587,6 +611,9 @@ Ensure the default browser behavior of the `hidden` attribute.
 .bg-indigo-600 {
   --tw-bg-opacity: 1;
   background-color: rgb(79 70 229 / var(--tw-bg-opacity));
+}
+.justify-end {
+  justify-content: flex-end;
 }
 
 .p-5 {
