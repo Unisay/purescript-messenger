@@ -1,8 +1,12 @@
-module Component.Router where
+module Component.Router
+  ( component
+  , Query(..)
+  ) where
 
 import Prelude
 
 import Component.Home as Home
+import Component.Navigation as Navigation
 import Component.Signin as Signin
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
@@ -19,15 +23,19 @@ import Type.Proxy (Proxy(..))
 
 data Query a = Navigate Route a
 
-type State = { route ∷ Maybe Route }
+type State = { route ∷ Route }
 
 data Action = Initialize
 
 type ChildSlots =
   ( home ∷ H.OpaqueSlot Unit
   , signin ∷ H.OpaqueSlot Unit
-  , navigation ∷ H.OpaqueSlot Unit
+  , navigation ∷ H.Slot Navigation.Query Void Unit
   )
+
+_navigation =
+  Proxy ∷ Proxy
+    "navigation"
 
 component ∷ ∀ m. MonadAff m ⇒ H.Component Query Unit Void m
 component = H.mkComponent
@@ -41,7 +49,7 @@ component = H.mkComponent
   }
 
 initialState ∷ ∀ input. input → State
-initialState _input = { route: Nothing }
+initialState _input = { route: Home }
 
 handleAction
   ∷ ∀ m
@@ -60,7 +68,10 @@ handleQuery
   . MonadEffect m
   ⇒ Query a
   → H.HalogenM State Action ChildSlots Void m (Maybe a)
-handleQuery (Navigate dest a) = navigate dest $> Just a
+handleQuery (Navigate dest a) = do
+  navigate dest
+  H.tell _navigation unit $ Navigation.Navigate dest
+  pure $ Just a
 
 navigate
   ∷ ∀ m
@@ -69,7 +80,7 @@ navigate
   → H.HalogenM State Action ChildSlots Void m Unit
 navigate r = do
   liftEffect $ setHash $ RD.print Route.codec r
-  H.put { route: Just r }
+  H.put { route: r }
 
 render
   ∷ ∀ m a
@@ -77,19 +88,14 @@ render
   ⇒ State
   → H.ComponentHTML a ChildSlots m
 render { route } = HH.div_
-  [ -- display navigation component in the slot
-    -- HH.slot_ (Proxy :: _ "navigation") unit Navigation.component unit,
-    -- then display one of the children
-    case route of
-      Nothing →
-        HH.div_ [ HH.text "Oh no! That page wasn't found." ]
-      Just r → case r of
-        Home →
-          HH.slot_ (Proxy ∷ _ "home") unit Home.component unit
-        SignIn →
-          HH.slot_ (Proxy ∷ _ "signin") unit Signin.component unit
-        SignUp →
-          HH.slot_ (Proxy ∷ _ "signin") unit Signin.component unit
-        Profile _username →
-          HH.slot_ (Proxy ∷ _ "signin") unit Signin.component unit
+  [ HH.slot_ _navigation unit Navigation.component route
+  , case route of
+      Home →
+        HH.slot_ (Proxy ∷ _ "home") unit Home.component unit
+      SignIn →
+        HH.slot_ (Proxy ∷ _ "signin") unit Signin.component unit
+      SignUp →
+        HH.slot_ (Proxy ∷ _ "signin") unit Signin.component unit
+      Profile _username →
+        HH.slot_ (Proxy ∷ _ "signin") unit Signin.component unit
   ]
