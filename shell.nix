@@ -1,17 +1,10 @@
-{ sources ? import ./nix/sources.nix }:
-let
-  pkgs = import sources.nixpkgs { overlays = [ ]; config = { }; };
-  pursPkgs = import sources.easy-purescript-nix { inherit pkgs; };
-in
-pkgs.stdenv.mkDerivation {
-  name = "purescript-messenger";
-  buildInputs = with pursPkgs; [
-    pkgs.dhall
-    pkgs.httpie
-    pkgs.nixpkgs-fmt
-    pkgs.nodejs-16_x
-    pursPkgs.purs
-    pursPkgs.spago
-    pursPkgs.zephyr
-  ];
-}
+(import
+  (
+    let lock = builtins.fromJSON (builtins.readFile ./flake.lock); in
+    fetchTarball {
+      url = "https://github.com/edolstra/flake-compat/archive/${lock.nodes.flake-compat.locked.rev}.tar.gz";
+      sha256 = lock.nodes.flake-compat.locked.narHash;
+    }
+  )
+  { src = ./.; }
+).shellNix
