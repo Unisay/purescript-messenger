@@ -41,7 +41,8 @@ instance Arbitrary Route where
 codec ∷ RouteDuplex' Route
 codec = RouteDuplex i o
   where
-  username = as Username.toString (Username.parse >>> lmap (NEA.intercalate ";"))
+  username = as Username.toString
+    (Username.parse >>> lmap (NEA.intercalate ";"))
   RouteDuplex i o = root $ G.sum
     { "Home": G.noArgs
     , "SignIn": path "signin" G.noArgs
