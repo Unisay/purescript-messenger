@@ -12,7 +12,7 @@
   },
   "scripts": {
     "build:purescript": "spago -P build",
-    "build:tailwind": "tailwindcss -c tailwind.config.js -i tailwind_inputs.css -o assets/styles/tailwind.css",
+    "build:tailwind": "tailwindcss -c tailwind.config.js -i tailwind_inputs.css -o dist/styles/tailwind.css",
     "build": "npm run build:purescript && npm run build:tailwind",
     "bundle:build": "spago -P build --purs-args '--codegen corefn'",
     "bundle:dce": "zephyr -f Main.main",
@@ -25,7 +25,7 @@
     "prod": "npm run bundle && http-server dist",
     "test": "spago -P test",
     "watch:purescript": "spago -P build --watch",
-    "watch:tailwind": "tailwindcss -c tailwind.config.js -i tailwind_inputs.css -o assets/styles/tailwind.css --watch"
+    "watch:tailwind": "tailwindcss -c tailwind.config.js -i tailwind_inputs.css -o dist/styles/tailwind.css --watch"
   },
   "keywords": [],
   "author": "",
