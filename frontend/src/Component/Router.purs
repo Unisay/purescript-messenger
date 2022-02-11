@@ -30,12 +30,7 @@ data Action = Initialize
 type ChildSlots =
   ( home ∷ H.OpaqueSlot Unit
   , signin ∷ H.OpaqueSlot Unit
-  , navigation ∷ H.Slot Navigation.Query Void Unit
   )
-
-_navigation =
-  Proxy ∷ Proxy
-    "navigation"
 
 component ∷ ∀ m. MonadAff m ⇒ H.Component Query Unit Void m
 component = H.mkComponent
@@ -68,32 +63,25 @@ handleQuery
   . MonadEffect m
   ⇒ Query a
   → H.HalogenM State Action ChildSlots Void m (Maybe a)
-handleQuery (Navigate dest a) = do
-  navigate dest
-  H.tell _navigation unit $ Navigation.Navigate dest
-  pure $ Just a
+handleQuery (Navigate route a) = navigate route $> Just a
 
 navigate
   ∷ ∀ m
   . MonadEffect m
   ⇒ Route
   → H.HalogenM State Action ChildSlots Void m Unit
-navigate r = do
-  liftEffect $ setHash $ RD.print Route.codec r
-  H.put { route: r }
+navigate route = do
+  liftEffect $ setHash $ RD.print Route.codec route
+  H.put { route }
 
-render
-  ∷ ∀ m a
-  . MonadAff m
-  ⇒ State
-  → H.ComponentHTML a ChildSlots m
+render ∷ ∀ m a. MonadAff m ⇒ State → H.ComponentHTML a ChildSlots m 
 render { route } = HH.div_
-  [ HH.slot_ _navigation unit Navigation.component route
+  [ Navigation.render route
   , case route of
       Home →
-        HH.slot_ (Proxy ∷ _ "home") unit Home.component unit
+        HH.slot_ (Proxy ∷ Proxy "home") unit Home.component unit
       SignIn →
-        HH.slot_ (Proxy ∷ _ "signin") unit Signin.component unit
+        HH.slot_ (Proxy ∷ Proxy "signin") unit Signin.component unit
       SignUp →
         HH.slot_ (Proxy ∷ _ "signin") unit Signin.component unit
       Profile _username →

@@ -11,7 +11,6 @@
   , "effect"
   , "either"
   , "errors"
-  , "foldable-traversable"
   , "halogen"
   , "http-methods"
   , "maybe"

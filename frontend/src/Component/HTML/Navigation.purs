@@ -1,36 +1,15 @@
-module Component.Navigation
-  ( Query(..)
-  , component
-  ) where
+module Component.Navigation (render) where
 
 import Prelude
 
-import Data.Maybe (Maybe(..))
 import Data.Route (Route(..))
 import Data.Route as Route
-import Effect.Aff.Class (class MonadAff)
 import Halogen as H
 import Halogen.HTML.Extended as HH
 import Halogen.HTML.Properties.Extended as HP
 
-type State = { currentRoute ∷ Maybe Route }
-type Action = Unit
-
-data Query a = Navigate Route a
-
-component ∷ ∀ i o m. MonadAff m ⇒ H.Component Query i o m
-component =
-  H.mkComponent
-    { initialState
-    , render
-    , eval: H.mkEval $ H.defaultEval { handleAction = handleAction }
-    }
-
-initialState ∷ ∀ i. i → State
-initialState _input = { currentRoute: Nothing }
-
-render ∷ ∀ m. State → H.ComponentHTML Action () m
-render state = HH.nav_
+render ∷ ∀ a s m. Route → H.ComponentHTML a s m
+render route = HH.nav_
   [ HH.ul
       [ HP.classNames
           [ "bg-white"
@@ -44,9 +23,9 @@ render state = HH.nav_
       [ HH.li [ HP.classNames [ "list-none", "ml-8", "mr-auto", "mt-8" ] ]
           [ HH.a
               [ HP.classNames
-                  [ if state.currentRoute == Just Home then "overline"
+                  [ if route == Home then "overline"
                     else "no-underline"
-                  , if state.currentRoute == Just Home then "text-blue-800"
+                  , if route == Home then "text-blue-800"
                     else
                       "text-black"
                   , "font-bold"
@@ -59,9 +38,9 @@ render state = HH.nav_
       , HH.li [ HP.classNames [ "list-none", "mr-16", "mt-8", "text-xl" ] ]
           [ HH.a
               [ HP.classNames
-                  [ if state.currentRoute == Just SignIn then "overline"
+                  [ if route == SignIn then "overline"
                     else "no-underline"
-                  , if state.currentRoute == Just SignIn then "text-blue-800"
+                  , if route == SignIn then "text-blue-800"
                     else "text-black"
                   ]
               , Route.href SignIn
@@ -71,9 +50,9 @@ render state = HH.nav_
       , HH.li [ HP.classNames [ "list-none", "mr-16", "mt-8", "text-xl" ] ]
           [ HH.a
               [ HP.classNames
-                  [ if state.currentRoute == Just SignUp then "overline"
+                  [ if route == SignUp then "overline"
                     else "no-underline"
-                  , if state.currentRoute == Just SignUp then "text-blue-800"
+                  , if route == SignUp then "text-blue-800"
                     else "text-black"
                   ]
               , Route.href SignUp
@@ -82,8 +61,3 @@ render state = HH.nav_
           ]
       ]
   ]
-
-handleAction
-  ∷ ∀ i o m. MonadAff m ⇒ Action → H.HalogenM State Action i o m Unit
-handleAction _action = pure unit
-
