@@ -18,23 +18,14 @@ import Data.Password (Password)
 import Data.Password as Password
 import Data.Username (Username)
 import Data.Username as Username
-import Effect (Effect)
 import Effect.Aff.Class (class MonadAff)
 import Halogen (liftAff, liftEffect)
 import Halogen as H
-import Halogen.Aff (awaitBody, runHalogenAff)
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Extended as HH
 import Halogen.HTML.Properties.Extended as HP
-import Halogen.VDom.Driver (runUI)
 import Web.Event.Event (Event)
 import Web.Event.Event as Event
-
-main ∷ Effect Unit
-main =
-  runHalogenAff do
-    body ← awaitBody
-    runUI component unit body
 
 type Validation a =
   { inputValue ∷ String
