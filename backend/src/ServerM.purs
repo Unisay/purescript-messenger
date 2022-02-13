@@ -2,12 +2,12 @@ module ServerM where
 
 import Prelude
 
-import Auth.Hash (Token(..))
 import Control.Monad.Error.Class (class MonadThrow)
 import Control.Monad.Except (ExceptT, except, lift, runExcept, runExceptT, withExceptT)
 import Control.Monad.Reader (ReaderT(..), mapReaderT, runReaderT)
 import Data.Argonaut.Encode (class EncodeJson, encodeJson)
 import Data.Array as Array
+import Data.Auth.Token (Token(..))
 import Data.Bifunctor (lmap)
 import Data.Either (Either(..))
 import Data.Maybe (Maybe, maybe)
@@ -87,7 +87,7 @@ liftDbM = ServerM <<< mapReaderT (withExceptT DatabaseErr)
 
 readBody :: forall b. Decode b => ServerM b
 readBody = do
-  body <- liftHandler (Request.getBody) 
+  body <- liftHandler (Request.getBody)
   ServerM (lift (except (lmap BodyDecodingErr (runExcept body))))
 
 type ParamName = String

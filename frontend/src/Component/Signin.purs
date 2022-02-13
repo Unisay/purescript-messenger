@@ -2,25 +2,25 @@ module Component.Signin where
 
 import Prelude
 
-import Affjax (defaultRequest, printError, request) as AX
-import Affjax.RequestBody (RequestBody(..)) as AX
+import Backend (SignInResponse(..))
+import Backend as Backend
 import Control.Monad.Except.Trans (runExceptT)
-import Data.Argonaut.Encode (encodeJson) as Json
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NEA
 import Data.Either (Either(..), either, hush, isLeft)
 import Data.EitherR (flipEither)
-import Data.HTTP.Method (Method(..))
 import Data.Maybe (Maybe(..), maybe)
 import Data.Newtype (unwrap, wrap)
 import Data.Password (Password)
 import Data.Password as Password
+import Data.String (length)
 import Data.Username (Username)
 import Data.Username as Username
 import Effect (Effect)
 import Effect.Aff.Class (class MonadAff)
-import Halogen (liftAff, liftEffect)
+import Effect.Class.Console (log)
+import Halogen (liftEffect)
 import Halogen as H
 import Halogen.Aff (awaitBody, runHalogenAff)
 import Halogen.HTML.Events as HE
@@ -122,7 +122,7 @@ render state = signinFormContainer
       ]
       [ HH.div [ HP.classNames [ "text-red-600" ] ]
           [ HH.text case state.response of
-              Just SignedIn → "You successfully signed in!"
+              Just (SignedIn _) → "You successfully signed in!"
               Just Forbidden → "Incorrect username or password!"
               Just (Failure str) → "Got an error: " <> str
               Nothing → ""
@@ -259,6 +259,7 @@ handleAction
   . MonadAff m
   ⇒ Action
   → H.HalogenM State Action input output m Unit
+
 handleAction = case _ of
   SetUsername str → H.modify_ $ \state →
     state { username { inputValue = str } }
@@ -286,41 +287,11 @@ handleAction = case _ of
       password ← wrap password.result
       username ← wrap username.result
       in
-        createSession username password >>= case _ of
-          SignedIn → H.modify_ _ { response = Just SignedIn }
+        Backend.createSession username password >>= case _ of
+          SignedIn token → do
+            -- TODO: avoid saving token in state
+            H.modify_ _ { response = Just (SignedIn token) }
+            log $ "Received a token: " <> show (length (unwrap token))
           Forbidden → H.modify_ _ { response = Just Forbidden }
           Failure str → H.modify_ _ { response = Just (Failure str) }
 
-data SignInResponse
-  = SignedIn
-  | Forbidden
-  | Failure String
-
-instance Show SignInResponse where
-  show = case _ of
-    SignedIn → "Signed In"
-    Forbidden → "Sign in is forbidden"
-    Failure statusCode → "Failure: " <> show statusCode
-
-createSession
-  ∷ ∀ m. MonadAff m ⇒ Username → Password → m SignInResponse
-createSession username password = do
-  response ← liftAff $
-    AX.request
-      AX.defaultRequest
-        { method = Left PUT
-        , url = "http://localhost:8081/users/"
-            <> Username.toString username
-            <> "/session"
-        , content = Just $ AX.Json $ Json.encodeJson { username, password }
-        }
-  let
-    serverResponse =
-      case response of
-        Left err → Failure (AX.printError err)
-        Right { status } →
-          case unwrap status of
-            200 → SignedIn
-            403 → Forbidden
-            _ → Failure (show status)
-  pure serverResponse

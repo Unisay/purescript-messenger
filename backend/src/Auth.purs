@@ -2,10 +2,11 @@ module Auth where
 
 import Prelude
 
-import Auth.Hash (Hash, Salt(..), Token(..), hashPassword)
+import Auth.Hash (Hash, Salt(..), hashPassword)
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.Except (runExcept)
 import Data.Array as Array
+import Data.Auth.Token (Token(..))
 import Data.DateTime (adjust)
 import Data.Either (Either(..), hush, note)
 import Data.Enum (enumFromTo)

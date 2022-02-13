@@ -4,19 +4,10 @@ import Prelude
 
 import Control.Promise (Promise)
 import Control.Promise as Promise
-import Data.Argonaut.Encode (class EncodeJson)
-import Data.Newtype (class Newtype)
-import Effect.Aff.Class (class MonadAff, liftAff)
-import Foreign.Class (class Encode, class Decode)
 import Data.Password (Password)
 import Data.Password as Password
-
--- Token -----------------------------------------------------------------------
-
-newtype Token = Token String
-
-derive instance Newtype Token _
-derive newtype instance EncodeJson Token
+import Effect.Aff.Class (class MonadAff, liftAff)
+import Foreign.Class (class Decode, class Encode)
 
 -- Hash ------------------------------------------------------------------------
 
