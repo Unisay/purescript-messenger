@@ -21,7 +21,7 @@
     "clean": "rm -rf node_modules output dce-output .spago dist/* *.lock .cache",
     "esbuild": "esbuild --external:url --external:xhr2 --outfile=dist/main.js",
     "postinstall": "spago install",
-    "dev": "npm run esbuild -- --bundle index-dev.js --servedir=dist",
+    "dev": "npm run build && npm run esbuild -- --bundle index-dev.js --servedir=dist",
     "prod": "npm run bundle && http-server dist",
     "test": "spago -P test",
     "watch:purescript": "spago -P build --watch",

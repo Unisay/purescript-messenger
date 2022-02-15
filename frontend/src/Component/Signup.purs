@@ -114,7 +114,7 @@ render state = signupFormContainer
       ]
       [ HH.div [ HP.classNames [ "text-red-600" ] ]
           [ HH.text case state.response of
-              Just SignedUp → "You successfully signed in!"
+              Just SignedUp → "You successfully signed up!"
               Just (Failure str) → "Got an error: " <> str
               Nothing → ""
           ]
@@ -128,7 +128,7 @@ render state = signupFormContainer
                 , HP.required true
                 , HP.autocomplete true
                 , HP.type_ HP.InputEmail
-                , HP.value state.password.inputValue
+                , HP.value state.email.inputValue
                 , HE.onValueInput SetEmail
                 , HE.onBlur \_ → ValidateEmail
                 , HP.classNames $
