@@ -88,8 +88,7 @@ render _state = HH.div
                   , "w-full"
                   ]
               ]
-              [ HH.span
-                  [ HP.classNames [] ]
+              [ HH.span_
                   [ HH.text "Go to SignUp" ]
               ]
           ]
