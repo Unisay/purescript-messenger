@@ -1,24 +1,24 @@
-module Component.Signin where
+module Component.Signup where
 
 import Prelude
 
-import Backend (SignInResponse(..))
-import Backend as Backend
-import Control.Monad.Except.Trans (runExceptT)
+import Component.Signin (Validation)
+import Control.Error.Util (hush)
+import Control.Monad.Except (runExceptT)
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NEA
-import Data.Either (Either(..), either, hush, isLeft)
+import Data.Either (Either(..), either, isLeft)
 import Data.EitherR (flipEither)
+import Data.Email (Email)
+import Data.Email as Email
 import Data.Maybe (Maybe(..), maybe)
-import Data.Newtype (unwrap, wrap)
+import Data.Newtype (wrap)
 import Data.Password (Password)
 import Data.Password as Password
-import Data.String (length)
 import Data.Username (Username)
 import Data.Username as Username
 import Effect.Aff.Class (class MonadAff)
-import Effect.Class.Console (log)
 import Halogen (liftEffect)
 import Halogen as H
 import Halogen.HTML.Events as HE
@@ -27,24 +27,33 @@ import Halogen.HTML.Properties.Extended as HP
 import Web.Event.Event (Event)
 import Web.Event.Event as Event
 
-type Validation a =
-  { inputValue ∷ String
-  , result ∷ Maybe (Either (NonEmptyArray String) a)
-  }
-
 type State =
   { loading ∷ Boolean
-  , username ∷ Validation Username
-  , password ∷ Validation Password
-  , response ∷ Maybe SignInResponse
+  , username ∷ Validation Username.Username
+  , password ∷ Validation Password.Password
+  , email ∷ Validation Email.Email
+  , response ∷ Maybe SignUpResponse
   }
+
+data SignUpResponse = SignedUp | Failure String
 
 data Action
   = SetUsername String
   | ValidateUsername
   | SetPassword String
   | ValidatePassword
+  | SetEmail String
+  | ValidateEmail
   | SubmitForm Event
+
+initialState ∷ ∀ input. input → State
+initialState _input =
+  { loading: false
+  , username: { inputValue: "", result: Nothing }
+  , password: { inputValue: "", result: Nothing }
+  , email: { inputValue: "", result: Nothing }
+  , response: Nothing
+  }
 
 component
   ∷ ∀ query input output m. MonadAff m ⇒ H.Component query input output m
@@ -55,18 +64,10 @@ component =
     , eval: H.mkEval $ H.defaultEval { handleAction = handleAction }
     }
 
-initialState ∷ ∀ input. input → State
-initialState _input =
-  { loading: false
-  , username: { inputValue: "", result: Nothing }
-  , password: { inputValue: "", result: Nothing }
-  , response: Nothing
-  }
-
 render ∷ ∀ m. State → H.ComponentHTML Action () m
-render state = signinFormContainer
+render state = signupFormContainer
   where
-  signinFormContainer =
+  signupFormContainer =
     HH.div
       [ HP.classNames
           [ "min-h-screen"
@@ -89,10 +90,10 @@ render state = signinFormContainer
               , "bg-white"
               ]
           ]
-          [ signinFormHeader, signinForm ]
+          [ signupFormHeader, signupForm ]
       ]
 
-  signinFormHeader =
+  signupFormHeader =
     HH.div_
       [ HH.h2
           [ HP.classNames
@@ -103,9 +104,9 @@ render state = signinFormContainer
               , "text-gray-900"
               ]
           ]
-          [ HH.text "Sign in to your account" ]
+          [ HH.text "Create your account" ]
       ]
-  signinForm =
+  signupForm =
     HH.form
       [ HP.id "form-username"
       , HE.onSubmit SubmitForm
@@ -113,10 +114,48 @@ render state = signinFormContainer
       ]
       [ HH.div [ HP.classNames [ "text-red-600" ] ]
           [ HH.text case state.response of
-              Just (SignedIn _) → "You successfully signed in!"
-              Just Forbidden → "Incorrect username or password!"
+              Just SignedUp → "You successfully signed up!"
               Just (Failure str) → "Got an error: " <> str
               Nothing → ""
+          ]
+      , HH.div_ $ Array.concat
+          [ [ HH.label
+                [ HP.for "input-email", HP.classNames [ "font-bold" ] ]
+                [ HH.text "Email" ]
+            , HH.input
+                [ HP.id "input-email"
+                , HP.placeholder "Email"
+                , HP.required true
+                , HP.autocomplete true
+                , HP.type_ HP.InputEmail
+                , HP.value state.email.inputValue
+                , HE.onValueInput SetEmail
+                , HE.onBlur \_ → ValidateEmail
+                , HP.classNames $
+                    [ "appearance-none"
+                    , "rounded"
+                    , "relative"
+                    , "block"
+                    , "w-full"
+                    , "px-3"
+                    , "py-2"
+                    , "border"
+                    , "border-gray-300"
+                    , "placeholder-gray-500"
+                    , "text-gray-900"
+                    , "focus-outline-none"
+                    , "focus-ring-indigo-500"
+                    , "focus-border-indigo-500"
+                    , "focus-z-10"
+                    , "sm-text-sm"
+                    ] <>
+                      if maybe false isLeft state.email.result then
+                        errorClasses
+                      else []
+                ]
+            ]
+
+          , validationErrors state.email.result
           ]
       , HH.div_ $ Array.concat
           [ [ HH.label
@@ -221,13 +260,14 @@ render state = signinFormContainer
                   ]
               ]
               [ HH.span
-                  [ HP.classNames [ "left-0", "flex", "items-center", "pl-3" ] ]
+                  [ HP.classNames
+                      [ "left-0", "flex", "items-center", "pl-3" ]
+                  ]
                   [ HH.text
-                      if state.loading then "Signing in..." else "Sign In"
+                      if state.loading then "signupg up..." else "Sign Up"
                   ]
               ]
           ]
-
       ]
 
   errorClasses = [ "border-red-200", "border-2" ]
@@ -250,12 +290,13 @@ handleAction
   . MonadAff m
   ⇒ Action
   → H.HalogenM State Action input output m Unit
-
 handleAction = case _ of
   SetUsername str → H.modify_ $ \state →
     state { username { inputValue = str } }
   SetPassword str → H.modify_ $ \state →
     state { password { inputValue = str } }
+  SetEmail str → H.modify_ $ \state →
+    state { email { inputValue = str } }
   ValidateUsername → do
     { username } ← H.get
     case Username.parse username.inputValue of
@@ -270,19 +311,27 @@ handleAction = case _ of
         state { password { result = pure $ Left $ pure err } }
       Right password' → H.modify_ $ \state →
         state { password { result = pure $ Right password' } }
+  ValidateEmail → do
+    { email } ← H.get
+    case Email.parse email.inputValue of
+      Left err → H.modify_ $ \state →
+        state { email { result = pure $ Left $ pure err } }
+      Right email' → H.modify_ $ \state →
+        state { email { result = pure $ Right email' } }
   SubmitForm ev → do
     liftEffect $ Event.preventDefault ev
-    { password, username } ← H.get
+    { email, username, password } ← H.get
     let pass = pure unit
     maybe pass (either (const pass) identity) $ runExceptT ado
       password ← wrap password.result
       username ← wrap username.result
+      email ← wrap email.result
       in
-        Backend.createSession username password >>= case _ of
-          SignedIn token → do
-            -- TODO: avoid saving token in state
-            H.modify_ _ { response = Just (SignedIn token) }
-            log $ "Received a token: " <> show (length (unwrap token))
-          Forbidden → H.modify_ _ { response = Just Forbidden }
+        createAccount username password email >>= case _ of
+          SignedUp → H.modify_ _ { response = Just SignedUp }
           Failure str → H.modify_ _ { response = Just (Failure str) }
+
+createAccount
+  ∷ ∀ m. MonadAff m ⇒ Username → Password → Email → m SignUpResponse
+createAccount _username _password _email = pure SignedUp
 

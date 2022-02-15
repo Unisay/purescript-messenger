@@ -20,17 +20,17 @@ newtype Password = Password String
 derive newtype instance Eq Password
 derive newtype instance Ord Password
 derive newtype instance EncodeJson Password
+derive newtype instance Decode Password
 
 codec :: JsonCodec Password
 codec = dimap toString Password CA.string
 
 parse :: String -> Either String Password
 parse = case _ of
-  "" -> Left "Password is empty"
+  "" -> Left "Password can't be empty"
   s | String.length s < 8 -> Left "Password must be at least 8 characters long"
   s -> Right (Password s)
 
 toString :: Password -> String
 toString (Password s) = s
 
-derive newtype instance Decode Password

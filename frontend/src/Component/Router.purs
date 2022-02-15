@@ -8,6 +8,7 @@ import Prelude
 import Component.Home as Home
 import Component.Navigation as Navigation
 import Component.Signin as Signin
+import Component.Signup as Signup
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
 import Data.Route (Route(..))
@@ -30,6 +31,7 @@ data Action = Initialize
 type ChildSlots =
   ( home ∷ H.OpaqueSlot Unit
   , signin ∷ H.OpaqueSlot Unit
+  , signup ∷ H.OpaqueSlot Unit
   )
 
 component ∷ ∀ m. MonadAff m ⇒ H.Component Query Unit Void m
@@ -74,7 +76,7 @@ navigate route = do
   liftEffect $ setHash $ RD.print Route.codec route
   H.put { route }
 
-render ∷ ∀ m a. MonadAff m ⇒ State → H.ComponentHTML a ChildSlots m 
+render ∷ ∀ m a. MonadAff m ⇒ State → H.ComponentHTML a ChildSlots m
 render { route } = HH.div_
   [ Navigation.render route
   , case route of
@@ -83,7 +85,7 @@ render { route } = HH.div_
       SignIn →
         HH.slot_ (Proxy ∷ Proxy "signin") unit Signin.component unit
       SignUp →
-        HH.slot_ (Proxy ∷ _ "signin") unit Signin.component unit
+        HH.slot_ (Proxy ∷ Proxy "signup") unit Signup.component unit
       Profile _username →
-        HH.slot_ (Proxy ∷ _ "signin") unit Signin.component unit
+        HH.slot_ (Proxy ∷ Proxy "signin") unit Signin.component unit
   ]

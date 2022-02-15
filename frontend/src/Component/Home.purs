@@ -11,7 +11,7 @@ import Halogen.HTML.Properties.Extended as HP
 
 type State = Unit
 
-data Action = ButtonClicked
+data Action = SignInButtonClicked | SignUpButtonClicked
 
 component ∷ ∀ q i o m. MonadAff m ⇒ H.Component q i o m
 component =
@@ -56,24 +56,47 @@ render _state = HH.div
               ]
           ]
           [ HH.text "Pure Mess" ]
-      , HH.button
-          [ HP.type_ HP.ButtonButton
-          , HE.onClick \_ → ButtonClicked
-          , HP.classNames
-              [ "justify-center"
-              , "flex"
-              , "font-medium"
+      , HH.div
+          [ HP.classNames
+              [ "flex"
+              , "justify-between"
               , "w-full"
+              , "basis-auto"
               ]
           ]
-          [ HH.span
-              [ HP.classNames [] ]
-              [ HH.text "Go to SignIn" ]
+          [ HH.button
+              [ HP.type_ HP.ButtonButton
+              , HE.onClick \_ → SignInButtonClicked
+              , HP.classNames
+                  [ "justify-center"
+                  , "flex"
+                  , "font-medium"
+                  , "w-full"
+                  ]
+              ]
+              [ HH.span_
+                  [ HH.text "Go to SignIn" ]
+              ]
+          , HH.button
+              [ HP.type_ HP.ButtonButton
+              , HE.onClick \_ → SignUpButtonClicked
+              , HP.classNames
+                  [ "justify-center"
+                  , "flex"
+                  , "font-medium"
+                  , "w-full"
+                  ]
+              ]
+              [ HH.span_
+                  [ HH.text "Go to SignUp" ]
+              ]
           ]
       ]
   ]
 
 handleAction
   ∷ ∀ i o m. MonadAff m ⇒ Action → H.HalogenM State Action i o m Unit
-handleAction ButtonClicked = goTo SignIn
+handleAction = case _ of
+  SignUpButtonClicked → goTo SignUp
+  SignInButtonClicked → goTo SignIn
 
