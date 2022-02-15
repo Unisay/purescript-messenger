@@ -33,6 +33,6 @@ codec = dimap toString Email CA.string
 parse :: String -> Either String Email
 parse = case _ of
   "" -> Left "Email can't be empty"
-  s | any (_ == '@') (toCharArray s) && any (_ == '.') (toCharArray s) ->
+s | let cs = toCharArray s in any (_ == '@') cs && any (_ == '.') cs ->
     Right (Email $ toLower s)
   _ -> Left "Invalid email adress"
