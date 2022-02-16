@@ -83,9 +83,9 @@ render { route } = HH.div_
       Home →
         HH.slot_ (Proxy ∷ Proxy "home") unit Home.component unit
       SignIn →
-        HH.slot_ (Proxy ∷ Proxy "signin") unit Signin.component unit
+        HH.slot_ (Proxy ∷ Proxy "signin") unit Signin.component ?notifications
       SignUp →
         HH.slot_ (Proxy ∷ Proxy "signup") unit Signup.component unit
       Profile _username →
-        HH.slot_ (Proxy ∷ Proxy "signin") unit Signin.component unit
+        HH.slot_ (Proxy ∷ Proxy "signin") unit Signin.component ?notifications
   ]

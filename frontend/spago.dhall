@@ -12,6 +12,7 @@
   , "either"
   , "errors"
   , "halogen"
+  , "halogen-subscriptions"
   , "http-methods"
   , "maybe"
   , "newtype"

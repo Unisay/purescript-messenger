@@ -12,6 +12,7 @@ import Data.Either (Either(..), either, hush, isLeft)
 import Data.EitherR (flipEither)
 import Data.Maybe (Maybe(..), maybe)
 import Data.Newtype (unwrap, wrap)
+import Data.Notification (Notification, critical)
 import Data.Password (Password)
 import Data.Password as Password
 import Data.String (length)
@@ -24,6 +25,7 @@ import Halogen as H
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Extended as HH
 import Halogen.HTML.Properties.Extended as HP
+import Halogen.Subscription as HS
 import Web.Event.Event (Event)
 import Web.Event.Event as Event
 
@@ -32,8 +34,11 @@ type Validation a =
   , result ∷ Maybe (Either (NonEmptyArray String) a)
   }
 
+type Input = HS.Listener Notification
+
 type State =
   { loading ∷ Boolean
+  , notifications ∷ HS.Listener Notification
   , username ∷ Validation Username
   , password ∷ Validation Password
   , response ∷ Maybe SignInResponse
@@ -47,7 +52,7 @@ data Action
   | SubmitForm Event
 
 component
-  ∷ ∀ query input output m. MonadAff m ⇒ H.Component query input output m
+  ∷ ∀ query output m. MonadAff m ⇒ H.Component query Input output m
 component =
   H.mkComponent
     { initialState
@@ -55,9 +60,10 @@ component =
     , eval: H.mkEval $ H.defaultEval { handleAction = handleAction }
     }
 
-initialState ∷ ∀ input. input → State
-initialState _input =
+initialState ∷ Input → State
+initialState notifications =
   { loading: false
+  , notifications
   , username: { inputValue: "", result: Nothing }
   , password: { inputValue: "", result: Nothing }
   , response: Nothing
@@ -246,11 +252,10 @@ render state = signinFormContainer
           [ HH.text errorMessage ]
 
 handleAction
-  ∷ ∀ input output m
+  ∷ ∀ slots output m
   . MonadAff m
   ⇒ Action
-  → H.HalogenM State Action input output m Unit
-
+  → H.HalogenM State Action slots output m Unit
 handleAction = case _ of
   SetUsername str → H.modify_ $ \state →
     state { username { inputValue = str } }
@@ -280,9 +285,11 @@ handleAction = case _ of
       in
         Backend.createSession username password >>= case _ of
           SignedIn token → do
-            -- TODO: avoid saving token in state
             H.modify_ _ { response = Just (SignedIn token) }
             log $ "Received a token: " <> show (length (unwrap token))
-          Forbidden → H.modify_ _ { response = Just Forbidden }
-          Failure str → H.modify_ _ { response = Just (Failure str) }
+          Forbidden →
+            H.modify_ _ { response = Just Forbidden }
+          Failure str → do
+            { notifications } ← H.get
+            liftEffect $ HS.notify notifications (critical str)
 
