@@ -11,6 +11,7 @@
   , "effect"
   , "either"
   , "errors"
+  , "foldable-traversable"
   , "halogen"
   , "halogen-subscriptions"
   , "http-methods"
