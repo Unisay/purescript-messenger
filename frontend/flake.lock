@@ -1,1 +1,72 @@
-../flake.lock
+{
+  "nodes": {
+    "flake-compat": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1641205782,
+        "narHash": "sha256-4jY7RCWUoZ9cKD8co0/4tFARpWB+57+r1bLLvXNJliY=",
+        "owner": "edolstra",
+        "repo": "flake-compat",
+        "rev": "b7547d3eed6f32d06102ead8991ec52ab0a4f1a7",
+        "type": "github"
+      },
+      "original": {
+        "owner": "edolstra",
+        "repo": "flake-compat",
+        "type": "github"
+      }
+    },
+    "flake-utils": {
+      "locked": {
+        "lastModified": 1644229661,
+        "narHash": "sha256-1YdnJAsNy69bpcjuoKdOYQX0YxZBiCYZo4Twxerqv7k=",
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "rev": "3cecb5b042f7f209c56ffd8371b2711a290ec797",
+        "type": "github"
+      },
+      "original": {
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "type": "github"
+      }
+    },
+    "nixpkgs": {
+      "locked": {
+        "lastModified": 1644613700,
+        "narHash": "sha256-wLRPJclMH8vsHuFtyI78aF09lw5mbi3lMB6uiK5S2wE=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "23d785aa6f853e6cf3430119811c334025bbef55",
+        "type": "github"
+      },
+      "original": {
+        "id": "nixpkgs",
+        "ref": "nixos-unstable",
+        "type": "indirect"
+      }
+    },
+    "root": {
+      "inputs": {
+        "flake-compat": "flake-compat",
+        "flake-utils": "flake-utils",
+        "nixpkgs": "nixpkgs",
+        "zephyr": "zephyr"
+      }
+    },
+    "zephyr": {
+      "flake": false,
+      "locked": {
+        "narHash": "sha256-rQYN2QreO9AiAR/2lDTexFxeIxHw61SXetU1YvxlMyA=",
+        "type": "tarball",
+        "url": "https://github.com/MaybeJustJames/zephyr/releases/download/c074270/Linux.tar.gz"
+      },
+      "original": {
+        "type": "tarball",
+        "url": "https://github.com/MaybeJustJames/zephyr/releases/download/c074270/Linux.tar.gz"
+      }
+    }
+  },
+  "root": "root",
+  "version": 7
+}
