@@ -7,6 +7,7 @@ import Prelude
 
 import Component.Home as Home
 import Component.Navigation as Navigation
+import Component.Notifications as Notifications
 import Component.Signin as Signin
 import Component.Signup as Signup
 import Data.Either (Either(..))
@@ -38,7 +39,8 @@ data Action = Initialize | Finalize
 type Input = HS.SubscribeIO Notification
 
 type ChildSlots =
-  ( home ∷ H.OpaqueSlot Unit
+  ( notifications ∷ H.OpaqueSlot Unit
+  , home ∷ H.OpaqueSlot Unit
   , signin ∷ H.OpaqueSlot Unit
   , signup ∷ H.OpaqueSlot Unit
   )
@@ -101,16 +103,18 @@ navigate route = do
 
 render ∷ ∀ m a. MonadAff m ⇒ State → H.ComponentHTML a ChildSlots m
 render { route, notifications } = HH.div_
-  [ Navigation.render route
+  [ HH.slot_ (Proxy ∷ _ "notifications") unit Notifications.component
+      notifications.emitter
+  , Navigation.render route
   , case route of
       Home →
-        HH.slot_ (Proxy ∷ Proxy "home") unit Home.component unit
+        HH.slot_ (Proxy ∷ _ "home") unit Home.component unit
       SignIn →
-        HH.slot_ (Proxy ∷ Proxy "signin") unit Signin.component
+        HH.slot_ (Proxy ∷ _ "signin") unit Signin.component
           notifications.listener
       SignUp →
-        HH.slot_ (Proxy ∷ Proxy "signup") unit Signup.component unit
+        HH.slot_ (Proxy ∷ _ "signup") unit Signup.component unit
       Profile _username →
-        HH.slot_ (Proxy ∷ Proxy "signin") unit Signin.component
+        HH.slot_ (Proxy ∷ _ "signin") unit Signin.component
           notifications.listener
   ]
