@@ -17,7 +17,6 @@
   , "newtype"
   , "prelude"
   , "profunctor"
-  , "psci-support"
   , "quickcheck"
   , "routing"
   , "routing-duplex"

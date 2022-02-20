@@ -11,21 +11,22 @@
     "test": "test"
   },
   "scripts": {
+    "postinstall": "spago install",
     "build:purescript": "spago -P build",
     "build:tailwind": "tailwindcss -c tailwind.config.js -i tailwind_inputs.css -o dist/styles/tailwind.css",
     "build": "npm run build:purescript && npm run build:tailwind",
     "bundle:build": "spago -P build --purs-args '--codegen corefn'",
     "bundle:dce": "zephyr -f Main.main",
-    "bundle:esbuild": "npm run esbuild -- --bundle index.js --minify",
+    "bundle:esbuild": "node build/esbuild-bundle.mjs",
     "bundle": "npm run bundle:build && npm run bundle:dce && npm run bundle:esbuild",
-    "clean": "rm -rf node_modules output dce-output .spago dist/* *.lock .cache",
-    "esbuild": "esbuild --external:url --external:xhr2 --outfile=dist/main.js",
-    "postinstall": "spago install",
-    "dev": "npm run build && npm run esbuild -- --bundle index-dev.js --servedir=dist",
+    "dev": "npm run build && npm run dev:serve",
+    "dev:serve": "node build/esbuild-dev.mjs",
+    "dev:build": "npm run build && npm run serve",
+    "watch:purescript": "spago -P build --watch",
+    "watch:tailwind": "tailwindcss -c tailwind.config.js -i tailwind_inputs.css -o dist/styles/tailwind.css --watch",
     "prod": "npm run bundle && http-server dist",
     "test": "spago -P test",
-    "watch:purescript": "spago -P build --watch",
-    "watch:tailwind": "tailwindcss -c tailwind.config.js -i tailwind_inputs.css -o dist/styles/tailwind.css --watch"
+    "clean": "rm -rf node_modules output dce-output .spago dist/index.js *.lock .cache"
   },
   "keywords": [],
   "author": "",
@@ -34,7 +35,8 @@
     "xhr2": "^0.2.1"
   },
   "devDependencies": {
-    "esbuild": "^0.14.10",
+    "create-serve": "^1.0.1",
+    "esbuild": "^0.14.23",
     "http-server": "^14.0.0",
     "purescript": "^0.14.5",
     "purs-tidy": "^0.6.4",

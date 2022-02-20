@@ -96,7 +96,7 @@ render _state = HH.div
 
 handleAction
   ∷ ∀ i o m. MonadAff m ⇒ Action → H.HalogenM State Action i o m Unit
-handleAction = case _ of
-  SignUpButtonClicked → goTo SignUp
-  SignInButtonClicked → goTo SignIn
+handleAction = goTo <<< case _ of
+  SignUpButtonClicked → SignUp
+  SignInButtonClicked → SignIn
 
