@@ -13,7 +13,7 @@
   "scripts": {
     "postinstall": "spago install",
     "build:purescript": "spago -P build",
-    "build:tailwind": "tailwindcss -c tailwind.config.js -i tailwind_inputs.css -o dist/styles/tailwind.css",
+    "build:tailwind": "tailwindcss -m -c tailwind.config.js -i tailwind_inputs.css -o dist/styles/tailwind.css",
     "build": "run-p build:purescript build:tailwind",
     "bundle:build": "spago -P build --purs-args '--codegen corefn'",
     "bundle:dce": "zephyr -f Main.main",
