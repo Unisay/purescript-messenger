@@ -22,4 +22,4 @@ dce-output
 *.lock
 *.map
 
-dist/*.js
+dist/js/*

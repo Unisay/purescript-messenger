@@ -1,20 +1,22 @@
 import esbuild from "esbuild";
 import serve, { error, log } from "create-serve";
+import PureScriptPlugin from "esbuild-plugin-purescript";
 
 esbuild
   .build({
     bundle: true,
     logLevel: "info",
-    entryPoints: ["build/index-dev.js"],
+    entryPoints: ["build/index.js"],
     external: ["url", "xhr2"],
-    outfile: "dist/main.js",
+    outdir: "dist/js",
     sourcemap: true,
     watch: {
       onRebuild(err) {
         serve.update();
-        err ? error("× Failed") : log("✓ Updated");
+        err ? error("Failed") : log("✓ Updated");
       },
     },
+    plugins: [PureScriptPlugin()],
   })
   .then(({ errors, warnings, stop }) => {
     serve.start({

@@ -1,4 +1,5 @@
 import esbuild from "esbuild";
+import PureScriptPlugin from "esbuild-plugin-purescript";
 
 esbuild
   .build({
@@ -6,9 +7,10 @@ esbuild
     minify: true,
     sourcemap: false,
     logLevel: "info",
-    entryPoints: ["build/index-bundle.js"],
+    entryPoints: ["build/index.js"],
     external: ["url", "xhr2"],
-    outfile: "dist/main.js",
+    outdir: "dist/js",
+    plugins: [PureScriptPlugin({ output: "dce-output" })],
   })
   .catch((e) => {
     error(e);
