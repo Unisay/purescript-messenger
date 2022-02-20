@@ -26,7 +26,7 @@
     "watch:tailwind": "tailwindcss -c tailwind.config.js -i tailwind_inputs.css -o dist/styles/tailwind.css --watch",
     "prod": "npm run bundle && http-server dist",
     "test": "spago -P test",
-    "clean": "rm -rf node_modules output dce-output .spago dist/index.js *.lock .cache"
+    "clean": "rm -rf node_modules output dce-output .spago dist/main.js *.lock .cache"
   },
   "keywords": [],
   "author": "",
@@ -37,10 +37,10 @@
   "devDependencies": {
     "create-serve": "^1.0.1",
     "esbuild": "^0.14.23",
-    "http-server": "^14.0.0",
+    "http-server": "^14.1.0",
     "purescript": "^0.14.5",
-    "purs-tidy": "^0.6.4",
-    "spago": "^0.20.3",
-    "tailwindcss": "^3.0.22"
+    "purs-tidy": "^0.7.0",
+    "spago": "^0.20.7",
+    "tailwindcss": "^3.0.23"
   }
 }
