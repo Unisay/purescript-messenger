@@ -23,3 +23,4 @@ dce-output
 *.map
 
 dist/js/*
+dist/styles/tailwind.css
