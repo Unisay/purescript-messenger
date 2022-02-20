@@ -52,9 +52,10 @@ component = H.mkComponent
             HH.li
               [ HP.classNames
                   [ importanceColor importance
-                  , "p-1"
+                  , "p-2"
                   , "m-2"
                   , "rounded"
+                  , "text-white"
                   ]
               ]
               [ HH.text message ]
@@ -62,9 +63,9 @@ component = H.mkComponent
     where
     importanceColor ∷ Importance → String
     importanceColor = case _ of
-      Useful → "bg-green-500"
-      Important → "bg-orange-500"
-      Critical → "bg-red-500"
+      Useful → "bg-green-600/75"
+      Important → "bg-orange-600/75"
+      Critical → "bg-red-600/75"
 
   handleAction ∷ Action → H.HalogenM State Action () o m Unit
   handleAction = case _ of
