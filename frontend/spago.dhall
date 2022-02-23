@@ -23,6 +23,7 @@
   , "routing"
   , "routing-duplex"
   , "strings"
+  , "svg-parser-halogen"
   , "test-unit"
   , "transformers"
   , "unicode"
