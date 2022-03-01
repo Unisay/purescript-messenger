@@ -8,6 +8,7 @@ import Data.Foldable (traverse_)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Notification (Importance(..), Notification(..))
 import Effect.Class (class MonadEffect)
+import Halogen.Component as HC
 import Halogen.Extended as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
@@ -24,74 +25,79 @@ type State =
   , queue ∷ Array Notification
   }
 
+type Slots ∷ ∀ k. Row k
+type Slots = ()
+
 data Action = Initialize | Finalize | Notify Notification | Close Int
 
 component ∷ ∀ q m o. MonadEffect m ⇒ H.Component q Input o m
-component = H.mkComponent
-  { initialState
-  , render
-  , eval: H.mkEval $ H.defaultEval
-      { initialize = Just Initialize
-      , finalize = Just Finalize
-      , handleAction = handleAction
-      }
-  }
+component = H.mkComponent componentSpec
   where
-  initialState ∷ Input → State
-  initialState emitter =
-    { emitter: Notify <$> emitter
-    , subscription: Nothing
-    , queue: []
-    }
+  componentSpec ∷ H.ComponentSpec State q Action Slots Input o m
+  componentSpec = { initialState, render, eval: H.mkEval evalSpec }
 
-  render ∷ State → HH.ComponentHTML Action () m
-  render { queue } =
-    HH.div
-      [ HP.classNames [ "fixed", "flex", "flex-col", "w-full", "items-center" ]
+evalSpec ∷ ∀ q m o. HC.EvalSpec State q Action Slots Input o m
+evalSpec = H.defaultEval
+  { initialize = Just Initialize
+  , finalize = Just Finalize
+  , handleAction = handleAction
+  }
+
+initialState ∷ Input → State
+initialState emitter =
+  { emitter: Notify <$> emitter
+  , subscription: Nothing
+  , queue: []
+  }
+
+render ∷ ∀ m. State → HH.ComponentHTML Action () m
+render { queue } =
+  HH.div
+    [ HP.classNames [ "fixed", "flex", "flex-col", "w-full", "items-center" ]
+    ]
+    [ HH.ul [ HP.classNames [ "w-4/6" ] ] $
+        Array.mapWithIndex renderNotification queue
+    ]
+  where
+  renderNotification ∷ Int → Notification → HH.ComponentHTML Action () m
+  renderNotification idx (Notification importance message) =
+    HH.li
+      [ HP.classNames
+          [ importanceColor importance
+          , "z-1"
+          , "p-2"
+          , "m-2"
+          , "rounded"
+          , "text-white"
+          , "flex"
+          , "flex-row"
+          , "justify-between"
+          ]
       ]
-      [ HH.ul [ HP.classNames [ "w-4/6" ] ] $
-          Array.mapWithIndex renderNotification queue
+      [ HH.span_ [ HH.text $ show (idx + 1) <> ". " <> message ]
+      , HH.button [ HE.onClick \_ → Close idx ] [ iconClose [] ]
       ]
-    where
-    renderNotification ∷ Int → Notification → HH.ComponentHTML Action () m
-    renderNotification idx (Notification importance message) =
-      HH.li
-        [ HP.classNames
-            [ importanceColor importance
-            , "z-1"
-            , "p-2"
-            , "m-2"
-            , "rounded"
-            , "text-white"
-            , "flex"
-            , "flex-row"
-            , "justify-between"
-            ]
-        ]
-        [ HH.span_ [ HH.text $ show (idx + 1) <> ". " <> message ]
-        , HH.button [ HE.onClick \_ → Close idx ] [ iconClose [] ]
-        ]
 
-    importanceColor ∷ Importance → String
-    importanceColor = case _ of
-      Useful → "bg-green-600/75"
-      Important → "bg-orange-600/75"
-      Critical → "bg-red-600/75"
+  importanceColor ∷ Importance → String
+  importanceColor = case _ of
+    Useful → "bg-green-600/75"
+    Important → "bg-orange-600/75"
+    Critical → "bg-red-600/75"
 
-  handleAction ∷ Action → H.HalogenM State Action () o m Unit
-  handleAction = case _ of
-    Initialize → do
-      { emitter } ← H.get
-      subscriptionId ← HQ.subscribe emitter
-      H.modify_ _ { subscription = Just subscriptionId }
-    Finalize → do
-      s ← H.gets _.subscription
-      traverse_ HQ.unsubscribe s
-    Notify notification →
-      H.modify_ \s@{ queue } → s { queue = notification : queue }
-    Close idx →
-      H.modify_ \s@{ queue } → s
-        { queue = fromMaybe queue (Array.deleteAt idx queue) }
+handleAction ∷ ∀ o m. Action → H.HalogenM State Action () o m Unit
+handleAction = case _ of
+  Initialize → do
+    { emitter } ← H.get
+    subscriptionId ← HQ.subscribe emitter
+    H.modify_ _ { subscription = Just subscriptionId }
+  Finalize → do
+    s ← H.gets _.subscription
+    traverse_ HQ.unsubscribe s
+  Notify notification →
+    H.modify_ \s@{ queue } → s { queue = notification : queue }
+  Close idx →
+    H.modify_ \s@{ queue } → s
+      { queue = fromMaybe queue (Array.deleteAt idx queue) }
 
 type Icon = ∀ p r i. Array (HH.IProp r i) → HH.HTML p i
 

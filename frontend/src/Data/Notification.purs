@@ -4,7 +4,11 @@ import Prelude
 
 data Importance = Useful | Important | Critical
 
+derive instance Eq Importance
+
 data Notification = Notification Importance String
+
+derive instance Eq Notification
 
 instance Show Notification where
   show (Notification importance message) =

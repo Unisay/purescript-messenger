@@ -12,6 +12,8 @@
   , "either"
   , "errors"
   , "foldable-traversable"
+  , "free"
+  , "freeap"
   , "halogen"
   , "halogen-subscriptions"
   , "http-methods"
@@ -24,9 +26,11 @@
   , "routing-duplex"
   , "strings"
   , "svg-parser-halogen"
+  , "tailrec"
   , "test-unit"
   , "transformers"
   , "unicode"
+  , "unsafe-coerce"
   , "web-events"
   ]
 , packages = ./packages.dhall
