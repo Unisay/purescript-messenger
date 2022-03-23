@@ -18,6 +18,7 @@ import Data.Password as Password
 import Data.String (length)
 import Data.Username (Username)
 import Data.Username as Username
+import Data.Validation (Validation)
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class.Console (log)
 import Halogen (liftEffect)
@@ -29,13 +30,6 @@ import Halogen.Subscription as HS
 import Web.Event.Event (Event)
 import Web.Event.Event as Event
 
-type Validation a =
-  { inputValue ∷ String
-  , result ∷ Maybe (Either (NonEmptyArray String) a)
-  }
-
-type Input = HS.Listener Notification
-
 type State =
   { loading ∷ Boolean
   , notifications ∷ HS.Listener Notification
@@ -43,6 +37,8 @@ type State =
   , password ∷ Validation Password
   , response ∷ Maybe SignInResponse
   }
+
+type Input = HS.Listener Notification
 
 data Action
   = SetUsername String
