@@ -121,3 +121,4 @@ handleAction = case _ of
   sendNotification n = do
     { notifications } ← (H.get ∷ H.HalogenM State Action _ _ _ State)
     liftEffect $ HS.notify notifications n
+
