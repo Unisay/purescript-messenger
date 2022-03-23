@@ -50,20 +50,7 @@
       "inputs": {
         "flake-compat": "flake-compat",
         "flake-utils": "flake-utils",
-        "nixpkgs": "nixpkgs",
-        "zephyr": "zephyr"
-      }
-    },
-    "zephyr": {
-      "flake": false,
-      "locked": {
-        "narHash": "sha256-rQYN2QreO9AiAR/2lDTexFxeIxHw61SXetU1YvxlMyA=",
-        "type": "tarball",
-        "url": "https://github.com/MaybeJustJames/zephyr/releases/download/c074270/Linux.tar.gz"
-      },
-      "original": {
-        "type": "tarball",
-        "url": "https://github.com/MaybeJustJames/zephyr/releases/download/c074270/Linux.tar.gz"
+        "nixpkgs": "nixpkgs"
       }
     }
   },
