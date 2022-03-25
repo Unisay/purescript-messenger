@@ -1,23 +1,35 @@
-module Component.Debug where
+module Component.Debug
+  ( Action(..)
+  , Input
+  , State
+  , component
+  , handleAction
+  , initialState
+  , render
+  ) where
 
 import Prelude
 
-import Data.Notification (Notification(..), critical, important, useful)
+import Data.Maybe (Maybe(..))
+import Data.Notification (Importance(..), Notification, critical, important, useful)
 import Effect.Aff.Class (class MonadAff)
 import Halogen (Component, liftEffect)
 import Halogen as H
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Extended as HH
+import Halogen.HTML.Properties.Extended (InputType(..))
 import Halogen.HTML.Properties.Extended as HP
 import Halogen.Subscription as HS
 
 data Action
-  = SendUseful
-  | SendImportant
-  | SendCritical
+  = UsefulTicked
+  | ImportantTicked
+  | CriticalTicked
+  | SendNotification
 
 type State =
   { notifications ∷ HS.Listener Notification
+  , selectState ∷ Maybe Importance
   }
 
 type Input = HS.Listener Notification
@@ -30,10 +42,13 @@ component = H.mkComponent
   }
 
 initialState ∷ Input → State
-initialState notifications = { notifications }
+initialState notifications =
+  { notifications
+  , selectState: Nothing
+  }
 
 render ∷ ∀ m. State → H.ComponentHTML Action () m
-render _st = HH.div
+render state = HH.div
   [ HP.classNames
       [ "flex"
       , "items-center"
@@ -46,7 +61,11 @@ render _st = HH.div
       [ HP.classNames
           [ "max-w-md"
           , "w-full"
-          , "space-y-8"
+          , "flex"
+          , "flex-col"
+          , "justify-center"
+          , "items-center"
+          , "space-y-3"
           , "rounded"
           , "border"
           , "border-slate-300"
@@ -57,56 +76,68 @@ render _st = HH.div
       ]
       [ HH.button
           [ HP.type_ HP.ButtonButton
-          , HE.onClick \_ → SendUseful
-          , HP.classNames
-              [ "justify-center"
-              , "flex"
-              , "font-medium"
+          , HE.onClick \_ → SendNotification
+          , HP.classNames $
+              [ "font-medium"
               , "border-2"
-              , "border-green-600"
-              , "bg-green-200"
-              , "w-full"
+              , "w-3/5"
               , "mb-2"
-              ]
+              , "h-12"
+              ] <> buttonColor
           ]
           [ HH.span_
-              [ HH.text "Useful" ]
+              [ HH.text "Send notification" ]
           ]
-      , HH.button
-          [ HP.type_ HP.ButtonButton
-          , HE.onClick \_ → SendImportant
+      , HH.p [ HP.classNames [ "text-xl" ] ]
+          [ HH.text "Choose notification type below:" ]
+      , HH.form
+          [ HP.id "form-notification_type"
           , HP.classNames
-              [ "justify-center"
+              [ "w-fit"
+              , "mt-0"
               , "flex"
-              , "font-medium"
-              , "border-2"
-              , "border-orange-600"
-              , "bg-orange-200"
-              , "w-full"
-              , "mb-2"
+              , "flex-col"
               ]
           ]
-          [ HH.span_
-              [ HH.text "Important" ]
-          ]
-      , HH.button
-          [ HP.type_ HP.ButtonButton
-          , HE.onClick \_ → SendCritical
-          , HP.classNames
-              [ "justify-center"
-              , "flex"
-              , "font-medium"
-              , "border-2"
-              , "border-red-600"
-              , "bg-red-200"
-              , "w-full"
+          [ HH.section_
+              [ HH.input
+                  [ HP.name "specify-notification"
+                  , HP.type_ InputRadio
+                  , HE.onInput \_ → UsefulTicked
+                  , HP.classNames [ "scale-125" ]
+                  ]
+              , HH.span [ HP.classNames [ "ml-2" ] ]
+                  [ HH.text "Useful" ]
               ]
-          ]
-          [ HH.span_
-              [ HH.text "Critical" ]
+          , HH.section_
+              [ HH.input
+                  [ HP.name "specify-notification"
+                  , HP.type_ InputRadio
+                  , HE.onInput \_ → ImportantTicked
+                  , HP.classNames [ "scale-125" ]
+                  ]
+              , HH.span [ HP.classNames [ "ml-2" ] ]
+                  [ HH.text "Important" ]
+              ]
+          , HH.section_
+              [ HH.input
+                  [ HP.name "specify-notification"
+                  , HP.type_ InputRadio
+                  , HE.onInput \_ → CriticalTicked
+                  , HP.classNames [ "scale-125" ]
+                  ]
+              , HH.span [ HP.classNames [ "ml-2" ] ]
+                  [ HH.text "Critical" ]
+              ]
           ]
       ]
   ]
+  where
+  buttonColor = case state.selectState of
+    Nothing → []
+    Just Useful → [ "border-green-600", "bg-green-200" ]
+    Just Important → [ "border-orange-600", "bg-orange-200" ]
+    Just Critical → [ "border-red-600", "bg-red-200" ]
 
 handleAction
   ∷ ∀ i o m
@@ -114,11 +145,18 @@ handleAction
   ⇒ Action
   → H.HalogenM State Action i o m Unit
 handleAction = case _ of
-  SendUseful → sendNotification $ useful "Useful"
-  SendImportant → sendNotification $ important "Important"
-  SendCritical → sendNotification $ critical "Critical"
+  UsefulTicked → H.modify_ _ { selectState = Just Useful }
+  ImportantTicked → H.modify_ _ { selectState = Just Important }
+  CriticalTicked → H.modify_ _ { selectState = Just Critical }
+  SendNotification → do
+    { selectState, notifications } ← H.get
+    case selectState of
+      Nothing → pure unit
+      Just Useful →
+        send notifications $ useful "Useful"
+      Just Important →
+        send notifications $ important "Important"
+      Just Critical →
+        send notifications $ critical "Critical"
   where
-  sendNotification n = do
-    { notifications } ← (H.get ∷ H.HalogenM State Action _ _ _ State)
-    liftEffect $ HS.notify notifications n
-
+  send f = liftEffect <<< HS.notify f
