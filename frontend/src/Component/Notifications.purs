@@ -31,10 +31,8 @@ type Slots = ()
 data Action = Initialize | Finalize | Notify Notification | Close Int
 
 component ∷ ∀ q m o. MonadEffect m ⇒ H.Component q Input o m
-component = H.mkComponent componentSpec
-  where
-  componentSpec ∷ H.ComponentSpec State q Action Slots Input o m
-  componentSpec = { initialState, render, eval: H.mkEval evalSpec }
+component = H.mkComponent 
+  { initialState, render, eval: H.mkEval evalSpec }
 
 evalSpec ∷ ∀ q m o. HC.EvalSpec State q Action Slots Input o m
 evalSpec = H.defaultEval
