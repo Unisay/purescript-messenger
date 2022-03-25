@@ -160,3 +160,4 @@ handleAction = case _ of
         send notifications $ critical "Critical"
   where
   send f = liftEffect <<< HS.notify f
+  
