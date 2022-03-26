@@ -11,7 +11,7 @@ import Halogen.HTML.Properties.Extended as HP
 
 type State = Unit
 
-data Action = SignInButtonClicked | SignUpButtonClicked
+data Action = SignInButtonClicked | SignUpButtonClicked | DebugButtonClicked
 
 component ∷ ∀ q i o m. MonadAff m ⇒ H.Component q i o m
 component =
@@ -90,6 +90,19 @@ render _state = HH.div
               [ HH.span_
                   [ HH.text "Go to SignUp" ]
               ]
+          , HH.button
+              [ HP.type_ HP.ButtonButton
+              , HE.onClick \_ → DebugButtonClicked
+              , HP.classNames
+                  [ "justify-center"
+                  , "flex"
+                  , "font-medium"
+                  , "w-full"
+                  ]
+              ]
+              [ HH.span_
+                  [ HH.text "Go to Debug" ]
+              ]
           ]
       ]
   ]
@@ -99,4 +112,5 @@ handleAction
 handleAction = goTo <<< case _ of
   SignUpButtonClicked → SignUp
   SignInButtonClicked → SignIn
+  DebugButtonClicked → Debug
 

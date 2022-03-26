@@ -2,6 +2,7 @@ module Test.Main where
 
 import Prelude
 
+import Component.NotificationsSpec as Notifications
 import Data.Array (all, length)
 import Data.CodePoint.Unicode (isPrint)
 import Data.Either (Either(..))
@@ -14,13 +15,21 @@ import Effect (Effect)
 import Effect.Class (liftEffect)
 import Effect.Class.Console (log)
 import Routing.Duplex as Routing
-import Test.QuickCheck (class Testable, Result(..), Seed, quickCheckWithSeed, randomSeed, (===))
+import Test.QuickCheck
+  ( class Testable
+  , Result(..)
+  , Seed
+  , quickCheckWithSeed
+  , randomSeed
+  , (===)
+  )
 import Test.Unit (TestSuite, describe, test)
 import Test.Unit.Assert (shouldEqual)
 import Test.Unit.Main (runTest)
 
 main ∷ Effect Unit
 main = withSeed >>= \seed → runTest do
+
   describe "Route printer" do
     let printRoute r s = Routing.print codec r `shouldEqual` s
     test "Home" do
@@ -33,23 +42,22 @@ main = withSeed >>= \seed → runTest do
       printRoute (Profile (Username.unsafe "yura")) "/profile/yura"
 
   describe "Route properties" do
-
     property "All routes roundrip" seed \route →
       case Routing.parse codec (Routing.print codec route) of
         Right route' → route === route'
         Left err → Failed (show err)
-
     property "All routes are not empty strings" seed $
       propAllRoutesPrintNonBlankString
-
     property "All routes printed start from /" seed $
       propAllRoutesStartFromSlash
-
     property "Route equality under printing" seed $
       propRouteEqualityUnderPrinting
-
     property "Route equality under parsing" seed $
       propEqualityUnderParsing
+
+  describe "Component" do
+    Notifications.spec
+
 
 propAllRoutesPrintNonBlankString ∷ Route → Result
 propAllRoutesPrintNonBlankString route =

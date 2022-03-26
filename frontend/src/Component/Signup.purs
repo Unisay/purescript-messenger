@@ -2,7 +2,6 @@ module Component.Signup where
 
 import Prelude
 
-import Component.Signin (Validation)
 import Control.Error.Util (hush)
 import Control.Monad.Except (runExceptT)
 import Data.Array as Array
@@ -18,6 +17,7 @@ import Data.Password (Password)
 import Data.Password as Password
 import Data.Username (Username)
 import Data.Username as Username
+import Data.Validation (Validation)
 import Effect.Aff.Class (class MonadAff)
 import Halogen (liftEffect)
 import Halogen as H

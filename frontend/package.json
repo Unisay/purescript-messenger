@@ -13,7 +13,7 @@
   "scripts": {
     "postinstall": "spago install",
     "build:purescript": "spago -P build",
-    "build:tailwind": "tailwindcss -c tailwind.config.js -i tailwind_inputs.css -o dist/styles/tailwind.css",
+    "build:tailwind": "tailwindcss -m -c tailwind.config.js -i tailwind_inputs.css -o dist/styles/tailwind.css",
     "build": "run-p build:purescript build:tailwind",
     "bundle:build": "spago -P build --purs-args '--codegen corefn'",
     "bundle:dce": "zephyr -f Main.main",
@@ -44,7 +44,7 @@
     "esbuild-plugin-purescript": "^1.1.1",
     "http-server": "^14.1.0",
     "npm-run-all": "^4.1.5",
-    "purescript": "^0.14.5",
+    "purescript": "^0.14.7",
     "purs-tidy": "^0.7.0",
     "spago": "^0.20.7",
     "tailwindcss": "^3.0.23"
