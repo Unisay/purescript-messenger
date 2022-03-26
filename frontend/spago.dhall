@@ -10,6 +10,7 @@
   , "console"
   , "effect"
   , "either"
+  , "enums"
   , "errors"
   , "foldable-traversable"
   , "free"
