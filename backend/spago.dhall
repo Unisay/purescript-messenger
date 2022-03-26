@@ -24,7 +24,6 @@
   , "node-sqlite3"
   , "now"
   , "prelude"
-  , "psci-support"
   , "random"
   , "strings"
   , "transformers"

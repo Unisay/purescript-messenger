@@ -6,12 +6,15 @@ module Component.Debug
   , handleAction
   , initialState
   , render
+  , testRow
   ) where
 
 import Prelude
 
+import Data.Enum (enumFromTo)
 import Data.Maybe (Maybe(..))
 import Data.Notification (Importance(..), Notification, critical, important, useful)
+import Data.String as String
 import Effect.Aff.Class (class MonadAff)
 import Halogen (Component, liftEffect)
 import Halogen as H
@@ -22,9 +25,7 @@ import Halogen.HTML.Properties.Extended as HP
 import Halogen.Subscription as HS
 
 data Action
-  = UsefulTicked
-  | ImportantTicked
-  | CriticalTicked
+  = Ticked Importance
   | SendNotification
 
 type State =
@@ -92,44 +93,22 @@ render state = HH.div
           [ HH.text "Choose notification type below:" ]
       , HH.form
           [ HP.id "form-notification_type"
-          , HP.classNames
-              [ "w-fit"
-              , "mt-0"
-              , "flex"
-              , "flex-col"
-              ]
+          , HP.classNames [ "w-fit", "mt-0", "flex", "flex-col" ]
           ]
-          [ HH.section_
-              [ HH.input
-                  [ HP.name "specify-notification"
-                  , HP.type_ InputRadio
-                  , HE.onInput \_ → UsefulTicked
-                  , HP.classNames [ "scale-125" ]
-                  ]
-              , HH.span [ HP.classNames [ "ml-2" ] ]
-                  [ HH.text "Useful" ]
-              ]
-          , HH.section_
-              [ HH.input
-                  [ HP.name "specify-notification"
-                  , HP.type_ InputRadio
-                  , HE.onInput \_ → ImportantTicked
-                  , HP.classNames [ "scale-125" ]
-                  ]
-              , HH.span [ HP.classNames [ "ml-2" ] ]
-                  [ HH.text "Important" ]
-              ]
-          , HH.section_
-              [ HH.input
-                  [ HP.name "specify-notification"
-                  , HP.type_ InputRadio
-                  , HE.onInput \_ → CriticalTicked
-                  , HP.classNames [ "scale-125" ]
-                  ]
-              , HH.span [ HP.classNames [ "ml-2" ] ]
-                  [ HH.text "Critical" ]
-              ]
-          ]
+          ( enumFromTo bottom top <#> \importance → do
+              let id_ = String.toLower $ show importance
+              HH.section_
+                [ HH.input
+                    [ HP.name "specify-notification"
+                    , HP.id id_
+                    , HP.type_ InputRadio
+                    , HE.onInput \_ → Ticked importance
+                    , HP.classNames [ "scale-125" ]
+                    ]
+                , HH.label [ HP.for id_, HP.classNames [ "ml-2" ] ]
+                    [ HH.text $ show importance ]
+                ]
+          )
       ]
   ]
   where
@@ -145,9 +124,7 @@ handleAction
   ⇒ Action
   → H.HalogenM State Action i o m Unit
 handleAction = case _ of
-  UsefulTicked → H.modify_ _ { selectState = Just Useful }
-  ImportantTicked → H.modify_ _ { selectState = Just Important }
-  CriticalTicked → H.modify_ _ { selectState = Just Critical }
+  Ticked importance → H.modify_ _ { selectState = Just importance }
   SendNotification → do
     { selectState, notifications } ← H.get
     case selectState of
@@ -160,4 +137,3 @@ handleAction = case _ of
         send notifications $ critical "Critical"
   where
   send f = liftEffect <<< HS.notify f
-  
