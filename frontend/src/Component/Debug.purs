@@ -6,7 +6,6 @@ module Component.Debug
   , handleAction
   , initialState
   , render
-  , testRow
   ) where
 
 import Prelude
