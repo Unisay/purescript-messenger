@@ -2,6 +2,7 @@ module Component.Signup where
 
 import Prelude
 
+import Backend (SignUpResponse(..), createAccount)
 import Control.Error.Util (hush)
 import Control.Monad.Except (runExceptT)
 import Data.Array as Array
@@ -9,13 +10,10 @@ import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NEA
 import Data.Either (Either(..), either, isLeft)
 import Data.EitherR (flipEither)
-import Data.Email (Email)
 import Data.Email as Email
 import Data.Maybe (Maybe(..), maybe)
 import Data.Newtype (wrap)
-import Data.Password (Password)
 import Data.Password as Password
-import Data.Username (Username)
 import Data.Username as Username
 import Data.Validation (Validation)
 import Effect.Aff.Class (class MonadAff)
@@ -34,8 +32,6 @@ type State =
   , email ∷ Validation Email.Email
   , response ∷ Maybe SignUpResponse
   }
-
-data SignUpResponse = SignedUp | Failure String
 
 data Action
   = SetUsername String
@@ -115,7 +111,9 @@ render state = signupFormContainer
       [ HH.div [ HP.classNames [ "text-red-600" ] ]
           [ HH.text case state.response of
               Just SignedUp → "You successfully signed up!"
-              Just (Failure str) → "Got an error: " <> str
+              Just (Unexpected str) → "Got an error: " <> str
+              Just (AlreadyRegistered) →
+                "This user has already been registered!"
               Nothing → ""
           ]
       , HH.div_ $ Array.concat
@@ -329,9 +327,6 @@ handleAction = case _ of
       in
         createAccount username password email >>= case _ of
           SignedUp → H.modify_ _ { response = Just SignedUp }
-          Failure str → H.modify_ _ { response = Just (Failure str) }
-
-createAccount
-  ∷ ∀ m. MonadAff m ⇒ Username → Password → Email → m SignUpResponse
-createAccount _username _password _email = pure SignedUp
+          AlreadyRegistered → H.modify_ _ { response = Just AlreadyRegistered }
+          Unexpected str → H.modify_ _ { response = Just (Unexpected str) }
 
