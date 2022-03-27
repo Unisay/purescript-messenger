@@ -28,6 +28,7 @@
   , "routing"
   , "routing-duplex"
   , "strings"
+  , "stringutils"
   , "svg-parser-halogen"
   , "test-unit"
   , "transformers"
