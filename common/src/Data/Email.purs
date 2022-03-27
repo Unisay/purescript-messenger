@@ -66,8 +66,6 @@ parse str = case remSpaces str of
     Unicode.isLatin1 cp
       &&
         ( Unicode.isAlphaNum cp
-            || cp == String.codePointFromChar '_'
-            || cp == String.codePointFromChar '-'
             || cp == String.codePointFromChar '@'
             || cp == String.codePointFromChar '.'
         )
@@ -76,3 +74,4 @@ parse str = case remSpaces str of
     <<< fromMaybe (String.codePointFromChar '&')
     <<< f
     <<< toCodePointArray
+    
