@@ -35,6 +35,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "email-validate": "^1.0.0",
     "xhr2": "^0.2.1"
   },
   "devDependencies": {

@@ -25,15 +25,14 @@ to generate this file without the comments in this block.
   , "newtype"
   , "prelude"
   , "profunctor"
-  , "psci-support"
   , "quickcheck"
   , "strings"
   , "transformers"
   , "tuples"
   , "unicode"
-  , "stringutils"
   , "foldable-traversable"
   , "maybe"
+  , "email-validate"
   ]
 , packages = ./packages.dhall
 , sources = [ "src/**/*.purs", "test/**/*.purs" ]
