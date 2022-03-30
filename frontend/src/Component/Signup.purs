@@ -112,8 +112,7 @@ render state = signupFormContainer
           [ HH.text case state.response of
               Just SignedUp → "You successfully signed up!"
               Just (Unexpected str) → "Got an error: " <> str
-              Just (AlreadyRegistered) →
-                "This user has already been registered!"
+              Just AlreadyRegistered → "This user has already been registered!"
               Nothing → ""
           ]
       , HH.div_ $ Array.concat
@@ -312,7 +311,8 @@ handleAction = case _ of
   ValidateEmail → do
     { email } ← H.get
     case Email.parse email.inputValue of
-      Left err → H.modify_ $ \state →
+      Left _err → H.modify_ $ \state → do
+        let err = "Not a valid email"
         state { email { result = pure $ Left $ pure err } }
       Right email' → H.modify_ $ \state →
         state { email { result = pure $ Right email' } }

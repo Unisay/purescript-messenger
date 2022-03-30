@@ -25,6 +25,7 @@
   , "now"
   , "prelude"
   , "random"
+  , "spec"
   , "strings"
   , "transformers"
   , "unfoldable"

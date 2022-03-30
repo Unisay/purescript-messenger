@@ -3,6 +3,7 @@ module Data.Password
   , parse
   , codec
   , toString
+  , unsafe
   ) where
 
 import Prelude
@@ -34,3 +35,5 @@ parse = case _ of
 toString :: Password -> String
 toString (Password s) = s
 
+unsafe :: String -> Password
+unsafe = Password
