@@ -63,13 +63,17 @@ spec = describe "Backend Spec" do
       SignedUp → fail "Received SignedUp where AlreadyRegistered expected"
       AlreadyRegistered → pure unit
       Unexpected err → fail $ "Unexpected error: " <> show err
+      ServerErrors err →
+        fail ("AlreadyRegistered expected, but got: " <> show err)
 
   it "create account handles bad requests" do
     let server _request = respond badRequest400
     createAccount' server username password email >>= case _ of
       SignedUp → fail "Unexpected error was expected"
       AlreadyRegistered → fail "Unexpected error was expected"
-      Unexpected _err → pure unit
+      Unexpected err →
+        fail ("ServerErrors expected, but got: " <> show err)
+      ServerErrors _err → pure unit
 
   it "create account handles request error" do
     let server _request = pure $ Left AX.RequestFailedError
@@ -89,6 +93,8 @@ isSignedUp = case _ of
   SignedUp → pure unit
   AlreadyRegistered → fail "AlreadyRegistered"
   Unexpected err → fail err
+  ServerErrors err →
+    fail ("SignedUp expected, but got: " <> show err)
 
 isUnexpectedError
   ∷ ∀ m. MonadThrow Error m ⇒ SignUpResponse → String → m Unit
@@ -97,6 +103,8 @@ isUnexpectedError resp e =
     SignedUp → fail "Error expected"
     AlreadyRegistered → fail "Error expected"
     Unexpected err → err `shouldContain` e
+    ServerErrors err →
+      fail ("Error expected, but got: " <> show err)
 
 assertResponseFormat
   ∷ ∀ a m

@@ -113,6 +113,7 @@ render state = signupFormContainer
               Just SignedUp → "You successfully signed up!"
               Just (Unexpected str) → "Got an error: " <> str
               Just AlreadyRegistered → "This user has already been registered!"
+              Just (ServerErrors err) → "Got errors: " <> show err
               Nothing → ""
           ]
       , HH.div_ $ Array.concat
@@ -329,4 +330,6 @@ handleAction = case _ of
           SignedUp → H.modify_ _ { response = Just SignedUp }
           AlreadyRegistered → H.modify_ _ { response = Just AlreadyRegistered }
           Unexpected str → H.modify_ _ { response = Just (Unexpected str) }
+          ServerErrors arr →
+            H.modify_ _ { response = Just (ServerErrors arr) }
 

@@ -90,6 +90,6 @@ createAccount' transport username password email = do
       case unwrap status, decodeJson body of
         200, _ → SignedUp
         409, _ → AlreadyRegistered
-        _, Right (srb ∷ SignUpResponseBody) → ServerErrors srb.errors
+        400, Right (srb ∷ SignUpResponseBody) → ServerErrors srb.errors
         _, _ → Unexpected $ show status
 
