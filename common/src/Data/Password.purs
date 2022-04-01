@@ -8,12 +8,13 @@ module Data.Password
 
 import Prelude
 
+import Data.Argonaut.Decode (class DecodeJson)
 import Data.Argonaut.Encode (class EncodeJson)
 import Data.Codec.Argonaut (JsonCodec)
 import Data.Codec.Argonaut as CA
 import Data.Either (Either(..))
-import Data.String.CodePoints as String
 import Data.Profunctor (dimap)
+import Data.String.CodePoints as String
 import Foreign.Class (class Decode)
 
 newtype Password = Password String
@@ -21,6 +22,7 @@ newtype Password = Password String
 derive newtype instance Eq Password
 derive newtype instance Ord Password
 derive newtype instance EncodeJson Password
+derive newtype instance DecodeJson Password
 derive newtype instance Decode Password
 
 codec :: JsonCodec Password

@@ -3,6 +3,7 @@
   [ "aff"
   , "affjax"
   , "argonaut-codecs"
+  , "argonaut-core"
   , "arrays"
   , "bifunctors"
   , "codec-argonaut"

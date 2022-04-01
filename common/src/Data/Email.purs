@@ -7,6 +7,7 @@ module Data.Email
 
 import Prelude
 
+import Data.Argonaut.Decode (class DecodeJson)
 import Data.Argonaut.Encode (class EncodeJson)
 import Data.Bifunctor (bimap)
 import Data.Codec.Argonaut (JsonCodec)
@@ -23,6 +24,7 @@ newtype Email = Email String
 derive newtype instance Eq Email
 derive newtype instance Ord Email
 derive newtype instance EncodeJson Email
+derive newtype instance DecodeJson Email
 derive newtype instance Decode Email
 instance Show Email where
   show (Email s) = show s

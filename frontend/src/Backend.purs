@@ -2,16 +2,10 @@ module Backend where
 
 import Prelude
 
-import Affjax
-  ( Error
-  , Request
-  , Response
-  , defaultRequest
-  , printError
-  , request
-  ) as AX
+import Affjax (Error, Request, Response, defaultRequest, printError, request) as AX
 import Affjax.RequestBody (RequestBody(..)) as AX
 import Affjax.ResponseFormat as ResponseFormat
+import Data.Argonaut.Core (Json)
 import Data.Argonaut.Decode (decodeJson)
 import Data.Argonaut.Encode (encodeJson) as Json
 import Data.Auth.Token (Token)
@@ -34,6 +28,7 @@ data SignInResponse
 data SignUpResponse
   = SignedUp
   | AlreadyRegistered
+  | ServerErrors (Array String)
   | Unexpected String
 
 instance Show SignInResponse where
@@ -44,7 +39,7 @@ instance Show SignInResponse where
 
 type SignInResponseBody = { token ∷ Token }
 
-type SignUpResponseBody = Array String
+type SignUpResponseBody = { errors ∷ Array String }
 
 createSession
   ∷ ∀ m. MonadAff m ⇒ Username → Password → m SignInResponse
@@ -71,7 +66,7 @@ createAccount
   ∷ ∀ m. MonadAff m ⇒ Username → Password → Email → m SignUpResponse
 createAccount = createAccount' AX.request
 
-type Transport = ∀ a. AX.Request a → Aff (Either AX.Error (AX.Response a))
+type Transport = AX.Request Json → Aff (Either AX.Error (AX.Response Json))
 
 createAccount'
   ∷ ∀ m
@@ -95,10 +90,6 @@ createAccount' transport username password email = do
       case unwrap status, decodeJson body of
         200, _ → SignedUp
         409, _ → AlreadyRegistered
-        _, Right (srb ∷ SignUpResponseBody) →
-          Unexpected $ "Got status: "
-            <> show status
-            <> "and errors: "
-            <> show srb
+        _, Right (srb ∷ SignUpResponseBody) → ServerErrors srb.errors
         _, _ → Unexpected $ show status
 
