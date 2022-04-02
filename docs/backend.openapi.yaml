@@ -169,7 +169,6 @@ components:
         token:
           type: string
           format: jwt
-
     Error:
       type: object
       properties:
