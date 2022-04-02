@@ -6,13 +6,14 @@ import Auth.Hash (Hash, Salt(..), hashPassword)
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.Except (runExcept)
 import Data.Array as Array
-import Data.Auth.Token (Token(..))
+import Data.Auth.Token (Token)
+import Data.Auth.Token as Token
 import Data.DateTime (adjust)
 import Data.Either (Either(..), hush, note)
 import Data.Enum (enumFromTo)
 import Data.List.NonEmpty (NonEmptyList)
 import Data.Maybe (Maybe(..), fromMaybe)
-import Data.Newtype (unwrap, wrap)
+import Data.Newtype (wrap)
 import Data.Password (Password)
 import Data.String.CodeUnits as String
 import Data.Time.Duration (Minutes(..))
@@ -107,7 +108,7 @@ signin secret username password =
             , exp = wrap <$> adjust (Minutes 30.0) now
             }
         pure
-          if hash == password_hash then SigninSuccess (Token token)
+          if hash == password_hash then SigninSuccess (Token.unsafe token)
           else SigninFailure
     Nothing -> pure SigninFailure
 
@@ -128,6 +129,6 @@ type TokenErrors = NonEmptyList String
 
 tokenInfo :: Token -> Jwt.Secret -> Either TokenErrors Username
 tokenInfo token secret = do
-  tok :: Jwt.Token () _ <- Jwt.verify secret (unwrap token)
+  tok :: Jwt.Token () _ <- Jwt.verify secret (Token.toString token)
   strUsername <- note (pure "sub claim not found") tok.claims.sub
   note (pure "sub claim is invalid") $ hush (Username.parse strUsername)

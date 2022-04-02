@@ -31,93 +31,97 @@ import Test.Spec.Assertions (fail, shouldEqual)
 import Test.Spec.Assertions.String (shouldContain)
 
 spec ∷ Spec Unit
-spec = describe "Backend Spec" do
+spec = describe "Backend" do
   let
     username = Username.unsafe "testuser"
     password = Password.unsafe "testpass"
     email = Email.unsafe "john.doe@example.com"
-  it "create account sends proper user data to the backend" do
-    let
-      server ∷ Backend.Transport
-      server { method, responseFormat, content } = do
-        method `shouldEqual` Left PUT
-        ResponseFormat.json `assertResponseFormat` responseFormat
-        content # maybe (fail "Body is absent") case _ of
-          RequestBody.Json j → do
-            ( actual
-                ∷ { username ∷ Username
-                  , password ∷ Password
-                  , email ∷ Email
-                  }
-            ) ← fromRight $ decodeJson j
-            actual.username `shouldEqual` username
-            (shouldEqual `on` Password.toString) actual.password password
-            actual.email `shouldEqual` email
-          _ → fail "NonJson body"
-        respond ok200
-    createAccount' server username password email >>= isSignedUp
 
-  it "create account handles already created accounts" do
-    let server _ = respond conflict409
-    createAccount' server username password email >>= case _ of
-      SignedUp → fail "Received SignedUp where AlreadyRegistered expected"
-      AlreadyRegistered → pure unit
-      Unexpected err → fail $ "Unexpected error: " <> show err
-      ServerErrors err →
-        fail ("AlreadyRegistered expected, but got: " <> show err)
+  describe "Create account" do
+    it "sends proper user data to the backend" do
+      let
+        server ∷ Backend.Transport
+        server { method, responseFormat, content } = do
+          method `shouldEqual` Left PUT
+          ResponseFormat.json `assertResponseFormat` responseFormat
+          content # maybe (fail "Body is absent") case _ of
+            RequestBody.Json j → do
+              ( actual
+                  ∷ { username ∷ Username
+                    , password ∷ Password
+                    , email ∷ Email
+                    }
+              ) ← fromRight $ decodeJson j
+              actual.username `shouldEqual` username
+              (shouldEqual `on` Password.toString) actual.password password
+              actual.email `shouldEqual` email
+            _ → fail "NonJson body"
+          respond ok200
+      createAccount' server username password email >>= isSignedUp
 
-  it "create account handles bad requests" do
-    let server _request = respond badRequest400
-    createAccount' server username password email >>= case _ of
-      SignedUp → fail "Unexpected error was expected"
-      AlreadyRegistered → fail "Unexpected error was expected"
-      Unexpected err →
-        fail ("ServerErrors expected, but got: " <> show err)
-      ServerErrors _err → pure unit
+    it "handles already created accounts" do
+      let server _ = respond conflict409
+      createAccount' server username password email >>= case _ of
+        SignedUp → fail "Received SignedUp where AlreadyRegistered expected"
+        AlreadyRegistered → pure unit
+        Unexpected err → fail $ "Unexpected error: " <> show err
+        ServerErrors err →
+          fail ("AlreadyRegistered expected, but got: " <> show err)
 
-  it "create account handles request error" do
-    let server _request = pure $ Left AX.RequestFailedError
-    response ← createAccount' server username password email
-    response `isUnexpectedError` "request failed"
+    it "handles bad requests" do
+      let server _request = respond badRequest400
+      createAccount' server username password email >>= case _ of
+        SignedUp → fail "Unexpected error was expected"
+        AlreadyRegistered → fail "Unexpected error was expected"
+        Unexpected err →
+          fail ("ServerErrors expected, but got: " <> show err)
+        ServerErrors _err → pure unit
 
-  it "create account handles timeout error" do
-    let server _request = pure $ Left AX.TimeoutError
-    response ← createAccount' server username password email
-    response `isUnexpectedError` "timeout"
+    it "handles request error" do
+      let server _request = pure $ Left AX.RequestFailedError
+      response ← createAccount' server username password email
+      response `isUnexpectedError` "request failed"
 
-  it "create session sends proper user data to the backend" do
-    let
-      server ∷ Backend.Transport
-      server { method, responseFormat, content } = do
-        method `shouldEqual` Left PUT
-        ResponseFormat.json `assertResponseFormat` responseFormat
-        content # maybe (fail "Body is absent") case _ of
-          RequestBody.Json j → do
-            (actual ∷ { username ∷ Username, password ∷ Password }) ←
-              fromRight $ decodeJson j
-            actual.username `shouldEqual` username
-            (shouldEqual `on` Password.toString) actual.password password
-          _ → fail "NonJson body"
-        respond ok200 { body = jsonSingletonObject "token" $ fromString "1234" }
-    createSession' server username password >>= isSignedIn
+    it "handles timeout error" do
+      let server _request = pure $ Left AX.TimeoutError
+      response ← createAccount' server username password email
+      response `isUnexpectedError` "timeout"
 
-  it "create session handles request error" do
-    let server _request = pure $ Left AX.RequestFailedError
-    response ← createSession' server username password
-    response `isFailure` "request failed"
+  describe "Create session" do
+    it "sends proper user data to the backend" do
+      let
+        server ∷ Backend.Transport
+        server { method, responseFormat, content } = do
+          method `shouldEqual` Left PUT
+          ResponseFormat.json `assertResponseFormat` responseFormat
+          content # maybe (fail "Body is absent") case _ of
+            RequestBody.Json j → do
+              (actual ∷ { username ∷ Username, password ∷ Password }) ←
+                fromRight $ decodeJson j
+              actual.username `shouldEqual` username
+              (shouldEqual `on` Password.toString) actual.password password
+            _ → fail "NonJson body"
+          respond ok200
+            { body = jsonSingletonObject "token" $ fromString "1234" }
+      createSession' server username password >>= isSignedIn
 
-  it "create session handles timeout error" do
-    let server _request = pure $ Left AX.TimeoutError
-    response ← createSession' server username password
-    response `isFailure` "timeout"
+    it "handles request error" do
+      let server _request = pure $ Left AX.RequestFailedError
+      response ← createSession' server username password
+      response `isFailure` "request failed"
 
-  it "create session handles forbidden" do
-    let server _request = respond forbidden403
-    createSession' server username password >>= case _ of
-      SignedIn t →
-        fail $ "Forbidden expected, but got SignedIn: " <> Token.toString t
-      Forbidden → pure unit
-      Failure err → fail $ "Forbidden expected, but got Failure: " <> show err
+    it "handles timeout error" do
+      let server _request = pure $ Left AX.TimeoutError
+      response ← createSession' server username password
+      response `isFailure` "timeout"
+
+    it "handles forbidden" do
+      let server _request = respond forbidden403
+      createSession' server username password >>= case _ of
+        SignedIn t →
+          fail $ "Forbidden expected, but got SignedIn: " <> Token.toString t
+        Forbidden → pure unit
+        Failure err → fail $ "Forbidden expected, but got Failure: " <> show err
 
 -- Assertions:
 

@@ -2,6 +2,7 @@ module Data.Auth.Token
   ( Token
   , parse
   , toString
+  , unsafe
   ) where
 
 import Prelude
@@ -25,3 +26,6 @@ parse str = case String.trim str of
 
 toString :: Token -> String
 toString (Token str) = str
+
+unsafe :: String -> Token
+unsafe = Token
