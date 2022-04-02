@@ -8,11 +8,12 @@ import Affjax.RequestBody as RequestBody
 import Affjax.ResponseFormat (ResponseFormat)
 import Affjax.ResponseFormat as ResponseFormat
 import Affjax.StatusCode (StatusCode(..))
-import Backend (SignUpResponse(..), createAccount')
+import Backend (SignInResponse(..), SignUpResponse(..), createAccount', createSession')
 import Backend as Backend
 import Control.Monad.Error.Class (class MonadThrow, throwError)
-import Data.Argonaut.Core (Json, jsonEmptyArray, jsonNull, jsonSingletonObject)
+import Data.Argonaut.Core (Json, fromString, jsonEmptyArray, jsonNull, jsonSingletonObject)
 import Data.Argonaut.Decode (decodeJson)
+import Data.Auth.Token as Token
 import Data.Either (Either(..), either)
 import Data.Email (Email)
 import Data.Email as Email
@@ -25,7 +26,7 @@ import Data.Username (Username)
 import Data.Username as Username
 import Effect.Aff (Aff)
 import Effect.Exception (Error, error)
-import Test.Spec (Spec, describe, it, pending)
+import Test.Spec (Spec, describe, it)
 import Test.Spec.Assertions (fail, shouldEqual)
 import Test.Spec.Assertions.String (shouldContain)
 
@@ -35,7 +36,6 @@ spec = describe "Backend Spec" do
     username = Username.unsafe "testuser"
     password = Password.unsafe "testpass"
     email = Email.unsafe "john.doe@example.com"
-
   it "create account sends proper user data to the backend" do
     let
       server ∷ Backend.Transport
@@ -85,9 +85,42 @@ spec = describe "Backend Spec" do
     response ← createAccount' server username password email
     response `isUnexpectedError` "timeout"
 
-  pending "creates session"
+  it "create session sends proper user data to the backend" do
+    let
+      server ∷ Backend.Transport
+      server { method, responseFormat, content } = do
+        method `shouldEqual` Left PUT
+        ResponseFormat.json `assertResponseFormat` responseFormat
+        content # maybe (fail "Body is absent") case _ of
+          RequestBody.Json j → do
+            (actual ∷ { username ∷ Username, password ∷ Password }) ←
+              fromRight $ decodeJson j
+            actual.username `shouldEqual` username
+            (shouldEqual `on` Password.toString) actual.password password
+          _ → fail "NonJson body"
+        respond ok200 { body = jsonSingletonObject "token" $ fromString "1234" }
+    createSession' server username password >>= isSignedIn
+
+  it "create session handles request error" do
+    let server _request = pure $ Left AX.RequestFailedError
+    response ← createSession' server username password
+    response `isFailure` "request failed"
+
+  it "create session handles timeout error" do
+    let server _request = pure $ Left AX.TimeoutError
+    response ← createSession' server username password
+    response `isFailure` "timeout"
+
+  it "create session handles forbidden" do
+    let server _request = respond forbidden403
+    createSession' server username password >>= case _ of
+      SignedIn t →
+        fail $ "Forbidden expected, but got SignedIn: " <> Token.toString t
+      Forbidden → pure unit
+      Failure err → fail $ "Forbidden expected, but got Failure: " <> show err
 
 -- Assertions:
+
 isSignedUp ∷ ∀ m. MonadThrow Error m ⇒ SignUpResponse → m Unit
 isSignedUp = case _ of
   SignedUp → pure unit
@@ -105,6 +138,19 @@ isUnexpectedError resp e =
     Unexpected err → err `shouldContain` e
     ServerErrors err →
       fail ("Error expected, but got: " <> show err)
+
+isFailure ∷ ∀ m. MonadThrow Error m ⇒ SignInResponse → String → m Unit
+isFailure resp err = case resp of
+  SignedIn t →
+    fail $ "Failure expected, got token instead: " <> Token.toString t
+  Forbidden → fail "Failure expected, got Forbidden instead"
+  Failure err' → err' `shouldContain` err
+
+isSignedIn ∷ ∀ m. MonadThrow Error m ⇒ SignInResponse → m Unit
+isSignedIn = case _ of
+  SignedIn _ → pure unit
+  Forbidden → fail "SignedIn expected, got Forbidden instead"
+  Failure err → fail $ "SignedIn expected, got Failure: " <> show err
 
 assertResponseFormat
   ∷ ∀ a m
@@ -158,6 +204,14 @@ badRequest400 =
   , statusText: "Bad request"
   , headers: []
   , body: jsonSingletonObject "errors" jsonEmptyArray
+  }
+
+forbidden403 ∷ Response Json
+forbidden403 =
+  { status: StatusCode 403
+  , statusText: "Forbidden"
+  , headers: []
+  , body: jsonNull
   }
 
 fromRight ∷ ∀ a m e. Show e ⇒ MonadThrow Error m ⇒ Either e a → m a

@@ -43,9 +43,13 @@ type SignUpResponseBody = { errors ∷ Array String }
 
 createSession
   ∷ ∀ m. MonadAff m ⇒ Username → Password → m SignInResponse
-createSession username password = do
+createSession = createSession' AX.request
+
+createSession'
+  ∷ ∀ m. MonadAff m ⇒ Transport → Username → Password → m SignInResponse
+createSession' transport username password = do
   response ← liftAff $
-    AX.request
+    transport
       AX.defaultRequest
         { method = Left PUT
         , url = "http://localhost:8081/users/"
@@ -57,10 +61,12 @@ createSession username password = do
   pure case response of
     Left err → Failure (AX.printError err)
     Right { status, body } →
-      case unwrap status, decodeJson body of
-        200, Right (srb ∷ SignInResponseBody) → SignedIn srb.token
-        403, _ → Forbidden
-        _, _ → Failure (show status)
+      case unwrap status of
+        403 → Forbidden
+        200 → case decodeJson body of
+          Right (srb ∷ SignInResponseBody) → SignedIn srb.token
+          Left err → Failure $ show err
+        _ → Failure (show status)
 
 createAccount
   ∷ ∀ m. MonadAff m ⇒ Username → Password → Email → m SignUpResponse
