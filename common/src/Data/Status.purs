@@ -35,3 +35,4 @@ instance DecodeJson Status where
   decodeJson j = decodeJson j >>= \s ->
     lmap
       (\_ -> TypeMismatch $ "Expected online/away, but got" <> s) $ parse s
+      
