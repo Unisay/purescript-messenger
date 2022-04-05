@@ -5,6 +5,7 @@ module Component.Router
 
 import Prelude
 
+import Component.ChatWindow as ChatWindow
 import Component.Debug as Debug
 import Component.Home as Home
 import Component.Navigation as Navigation
@@ -45,6 +46,7 @@ type ChildSlots =
   , signin ∷ H.OpaqueSlot Unit
   , signup ∷ H.OpaqueSlot Unit
   , debug ∷ H.OpaqueSlot Unit
+  , chatWindow ∷ H.OpaqueSlot Unit
   )
 
 component ∷ ∀ m. MonadAff m ⇒ H.Component Query Input Void m
@@ -121,4 +123,6 @@ render { route, notifications } = HH.div_
           notifications.listener
       Debug → HH.slot_ (Proxy ∷ _ "debug") unit Debug.component
         notifications.listener
+      ChatWindow →
+        HH.slot_ (Proxy ∷ _ "chatWindow") unit ChatWindow.component unit
   ]

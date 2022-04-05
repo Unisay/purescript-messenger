@@ -15,6 +15,8 @@ import Data.Newtype (wrap)
 import Data.Notification (Notification, critical)
 import Data.Password (Password)
 import Data.Password as Password
+import Data.Route (goTo)
+import Data.Route as Route
 import Data.Username (Username)
 import Data.Username as Username
 import Data.Validation (Validation)
@@ -280,6 +282,7 @@ handleAction = case _ of
         Backend.createSession username password >>= case _ of
           SignedIn token → do
             H.modify_ _ { response = Just (SignedIn token) }
+            goTo Route.ChatWindow
           Forbidden →
             H.modify_ _ { response = Just Forbidden }
           Failure str → do
