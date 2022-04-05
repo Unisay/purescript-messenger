@@ -11,16 +11,16 @@ import Data.Array.NonEmpty as NEA
 import Data.Either (Either(..), either, hush, isLeft)
 import Data.EitherR (flipEither)
 import Data.Maybe (Maybe(..), maybe)
-import Data.Newtype (unwrap, wrap)
+import Data.Newtype (wrap)
 import Data.Notification (Notification, critical)
 import Data.Password (Password)
 import Data.Password as Password
-import Data.String (length)
+import Data.Route (goTo)
+import Data.Route as Route
 import Data.Username (Username)
 import Data.Username as Username
 import Data.Validation (Validation)
 import Effect.Aff.Class (class MonadAff)
-import Effect.Class.Console (log)
 import Halogen (liftEffect)
 import Halogen as H
 import Halogen.HTML.Events as HE
@@ -282,7 +282,7 @@ handleAction = case _ of
         Backend.createSession username password >>= case _ of
           SignedIn token → do
             H.modify_ _ { response = Just (SignedIn token) }
-            log $ "Received a token: " <> show (length (unwrap token))
+            goTo Route.ChatWindow
           Forbidden →
             H.modify_ _ { response = Just Forbidden }
           Failure str → do

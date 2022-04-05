@@ -31,7 +31,7 @@ type Slots = ()
 data Action = Initialize | Finalize | Notify Notification | Close Int
 
 component ∷ ∀ q m o. MonadEffect m ⇒ H.Component q Input o m
-component = H.mkComponent 
+component = H.mkComponent
   { initialState, render, eval: H.mkEval evalSpec }
 
 evalSpec ∷ ∀ q m o. HC.EvalSpec State q Action Slots Input o m
@@ -53,7 +53,7 @@ render { queue } =
   HH.div
     [ HP.classNames [ "fixed", "flex", "flex-col", "w-full", "items-center" ]
     ]
-    [ HH.ul [ HP.classNames [ "w-4/6" ] ] $
+    [ HH.ul [ HP.classNames [ "w-2/3" ] ] $
         Array.mapWithIndex renderNotification queue
     ]
   where

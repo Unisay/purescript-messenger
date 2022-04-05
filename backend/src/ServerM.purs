@@ -7,9 +7,10 @@ import Control.Monad.Except (ExceptT, except, lift, runExcept, runExceptT, withE
 import Control.Monad.Reader (ReaderT(..), mapReaderT, runReaderT)
 import Data.Argonaut.Encode (class EncodeJson, encodeJson)
 import Data.Array as Array
-import Data.Auth.Token (Token(..))
+import Data.Auth.Token (Token)
+import Data.Auth.Token as Token
 import Data.Bifunctor (lmap)
-import Data.Either (Either(..))
+import Data.Either (Either(..), hush)
 import Data.Maybe (Maybe, maybe)
 import Data.Newtype (class Newtype, wrap)
 import Data.String as Str
@@ -103,8 +104,8 @@ readHeader :: HeaderName -> ServerM (Maybe String)
 readHeader = liftHandler <<< Request.getRequestHeader
 
 readToken :: ServerM (Maybe Token)
-readToken = map (map (Token <<< Str.trim <<< Str.drop 7 <<< Str.trim))
-  $ readHeader "Authorization"
+readToken = readHeader "Authorization" <#> \header -> header >>=
+  Str.trim >>> Str.drop 7 >>> Str.trim >>> Token.parse >>> hush
 
 setStatus :: Int -> Server
 setStatus = liftHandler <<< Response.setStatus

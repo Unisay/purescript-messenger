@@ -10,15 +10,16 @@ module Data.Username
 import Prelude
 
 import Control.Monad.Except.Trans (except)
+import Data.Argonaut.Decode (class DecodeJson)
 import Data.Argonaut.Encode (class EncodeJson)
 import Data.Array (any)
 import Data.Array.NonEmpty as NEA
 import Data.Array.NonEmpty.Internal (NonEmptyArray)
 import Data.Bifunctor (lmap)
 import Data.Char.Gen (genAlpha, genDigitChar)
+import Data.CodePoint.Unicode as Unicode
 import Data.Codec.Argonaut (JsonCodec)
 import Data.Codec.Argonaut as CA
-import Data.CodePoint.Unicode as Unicode
 import Data.Either (Either(..), isRight)
 import Data.List (List(..), (:))
 import Data.List.NonEmpty as NEL
@@ -38,6 +39,7 @@ derive newtype instance Eq Username
 derive newtype instance Ord Username
 derive newtype instance Encode Username
 derive newtype instance EncodeJson Username
+derive newtype instance DecodeJson Username
 
 instance Decode Username where
   decode f = decode f >>=

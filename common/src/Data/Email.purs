@@ -1,38 +1,45 @@
 module Data.Email
-  ( parse
-  , toString
-  , Email
+  ( Email
+  , parse
   , codec
+  , unsafe
   ) where
 
 import Prelude
 
+import Data.Argonaut.Decode (class DecodeJson)
 import Data.Argonaut.Encode (class EncodeJson)
-import Data.Array (any)
+import Data.Bifunctor (bimap)
 import Data.Codec.Argonaut (JsonCodec)
 import Data.Codec.Argonaut as CA
-import Data.Either (Either(..))
+import Data.Either (Either)
 import Data.Profunctor (dimap)
-import Data.String.CodeUnits (toCharArray)
-import Data.String.Common (toLower)
 import Foreign.Generic (class Decode)
+import Text.Email.Parser as EP
+import Text.Email.Validate as EV
+import Text.Parsing.StringParser (ParseError)
 
 newtype Email = Email String
 
 derive newtype instance Eq Email
 derive newtype instance Ord Email
 derive newtype instance EncodeJson Email
+derive newtype instance DecodeJson Email
 derive newtype instance Decode Email
-
-toString :: Email -> String
-toString (Email s) = s
+instance Show Email where
+  show (Email s) = show s
 
 codec :: JsonCodec Email
 codec = dimap toString Email CA.string
 
-parse :: String -> Either String Email
-parse = case _ of
-  "" -> Left "Email can't be empty"
-  s | let cs = toCharArray s in any (_ == '@') cs && any (_ == '.') cs ->
-    Right (Email $ toLower s)
-  _ -> Left "Invalid email adress"
+toString :: Email -> String
+toString (Email s) = s
+
+parse ∷ String → Either String Email
+parse = bimap showEmailParsingErr (Email <<< EP.toString) <<< EV.runEmailParser
+  where
+  showEmailParsingErr :: ParseError -> String
+  showEmailParsingErr { error, pos } = error <> " at position " <> show pos
+
+unsafe :: String -> Email
+unsafe = Email
