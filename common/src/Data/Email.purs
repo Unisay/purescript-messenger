@@ -2,6 +2,7 @@ module Data.Email
   ( Email
   , parse
   , codec
+  , toString
   , unsafe
   ) where
 
@@ -14,7 +15,7 @@ import Data.Codec.Argonaut (JsonCodec)
 import Data.Codec.Argonaut as CA
 import Data.Either (Either)
 import Data.Profunctor (dimap)
-import Foreign.Generic (class Decode)
+import Foreign.Generic (class Decode, class Encode)
 import Text.Email.Parser as EP
 import Text.Email.Validate as EV
 import Text.Parsing.StringParser (ParseError)
@@ -26,6 +27,8 @@ derive newtype instance Ord Email
 derive newtype instance EncodeJson Email
 derive newtype instance DecodeJson Email
 derive newtype instance Decode Email
+derive newtype instance Encode Email
+
 instance Show Email where
   show (Email s) = show s
 

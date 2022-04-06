@@ -1,11 +1,11 @@
 module Component.Signin where
 
+import Chat.Api.Http
 import Prelude
 
-import Backend (SignInResponse(..))
 import Backend as Backend
 import Config (App)
-import Control.Monad.Except.Trans (runExceptT)
+import Control.Monad.Except.Trans (class MonadThrow, runExceptT)
 import Control.Monad.Reader.Class (class MonadAsk, asks)
 import Control.Monad.Trans.Class (lift)
 import Data.Array as Array
@@ -118,7 +118,6 @@ render state = signinFormContainer
           [ HH.text case state.response of
               Just (SignedIn _) → "You successfully signed in!"
               Just Forbidden → "Incorrect username or password!"
-              Just (Failure str) → "Got an error: " <> str
               Nothing → ""
           ]
       , HH.div_ $ Array.concat
@@ -251,6 +250,7 @@ render state = signinFormContainer
 handleAction
   ∷ ∀ s o r m
   . MonadAff m
+  ⇒ MonadThrow Backend.Error m
   ⇒ MonadAsk
       { backendApiUrl ∷ String
       , notifications ∷ SubscribeIO Notification
@@ -292,7 +292,7 @@ handleAction = case _ of
             goTo Route.ChatWindow
           Forbidden →
             H.modify_ _ { response = Just Forbidden }
-          Failure str → do
-            listener ← lift $ asks _.notifications.listener
-            liftEffect $ HS.notify listener (critical str)
+-- Failure str → do
+--   listener ← lift $ asks _.notifications.listener
+--   liftEffect $ HS.notify listener (critical str)
 

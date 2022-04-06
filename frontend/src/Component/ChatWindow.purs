@@ -2,8 +2,8 @@ module Component.ChatWindow where
 
 import Prelude
 
+import Chat.Presence (Presence(..))
 import Data.Array as Array
-import Data.Status (Status(..))
 import Data.Username (Username)
 import Data.Username as Username
 import Effect.Aff.Class (class MonadAff)
@@ -11,7 +11,7 @@ import Halogen as H
 import Halogen.HTML.Extended as HH
 import Halogen.HTML.Properties.Extended as HP
 
-type User = { username ∷ Username, status ∷ Status, self ∷ Boolean }
+type User = { username ∷ Username, presence ∷ Presence, self ∷ Boolean }
 
 type State = { users ∷ Array User }
 
@@ -27,15 +27,15 @@ initialState ∷ ∀ i. i → State
 initialState _input =
   { users:
       [ { username: Username.unsafe "Vadym"
-        , status: Online
+        , presence: Online
         , self: true
         }
       , { username: Username.unsafe "Yura"
-        , status: Online
+        , presence: Online
         , self: false
         }
       , { username: Username.unsafe "Andrey"
-        , status: Away
+        , presence: Away
         , self: false
         }
       ]
@@ -55,7 +55,7 @@ render { users } = HH.div
   ]
   [ HH.ul
       [ HP.classNames [ "w-full", "p-2" ] ] $
-      renderUsers <$> Array.sortWith (_.status) users
+      renderUsers <$> Array.sortWith _.presence users
   ]
   where
   renderUsers ∷ User → HH.ComponentHTML a () m
@@ -70,7 +70,7 @@ render { users } = HH.div
               , "items-center"
               ]
           ] $
-          ( if st.status == Online then
+          ( if st.presence == Online then
               [ HH.div
                   [ HP.classNames
                       [ "rounded-full"
@@ -86,7 +86,7 @@ render { users } = HH.div
           ) <>
             [ HH.span
                 [ HP.classNames
-                    [ if st.status == Online then "text-green-700"
+                    [ if st.presence == Online then "text-green-700"
                       else "text-slate-600"
                     , "text-lg"
                     , "font-medium"
@@ -98,4 +98,4 @@ render { users } = HH.div
                 ]
             ]
       ]
-      
+

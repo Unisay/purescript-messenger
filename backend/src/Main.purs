@@ -2,18 +2,10 @@ module Main where
 
 import Prelude
 
-import Auth
-  ( SigninResult(..)
-  , SignoutReason(..)
-  , SignoutResult(..)
-  , SignupResult(..)
-  , signin
-  , signout
-  , signup
-  , tokenInfo
-  )
+import Auth (SigninResult(..), SignoutReason(..), SignoutResult(..), SignupResult(..), signin, signout, signup, tokenInfo)
 import Chat as Chat
 import Data.Either (Either(..), hush)
+import Data.Email (Email)
 import Data.Int as Int
 import Data.Maybe (Maybe(..), maybe)
 import Data.Password (Password)
@@ -29,17 +21,7 @@ import Node.Express.App (App, delete, get, listenHttp, post, put)
 import Node.Jwt as Jwt
 import Node.Process (lookupEnv)
 import SQLite3 as SQLite
-import ServerM
-  ( Error(..)
-  , ServerM
-  , readBody
-  , readPathParam
-  , readToken
-  , reply
-  , replyJson
-  , replyStatus
-  , runServerM
-  )
+import ServerM (Error(..), ServerM, readBody, readPathParam, readToken, reply, replyJson, replyStatus, runServerM)
 
 type Resources =
   { port :: Int
@@ -51,7 +33,7 @@ type Resources =
 main :: Effect Unit
 main = launchAff_ $ initResources mainWithResources
 
-initResources :: ∀ a. (Resources -> Aff a) -> Aff a
+initResources :: forall a. (Resources -> Aff a) -> Aff a
 initResources callback = do
   port <- env "PORT" >>= case _ of
     Nothing -> throwError $ error "Please specify PORT env var"
@@ -79,8 +61,7 @@ app { dbConn, jwtSecret, staticPath } = do
   Middleware.init staticPath
   put "/users/:username" $ runServerM dbConn do
     username <- readUsername
-    { email, password } ::
-      { email :: String, password :: Password } <- readBody
+    { email, password } :: { email :: Email, password :: Password } <- readBody
     signup { email, password, username } >>= case _ of
       SignedUp -> replyStatus 200
       UserInfoUpdated -> replyStatus 200
@@ -114,7 +95,7 @@ app { dbConn, jwtSecret, staticPath } = do
 
   withTokenInfo :: (Username -> ServerM Unit) -> ServerM Unit
   withTokenInfo callback = readToken >>= case _ of
-    Nothing -> replyStatus 401
+    Nothing -> replyStatus 403
     Just token -> case tokenInfo token jwtSecret of
-      Left errors -> logShow errors *> replyStatus 401
+      Left errors -> logShow errors *> replyStatus 403
       Right username -> callback username
