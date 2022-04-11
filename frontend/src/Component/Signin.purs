@@ -4,7 +4,10 @@ import Prelude
 
 import Backend (SignInResponse(..))
 import Backend as Backend
+import Config (App)
 import Control.Monad.Except.Trans (runExceptT)
+import Control.Monad.Reader.Class (class MonadAsk, asks)
+import Control.Monad.Trans.Class (lift)
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NEA
@@ -26,19 +29,19 @@ import Halogen as H
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Extended as HH
 import Halogen.HTML.Properties.Extended as HP
+import Halogen.Subscription (SubscribeIO)
 import Halogen.Subscription as HS
 import Web.Event.Event (Event)
 import Web.Event.Event as Event
 
 type State =
   { loading ∷ Boolean
-  , notifications ∷ HS.Listener Notification
   , username ∷ Validation Username
   , password ∷ Validation Password
   , response ∷ Maybe SignInResponse
   }
 
-type Input = HS.Listener Notification
+type Input = Unit
 
 data Action
   = SetUsername String
@@ -47,8 +50,7 @@ data Action
   | ValidatePassword
   | SubmitForm Event
 
-component
-  ∷ ∀ query output m. MonadAff m ⇒ H.Component query Input output m
+component ∷ ∀ q o. H.Component q Input o App
 component =
   H.mkComponent
     { initialState
@@ -57,9 +59,8 @@ component =
     }
 
 initialState ∷ Input → State
-initialState notifications =
+initialState _ =
   { loading: false
-  , notifications
   , username: { inputValue: "", result: Nothing }
   , password: { inputValue: "", result: Nothing }
   , response: Nothing
@@ -248,10 +249,16 @@ render state = signinFormContainer
           [ HH.text errorMessage ]
 
 handleAction
-  ∷ ∀ slots output m
+  ∷ ∀ s o r m
   . MonadAff m
+  ⇒ MonadAsk
+      { backendApiUrl ∷ String
+      , notifications ∷ SubscribeIO Notification
+      | r
+      }
+      m
   ⇒ Action
-  → H.HalogenM State Action slots output m Unit
+  → H.HalogenM State Action s o m Unit
 handleAction = case _ of
   SetUsername str → H.modify_ $ \state →
     state { username { inputValue = str } }
@@ -286,6 +293,6 @@ handleAction = case _ of
           Forbidden →
             H.modify_ _ { response = Just Forbidden }
           Failure str → do
-            { notifications } ← H.get
-            liftEffect $ HS.notify notifications (critical str)
+            listener ← lift $ asks _.notifications.listener
+            liftEffect $ HS.notify listener (critical str)
 

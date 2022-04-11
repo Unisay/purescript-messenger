@@ -2,6 +2,7 @@ module Component.NotificationsSpec where
 
 import Prelude
 
+import AppM as App
 import Component.Notifications (Action(..), evalSpec, initialState)
 import Control.Monad.State.Class (gets)
 import Data.Notification (critical, important, useful)
@@ -15,10 +16,10 @@ import Test.Unit.Assert (shouldEqual)
 
 spec ∷ TestSuite
 spec = test "Notifications" do
-  { emitter, listener } ← liftEffect Subscription.create
+  notifications@{ emitter, listener } ← liftEffect Subscription.create
   let sendNotification = liftEffect <<< Subscription.notify listener
-
-  runComponent (initialState emitter) evalSpec \simulateAction → do
+  let runM = App.run { notifications, backendApiUrl: "http://localhost" }
+  runComponent (initialState emitter) runM evalSpec \simulateAction → do
     traverse_ sendNotification [ useful "u", important "i", critical "c" ]
     simulateAction $ Close 1
     gets _.queue >>= shouldBe [ critical "c", useful "u" ]

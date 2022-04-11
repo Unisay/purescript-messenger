@@ -5,6 +5,7 @@ import Prelude
 import Backend (SignUpResponse(..), createAccount)
 import Control.Error.Util (hush)
 import Control.Monad.Except (runExceptT)
+import Control.Monad.Reader.Class (class MonadAsk)
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NEA
@@ -42,7 +43,7 @@ data Action
   | ValidateEmail
   | SubmitForm Event
 
-initialState ∷ ∀ input. input → State
+initialState ∷ ∀ i. i → State
 initialState _input =
   { loading: false
   , username: { inputValue: "", result: Nothing }
@@ -52,7 +53,10 @@ initialState _input =
   }
 
 component
-  ∷ ∀ query input output m. MonadAff m ⇒ H.Component query input output m
+  ∷ ∀ q i o r m
+  . MonadAff m
+  ⇒ MonadAsk { backendApiUrl ∷ String | r } m
+  ⇒ H.Component q i o m
 component =
   H.mkComponent
     { initialState
@@ -118,10 +122,10 @@ render state = signupFormContainer
           ]
       , HH.div_ $ Array.concat
           [ [ HH.label
-                [ HP.for "input-email", HP.classNames [ "font-bold" ] ]
+                [ HP.for "i-email", HP.classNames [ "font-bold" ] ]
                 [ HH.text "Email" ]
             , HH.input
-                [ HP.id "input-email"
+                [ HP.id "i-email"
                 , HP.placeholder "Email"
                 , HP.required true
                 , HP.autocomplete true
@@ -157,7 +161,7 @@ render state = signupFormContainer
           ]
       , HH.div_ $ Array.concat
           [ [ HH.label
-                [ HP.for "input-username", HP.classNames [ "font-bold" ] ]
+                [ HP.for "i-username", HP.classNames [ "font-bold" ] ]
                 [ HH.text "Username" ]
             , HH.input
                 [ HP.id "input-username"
@@ -284,10 +288,11 @@ render state = signupFormContainer
           [ HH.text errorMessage ]
 
 handleAction
-  ∷ ∀ input output m
+  ∷ ∀ i o r m
   . MonadAff m
+  ⇒ MonadAsk { backendApiUrl ∷ String | r } m
   ⇒ Action
-  → H.HalogenM State Action input output m Unit
+  → H.HalogenM State Action i o m Unit
 handleAction = case _ of
   SetUsername str → H.modify_ $ \state →
     state { username { inputValue = str } }

@@ -8,7 +8,8 @@ import Affjax.RequestBody as RequestBody
 import Affjax.ResponseFormat (ResponseFormat)
 import Affjax.ResponseFormat as ResponseFormat
 import Affjax.StatusCode (StatusCode(..))
-import Backend (SignInResponse(..), SignUpResponse(..), createAccount', createSession')
+import AppM as App
+import Backend (SignInResponse(..), SignUpResponse(..), Transport, createAccount', createSession')
 import Backend as Backend
 import Control.Monad.Error.Class (class MonadThrow, throwError)
 import Data.Argonaut.Core (Json, fromString, jsonEmptyArray, jsonNull, jsonSingletonObject)
@@ -57,11 +58,11 @@ spec = describe "Backend" do
               actual.email `shouldEqual` email
             _ → fail "NonJson body"
           respond ok200
-      createAccount' server username password email >>= isSignedUp
+      createAccountWithConfig server username password email >>= isSignedUp
 
     it "handles already created accounts" do
       let server _ = respond conflict409
-      createAccount' server username password email >>= case _ of
+      createAccountWithConfig server username password email >>= case _ of
         SignedUp → fail "Received SignedUp where AlreadyRegistered expected"
         AlreadyRegistered → pure unit
         Unexpected err → fail $ "Unexpected error: " <> show err
@@ -70,7 +71,7 @@ spec = describe "Backend" do
 
     it "handles bad requests" do
       let server _request = respond badRequest400
-      createAccount' server username password email >>= case _ of
+      createAccountWithConfig server username password email >>= case _ of
         SignedUp → fail "Unexpected error was expected"
         AlreadyRegistered → fail "Unexpected error was expected"
         Unexpected err →
@@ -79,12 +80,12 @@ spec = describe "Backend" do
 
     it "handles request error" do
       let server _request = pure $ Left AX.RequestFailedError
-      response ← createAccount' server username password email
+      response ← createAccountWithConfig server username password email
       response `isUnexpectedError` "request failed"
 
     it "handles timeout error" do
       let server _request = pure $ Left AX.TimeoutError
-      response ← createAccount' server username password email
+      response ← createAccountWithConfig server username password email
       response `isUnexpectedError` "timeout"
 
   describe "Create session" do
@@ -103,25 +104,37 @@ spec = describe "Backend" do
             _ → fail "NonJson body"
           respond ok200
             { body = jsonSingletonObject "token" $ fromString "1234" }
-      createSession' server username password >>= isSignedIn
+      createSessionWithConfig server username password >>= isSignedIn
 
     it "handles request error" do
       let server _request = pure $ Left AX.RequestFailedError
-      response ← createSession' server username password
+      response ← createSessionWithConfig server username password
       response `isFailure` "request failed"
 
     it "handles timeout error" do
       let server _request = pure $ Left AX.TimeoutError
-      response ← createSession' server username password
+      response ← createSessionWithConfig server username password
       response `isFailure` "timeout"
 
     it "handles forbidden" do
       let server _request = respond forbidden403
-      createSession' server username password >>= case _ of
+      createSessionWithConfig server username password >>= case _ of
         SignedIn t →
           fail $ "Forbidden expected, but got SignedIn: " <> Token.toString t
         Forbidden → pure unit
         Failure err → fail $ "Forbidden expected, but got Failure: " <> show err
+
+createAccountWithConfig
+  ∷ Transport → Username → Password → Email → Aff SignUpResponse
+createAccountWithConfig server username password email =
+  App.run { backendApiUrl: "http://localhost/mock" }
+    $ createAccount' server username password email
+
+createSessionWithConfig
+  ∷ Transport → Username → Password → Aff SignInResponse
+createSessionWithConfig server username password =
+  App.run { backendApiUrl: "http://localhost/mock" }
+    $ createSession' server username password
 
 -- Assertions:
 
@@ -167,11 +180,7 @@ assertResponseFormat r1 r2 =
   else fail
     $ showResponseFormat r1 <> " doesn't equal " <> showResponseFormat r2
 
-eqResponseFormat
-  ∷ ∀ a
-  . ResponseFormat a
-  → ResponseFormat a
-  → Boolean
+eqResponseFormat ∷ ∀ a. ResponseFormat a → ResponseFormat a → Boolean
 eqResponseFormat = eq `on` showResponseFormat
 
 showResponseFormat ∷ ∀ a. ResponseFormat a → String

@@ -2,49 +2,49 @@ module Component.Notifications where
 
 import Prelude
 
+import Config (App, Config)
+import Control.Monad.Reader.Class (class MonadAsk, asks)
+import Control.Monad.Trans.Class (lift)
 import Data.Array ((:))
 import Data.Array as Array
 import Data.Foldable (traverse_)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Notification (Importance(..), Notification(..))
-import Effect.Class (class MonadEffect)
 import Halogen.Component as HC
 import Halogen.Extended as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties.Extended as HP
 import Halogen.Query as HQ
-import Halogen.Subscription as HS
 import Svg.Renderer.Halogen (icon)
 
-type Input = HS.Emitter Notification
-
 type State =
-  { emitter ∷ HS.Emitter Action
-  , subscription ∷ Maybe HQ.SubscriptionId
+  { subscription ∷ Maybe HQ.SubscriptionId
   , queue ∷ Array Notification
   }
 
 type Slots ∷ ∀ k. Row k
 type Slots = ()
 
-data Action = Initialize | Finalize | Notify Notification | Close Int
+data Action
+  = Initialize
+  | Finalize
+  | Notify Notification
+  | Close Int
 
-component ∷ ∀ q m o. MonadEffect m ⇒ H.Component q Input o m
-component = H.mkComponent
-  { initialState, render, eval: H.mkEval evalSpec }
+component ∷ ∀ q i o. H.Component q i o App
+component = H.mkComponent { initialState, render, eval: H.mkEval evalSpec }
 
-evalSpec ∷ ∀ q m o. HC.EvalSpec State q Action Slots Input o m
+evalSpec ∷ ∀ q i o. HC.EvalSpec State q Action Slots i o App
 evalSpec = H.defaultEval
   { initialize = Just Initialize
   , finalize = Just Finalize
   , handleAction = handleAction
   }
 
-initialState ∷ Input → State
-initialState emitter =
-  { emitter: Notify <$> emitter
-  , subscription: Nothing
+initialState ∷ ∀ i. i → State
+initialState _ =
+  { subscription: Nothing
   , queue: []
   }
 
@@ -82,11 +82,12 @@ render { queue } =
     Important → "bg-orange-600/75"
     Critical → "bg-red-600/75"
 
-handleAction ∷ ∀ o m. Action → H.HalogenM State Action () o m Unit
+handleAction
+  ∷ ∀ o m. MonadAsk Config m ⇒ Action → H.HalogenM State Action () o m Unit
 handleAction = case _ of
   Initialize → do
-    { emitter } ← H.get
-    subscriptionId ← HQ.subscribe emitter
+    emitter ← lift $ asks _.notifications.emitter
+    subscriptionId ← HQ.subscribe $ Notify <$> emitter
     H.modify_ _ { subscription = Just subscriptionId }
   Finalize → do
     s ← H.gets _.subscription

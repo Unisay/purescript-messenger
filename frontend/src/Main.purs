@@ -2,6 +2,7 @@ module Main where
 
 import Prelude
 
+import AppM as App
 import Component.Router as Router
 import Data.Maybe (Maybe(..))
 import Data.Route as Route
@@ -19,7 +20,10 @@ main ∷ Effect Unit
 main = runHalogenAff do
   body ← awaitBody
   notifications ← liftEffect Subscription.create
-  router ← runUI Router.component notifications body
+  let config = { notifications, backendApiUrl: "http://localhost:8081" }
+  let ui = H.hoist (App.run config) Router.component
+  router ← runUI ui unit body
   void $ liftEffect $ matchesWith (RD.parse Route.codec) \old new →
     when (old /= Just new) do
       launchAff_ $ router.query $ H.mkTell $ Router.Navigate new
+

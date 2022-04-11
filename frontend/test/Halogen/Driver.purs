@@ -10,7 +10,7 @@ import Data.Maybe (Maybe(..))
 import Data.Traversable (traverse_)
 import Data.Tuple (Tuple(..))
 import Effect.Aff (Aff)
-import Effect.Aff.Class (class MonadAff, liftAff)
+import Effect.Aff.Class (liftAff)
 import Effect.Class (liftEffect)
 import Effect.Ref (Ref)
 import Effect.Ref as Ref
@@ -36,14 +36,15 @@ type DriverState state =
 
 runComponent
   ∷ ∀ m query state action slots input output
-  . MonadAff m
+  . Monad m
   ⇒ state
-  → EvalSpec state query action slots input output Aff
-  → ( (action → HalogenM state action slots output Aff Unit)
-      → HalogenM state action slots output Aff Unit
+  → (m ~> Aff)
+  → EvalSpec state query action slots input output m
+  → ( (action → HalogenM state action slots output m Unit)
+      → HalogenM state action slots output m Unit
     )
-  → m Unit
-runComponent state { initialize, finalize, handleAction } callback =
+  → Aff Unit
+runComponent state runM { initialize, finalize, handleAction } callback =
   liftAff $ do
     st ← liftEffect $ Ref.new
       { state
@@ -58,10 +59,10 @@ runComponent state { initialize, finalize, handleAction } callback =
   where
 
   runHalogenM
-    ∷ Ref (DriverState state) → HalogenM state action slots output Aff ~> Aff
+    ∷ Ref (DriverState state) → HalogenM state action slots output m ~> Aff
   runHalogenM st (HalogenM freeF) = foldFree go freeF
     where
-    go ∷ HalogenF state action slots output Aff ~> Aff
+    go ∷ HalogenF state action slots output m ~> Aff
     go = case _ of
       State f → liftEffect do
         Tuple a s ← Ref.read st <#> (_.state >>> f)
@@ -74,7 +75,7 @@ runComponent state { initialize, finalize, handleAction } callback =
 
         let emitter = sidEmitter nextSubscriptionId
         subscription ← liftEffect $ HS.subscribe emitter \action →
-          handleAff $ runHalogenM st (handleAction action)
+          handleAff $ runHalogenM st $ handleAction action
         st # Ref.modify_ \s@{ subscriptions } → s
           { subscriptions = Map.insert nextSubscriptionId subscription
               subscriptions
@@ -90,7 +91,7 @@ runComponent state { initialize, finalize, handleAction } callback =
             Ref.write ds { subscriptions = subscriptions' } st
             pure a
 
-      Lift m → m
+      Lift m → runM m
       ChildQuery cqb → cqb # unChildQueryBox \_ → unsafeCoerce unit
       Raise _output a → pure a
       Par (HalogenAp ap) → runHalogenM st $ retractFreeAp ap

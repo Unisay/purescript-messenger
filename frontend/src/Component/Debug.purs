@@ -10,11 +10,15 @@ module Component.Debug
 
 import Prelude
 
+import Config (App, Config)
+import Control.Monad.Reader.Class (class MonadAsk, ask)
+import Control.Monad.Trans.Class (lift)
 import Data.Enum (enumFromTo)
 import Data.Maybe (Maybe(..))
-import Data.Notification (Importance(..), Notification, critical, important, useful)
+import Data.Notification (Importance(..), critical, important, useful)
 import Data.String as String
-import Effect.Aff.Class (class MonadAff)
+import Data.Traversable (traverse_)
+import Effect.Class (class MonadEffect)
 import Halogen (Component, liftEffect)
 import Halogen as H
 import Halogen.HTML.Events as HE
@@ -27,14 +31,11 @@ data Action
   = Ticked Importance
   | SendNotification
 
-type State =
-  { notifications ∷ HS.Listener Notification
-  , selectState ∷ Maybe Importance
-  }
+type State = { selectedImportance ∷ Maybe Importance }
 
-type Input = HS.Listener Notification
+type Input = Unit
 
-component ∷ ∀ q o m. MonadAff m ⇒ Component q Input o m
+component ∷ ∀ q o. Component q Input o App
 component = H.mkComponent
   { initialState
   , render
@@ -42,10 +43,7 @@ component = H.mkComponent
   }
 
 initialState ∷ Input → State
-initialState notifications =
-  { notifications
-  , selectState: Nothing
-  }
+initialState _ = { selectedImportance: Nothing }
 
 render ∷ ∀ m. State → H.ComponentHTML Action () m
 render state = HH.div
@@ -111,7 +109,7 @@ render state = HH.div
       ]
   ]
   where
-  buttonColor = case state.selectState of
+  buttonColor = case state.selectedImportance of
     Nothing → []
     Just Useful → [ "border-green-600", "bg-green-200" ]
     Just Important → [ "border-orange-600", "bg-orange-200" ]
@@ -119,20 +117,18 @@ render state = HH.div
 
 handleAction
   ∷ ∀ i o m
-  . MonadAff m
+  . MonadAsk Config m
+  ⇒ MonadEffect m
   ⇒ Action
   → H.HalogenM State Action i o m Unit
 handleAction = case _ of
-  Ticked importance → H.modify_ _ { selectState = Just importance }
-  SendNotification → do
-    { selectState, notifications } ← H.get
-    case selectState of
-      Nothing → pure unit
-      Just Useful →
-        send notifications $ useful "Useful"
-      Just Important →
-        send notifications $ important "Important"
-      Just Critical →
-        send notifications $ critical "Critical"
-  where
-  send f = liftEffect <<< HS.notify f
+  Ticked importance →
+    H.modify_ _ { selectedImportance = Just importance }
+  SendNotification →
+    H.gets _.selectedImportance >>= traverse_ \importance → do
+      notify ← lift ask <#> \config →
+        liftEffect <<< HS.notify config.notifications.listener
+      case importance of
+        Useful → notify $ useful "Useful"
+        Important → notify $ important "Important"
+        Critical → notify $ critical "Critical"
