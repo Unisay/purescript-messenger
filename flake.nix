@@ -16,19 +16,19 @@
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
-        easy-ps = import easy-purescript-nix { inherit pkgs; };
+        epkgs = import easy-purescript-nix { inherit pkgs; };
       in
       {
         devShell =
           pkgs.mkShell {
-            buildInputs = with easy-ps; with pkgs; [
-              dhall
-              nixpkgs-fmt
-              nodejs-16_x
-              purescript
-              purs-tidy
-              spago
-              zephyr
+            buildInputs = [
+              pkgs.dhall
+              pkgs.nixfmt
+              pkgs.nodejs-16_x
+              epkgs.purescript
+              epkgs.purs-tidy
+              epkgs.spago
+              epkgs.zephyr
             ];
           };
       });
