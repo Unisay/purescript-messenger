@@ -5,6 +5,8 @@ import Prelude
 import Affjax (Error, Request, Response, defaultRequest, printError, request) as AX
 import Affjax.RequestBody (RequestBody(..)) as AX
 import Affjax.ResponseFormat as ResponseFormat
+import Control.Monad.Reader (class MonadAsk)
+import Control.Monad.Reader.Class (asks)
 import Data.Argonaut.Core (Json)
 import Data.Argonaut.Decode (decodeJson)
 import Data.Argonaut.Encode (encodeJson) as Json
@@ -15,6 +17,7 @@ import Data.HTTP.Method (Method(..))
 import Data.Maybe (Maybe(..))
 import Data.Newtype (unwrap)
 import Data.Password (Password)
+import Data.String as String
 import Data.Username (Username)
 import Data.Username as Username
 import Effect.Aff (Aff)
@@ -42,19 +45,30 @@ type SignInResponseBody = { token ∷ Token }
 type SignUpResponseBody = { errors ∷ Array String }
 
 createSession
-  ∷ ∀ m. MonadAff m ⇒ Username → Password → m SignInResponse
+  ∷ ∀ r m
+  . MonadAff m
+  ⇒ MonadAsk { backendApiUrl ∷ String | r } m
+  ⇒ Username
+  → Password
+  → m SignInResponse
 createSession = createSession' AX.request
 
 createSession'
-  ∷ ∀ m. MonadAff m ⇒ Transport → Username → Password → m SignInResponse
+  ∷ ∀ r m
+  . MonadAff m
+  ⇒ MonadAsk { backendApiUrl ∷ String | r } m
+  ⇒ Transport
+  → Username
+  → Password
+  → m SignInResponse
 createSession' transport username password = do
+  backendApiUrl ← asks _.backendApiUrl
   response ← liftAff $
     transport
       AX.defaultRequest
         { method = Left PUT
-        , url = "http://localhost:8081/users/"
-            <> Username.toString username
-            <> "/session"
+        , url = String.joinWith "/"
+            [ backendApiUrl, "users", Username.toString username, "session" ]
         , content = Just $ AX.Json $ Json.encodeJson { username, password }
         , responseFormat = ResponseFormat.json
         }
@@ -69,24 +83,33 @@ createSession' transport username password = do
         _ → Failure (show status)
 
 createAccount
-  ∷ ∀ m. MonadAff m ⇒ Username → Password → Email → m SignUpResponse
+  ∷ ∀ r m
+  . MonadAff m
+  ⇒ MonadAsk { backendApiUrl ∷ String | r } m
+  ⇒ Username
+  → Password
+  → Email
+  → m SignUpResponse
 createAccount = createAccount' AX.request
 
 type Transport = AX.Request Json → Aff (Either AX.Error (AX.Response Json))
 
 createAccount'
-  ∷ ∀ m
+  ∷ ∀ r m
   . MonadAff m
+  ⇒ MonadAsk { backendApiUrl ∷ String | r } m
   ⇒ Transport
   → Username
   → Password
   → Email
   → m SignUpResponse
 createAccount' transport username password email = do
+  backendApiUrl ← asks _.backendApiUrl
   response ← liftAff $
     transport AX.defaultRequest
       { method = Left PUT
-      , url = "http://localhost:8081/users/" <> Username.toString username
+      , url = String.joinWith "/"
+          [ backendApiUrl, "users", Username.toString username ]
       , content = Just $ AX.Json $ Json.encodeJson { username, password, email }
       , responseFormat = ResponseFormat.json
       }
