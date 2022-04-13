@@ -1,6 +1,5 @@
 module Component.Debug
   ( Action(..)
-  , Input
   , State
   , component
   , handleAction
@@ -10,12 +9,17 @@ module Component.Debug
 
 import Prelude
 
-import Config (App, Config)
-import Control.Monad.Reader.Class (class MonadAsk, ask)
-import Control.Monad.Trans.Class (lift)
+import Config (Config)
+import Control.Monad.Reader.Class (class MonadAsk, asks)
 import Data.Enum (enumFromTo)
 import Data.Maybe (Maybe(..))
-import Data.Notification (Importance(..), critical, important, useful)
+import Data.Notification
+  ( Importance(..)
+  , Notification
+  , critical
+  , important
+  , useful
+  )
 import Data.String as String
 import Data.Traversable (traverse_)
 import Effect.Class (class MonadEffect)
@@ -25,6 +29,7 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Extended as HH
 import Halogen.HTML.Properties.Extended (InputType(..))
 import Halogen.HTML.Properties.Extended as HP
+import Halogen.Subscription (SubscribeIO)
 import Halogen.Subscription as HS
 
 data Action
@@ -33,16 +38,14 @@ data Action
 
 type State = { selectedImportance ∷ Maybe Importance }
 
-type Input = Unit
-
-component ∷ ∀ q o. Component q Input o App
+component ∷ ∀ q i o m. MonadAsk Config m ⇒ MonadEffect m ⇒ Component q i o m
 component = H.mkComponent
   { initialState
   , render
   , eval: H.mkEval $ H.defaultEval { handleAction = handleAction }
   }
 
-initialState ∷ Input → State
+initialState ∷ ∀ i. i → State
 initialState _ = { selectedImportance: Nothing }
 
 render ∷ ∀ m. State → H.ComponentHTML Action () m
@@ -116,8 +119,8 @@ render state = HH.div
     Just Critical → [ "border-red-600", "bg-red-200" ]
 
 handleAction
-  ∷ ∀ i o m
-  . MonadAsk Config m
+  ∷ ∀ i o m r
+  . MonadAsk { notifications ∷ SubscribeIO Notification | r } m
   ⇒ MonadEffect m
   ⇒ Action
   → H.HalogenM State Action i o m Unit
@@ -126,8 +129,8 @@ handleAction = case _ of
     H.modify_ _ { selectedImportance = Just importance }
   SendNotification →
     H.gets _.selectedImportance >>= traverse_ \importance → do
-      notify ← lift ask <#> \config →
-        liftEffect <<< HS.notify config.notifications.listener
+      notify ← asks _.notifications.listener <#> \listener →
+        liftEffect <<< HS.notify listener
       case importance of
         Useful → notify $ useful "Useful"
         Important → notify $ important "Important"
