@@ -4,7 +4,6 @@ import Prelude
 
 import Control.Monad.Reader (class MonadAsk, ReaderT, runReaderT)
 import Control.Monad.Reader.Class (ask)
-import Control.Monad.Trans.Class (class MonadTrans, lift)
 import Data.Newtype (class Newtype, unwrap)
 import Effect.Aff (Aff)
 import Effect.Aff.Class (class MonadAff)
@@ -25,5 +24,5 @@ derive newtype instance MonadAff (AppM c)
 run ∷ ∀ c. c → AppM c ~> Aff
 run c m = runReaderT (unwrap m) c
 
-config ∷ ∀ c. (AppM c) c
+config ∷ ∀ c. AppM c c
 config = ask
