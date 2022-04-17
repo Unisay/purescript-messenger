@@ -56,7 +56,7 @@ codec = RouteDuplex i o
     , "Profile": path "profile" (username segment)
     , "Debug": path "debug" G.noArgs
     , "ChatWindow": path "chat" G.noArgs
-    , "Error": path "oops" G.noArgs
+    , "Error": path "error" G.noArgs
     }
 
 goTo ∷ ∀ m. MonadEffect m ⇒ Route → m Unit
