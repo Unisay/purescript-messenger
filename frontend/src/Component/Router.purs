@@ -5,6 +5,7 @@ module Component.Router
 
 import Prelude
 
+import AppM (App)
 import Component.ChatWindow as ChatWindow
 import Component.Debug as Debug
 import Component.Home as Home
@@ -12,7 +13,6 @@ import Component.Navigation as Navigation
 import Component.Notifications as Notifications
 import Component.Signin as Signin
 import Component.Signup as Signup
-import Config (App)
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
 import Data.Route (Route(..))

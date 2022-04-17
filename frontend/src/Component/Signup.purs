@@ -2,10 +2,13 @@ module Component.Signup where
 
 import Prelude
 
-import Backend (SignUpResponse(..), createAccount)
+import AppM (App, hoistAppM)
+import AppM as App
+import Backend as Backend
+import Chat.Api.Http (SignUpResponse(..))
 import Control.Error.Util (hush)
 import Control.Monad.Except (runExceptT)
-import Control.Monad.Reader.Class (class MonadAsk)
+import Control.Monad.Trans.Class (lift)
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NEA
@@ -17,7 +20,6 @@ import Data.Newtype (wrap)
 import Data.Password as Password
 import Data.Username as Username
 import Data.Validation (Validation)
-import Effect.Aff.Class (class MonadAff)
 import Halogen (liftEffect)
 import Halogen as H
 import Halogen.HTML.Events as HE
@@ -52,11 +54,7 @@ initialState _input =
   , response: Nothing
   }
 
-component
-  ∷ ∀ q i o r m
-  . MonadAff m
-  ⇒ MonadAsk { backendApiUrl ∷ String | r } m
-  ⇒ H.Component q i o m
+component ∷ ∀ q i o. H.Component q i o App
 component =
   H.mkComponent
     { initialState
@@ -115,9 +113,7 @@ render state = signupFormContainer
       [ HH.div [ HP.classNames [ "text-red-600" ] ]
           [ HH.text case state.response of
               Just SignedUp → "You successfully signed up!"
-              Just (Unexpected str) → "Got an error: " <> str
               Just AlreadyRegistered → "This user has already been registered!"
-              Just (ServerErrors err) → "Got errors: " <> show err
               Nothing → ""
           ]
       , HH.div_ $ Array.concat
@@ -287,12 +283,7 @@ render state = signupFormContainer
           [ HP.classNames [ "text-red-800" ] ]
           [ HH.text errorMessage ]
 
-handleAction
-  ∷ ∀ i o r m
-  . MonadAff m
-  ⇒ MonadAsk { backendApiUrl ∷ String | r } m
-  ⇒ Action
-  → H.HalogenM State Action i o m Unit
+handleAction ∷ ∀ i o. Action → H.HalogenM State Action i o App Unit
 handleAction = case _ of
   SetUsername str → H.modify_ $ \state →
     state { username { inputValue = str } }
@@ -331,10 +322,11 @@ handleAction = case _ of
       username ← wrap username.result
       email ← wrap email.result
       in
-        createAccount username password email >>= case _ of
-          SignedUp → H.modify_ _ { response = Just SignedUp }
-          AlreadyRegistered → H.modify_ _ { response = Just AlreadyRegistered }
-          Unexpected str → H.modify_ _ { response = Just (Unexpected str) }
-          ServerErrors arr →
-            H.modify_ _ { response = Just (ServerErrors arr) }
+        do
+          signUpResponse ← Backend.createAccount username password email
+            # hoistAppM App.BackendError >>> lift
+          case signUpResponse of
+            SignedUp → H.modify_ _ { response = Just SignedUp }
+            AlreadyRegistered → H.modify_ _
+              { response = Just AlreadyRegistered }
 

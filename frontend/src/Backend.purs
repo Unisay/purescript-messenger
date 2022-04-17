@@ -2,18 +2,11 @@ module Backend where
 
 import Prelude
 
-import Affjax (Error, Request, Response, defaultRequest, request) as AX
+import Affjax (Error, Request, Response, defaultRequest, printError, request) as AX
 import Affjax.RequestBody (RequestBody(..)) as AX
 import Affjax.ResponseFormat as ResponseFormat
 import Affjax.StatusCode (StatusCode)
-import Chat.Api.Http
-  ( ListUsersResponse(..)
-  , SignInResponse(..)
-  , SignInResponseBody
-  , SignUpResponse(..)
-  , SignUpResponseBody
-  , UserPresence
-  )
+import Chat.Api.Http (ListUsersResponse(..), SignInResponse(..), SignInResponseBody, SignUpResponse(..), SignUpResponseBody, UserPresence)
 import Chat.Api.Http.Problem (Problem)
 import Chat.Api.Http.Problem as Problem
 import Control.Monad.Error.Class (class MonadThrow)
@@ -40,6 +33,19 @@ data Error
   | ResponseStatusError { expected ∷ StatusCode, actual ∷ StatusCode }
   | ResponseProblem Problem
 
+instance Show Error where
+  show err = "Backend error: " <> case err of
+    AffjaxError e →
+      "AJAX request failed: " <> AX.printError e
+    ResponseDecodeError e →
+      "Decoding response JSON failed: " <> show e
+    ResponseStatusError { expected, actual } →
+      "unexpected response status (" <> show actual
+        <> "), expected: "
+        <> show expected
+    ResponseProblem problem →
+      "server responded with Problem " <> show problem
+
 createSession
   ∷ ∀ r m
   . MonadAff m
@@ -51,7 +57,7 @@ createSession
 createSession = createSession' AX.request
 
 createSession'
-  ∷ ∀ r m
+  ∷ ∀ r m -- m = EitherT Backend.Error Aff
   . MonadAff m
   ⇒ MonadAsk { backendApiUrl ∷ String | r } m
   ⇒ MonadThrow Error m

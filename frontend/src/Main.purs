@@ -4,11 +4,14 @@ import Prelude
 
 import AppM as App
 import Component.Router as Router
+import Control.Monad.Error.Class (catchError)
 import Data.Maybe (Maybe(..))
 import Data.Route as Route
 import Effect (Effect)
-import Effect.Aff (launchAff_)
+import Effect.Aff (Aff, launchAff_)
 import Effect.Class (liftEffect)
+import Effect.Class.Console as Console
+import Halogen (HalogenIO)
 import Halogen as H
 import Halogen.Aff (awaitBody, runHalogenAff)
 import Halogen.Subscription as Subscription
@@ -20,10 +23,15 @@ main ∷ Effect Unit
 main = runHalogenAff do
   body ← awaitBody
   notifications ← liftEffect Subscription.create
-  let config = { notifications, backendApiUrl: "http://localhost:8081" }
-  let ui = H.hoist (App.run config) Router.component
-  router ← runUI ui unit body
-  void $ liftEffect $ matchesWith (RD.parse Route.codec) \old new →
-    when (old /= Just new) do
-      launchAff_ $ router.query $ H.mkTell $ Router.Navigate new
+  let
+    config = { notifications, backendApiUrl: "http://localhost:8081" }
+    ui = H.hoist (App.run config) Router.component
+    runRouter = do
+      router ← runUI ui unit body
+      void $ liftEffect $ matchesWith (RD.parse Route.codec) \old new →
+        when (old /= Just new) do
+          launchAff_ $ router.query $ H.mkTell $ Router.Navigate new
+  runRouter `catchError` \e → do
+    Console.logShow e
+    runUI Error.component unit body
 

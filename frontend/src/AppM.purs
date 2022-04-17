@@ -4,36 +4,43 @@ import Prelude
 
 import Backend as Backend
 import Config (Config)
-import Control.Monad.Error.Class (class MonadThrow, throwError)
-import Control.Monad.Except (ExceptT, runExceptT, throwError)
+import Control.Monad.Error.Class (class MonadError, class MonadThrow)
+import Control.Monad.Except (ExceptT, runExceptT, throwError, withExceptT)
 import Control.Monad.Reader (class MonadAsk, ReaderT, runReaderT)
 import Control.Monad.Reader.Class (ask)
-import Control.Monad.Trans.Class (class MonadTrans, lift)
 import Data.Either (Either(..))
-import Data.Newtype (class Newtype, unwrap)
-import Effect.Aff (Aff)
-import Effect.Aff.Class (class MonadAff, liftAff)
-import Effect.Class (class MonadEffect, liftEffect)
+import Data.Newtype (class Newtype, over, unwrap)
+import Effect.Aff (Aff, error)
+import Effect.Aff.Class (class MonadAff)
+import Effect.Class (class MonadEffect)
 
-newtype AppM c a = AppM (ExceptT Backend.Error (ReaderT c Aff) a)
+newtype Error = BackendError Backend.Error
 
-derive instance Newtype (AppM c a) _
-derive newtype instance Functor (AppM c)
-derive newtype instance Apply (AppM c)
-derive newtype instance Applicative (AppM c)
-derive newtype instance Bind (AppM c)
-derive newtype instance Monad (AppM c)
-derive newtype instance MonadAsk c (AppM c)
-derive newtype instance MonadEffect (AppM c)
-derive newtype instance MonadAff (AppM c)
-derive newtype instance MonadThrow Backend.Error (AppM c)
+newtype AppM e c a = AppM (ExceptT e (ReaderT c Aff) a)
 
-type App = AppM Config
+derive instance Newtype (AppM e c a) _
+derive newtype instance Functor (AppM e c)
+derive newtype instance Apply (AppM e c)
+derive newtype instance Applicative (AppM e c)
+derive newtype instance Bind (AppM e c)
+derive newtype instance Monad (AppM e c)
+derive newtype instance MonadAsk c (AppM e c)
+derive newtype instance MonadEffect (AppM e c)
+derive newtype instance MonadAff (AppM e c)
+derive newtype instance MonadThrow e (AppM e c)
+derive newtype instance MonadError e (AppM e c)
+
+type App = AppM Error Config
+
+type BackM = AppM Backend.Error Config
 
 run ∷ Config → App ~> Aff
-run c m = runReaderT (runExceptT $ unwrap m) c >>= case _ of
+run c m = runReaderT (runExceptT (unwrap m)) c >>= case _ of
   Right a → pure a
-  Left _err → throwError ?x
+  Left (BackendError be) → throwError $ error $ show be
 
-config ∷ ∀ c. AppM c c
+config ∷ ∀ e c. AppM e c c
 config = ask
+
+hoistAppM ∷ ∀ a c e e'. (e → e') → AppM e c a → AppM e' c a
+hoistAppM = over AppM <<< withExceptT

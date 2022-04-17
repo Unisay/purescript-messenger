@@ -1,12 +1,12 @@
 module Component.Signin where
 
-import Chat.Api.Http
 import Prelude
 
+import AppM (App, hoistAppM)
+import AppM as App
 import Backend as Backend
-import Config (App)
-import Control.Monad.Except.Trans (class MonadThrow, runExceptT)
-import Control.Monad.Reader.Class (class MonadAsk, asks)
+import Chat.Api.Http (SignInResponse(..))
+import Control.Monad.Except.Trans (runExceptT)
 import Control.Monad.Trans.Class (lift)
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
@@ -15,7 +15,6 @@ import Data.Either (Either(..), either, hush, isLeft)
 import Data.EitherR (flipEither)
 import Data.Maybe (Maybe(..), maybe)
 import Data.Newtype (wrap)
-import Data.Notification (Notification, critical)
 import Data.Password (Password)
 import Data.Password as Password
 import Data.Route (goTo)
@@ -23,14 +22,11 @@ import Data.Route as Route
 import Data.Username (Username)
 import Data.Username as Username
 import Data.Validation (Validation)
-import Effect.Aff.Class (class MonadAff)
 import Halogen (liftEffect)
 import Halogen as H
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Extended as HH
 import Halogen.HTML.Properties.Extended as HP
-import Halogen.Subscription (SubscribeIO)
-import Halogen.Subscription as HS
 import Web.Event.Event (Event)
 import Web.Event.Event as Event
 
@@ -247,18 +243,7 @@ render state = signinFormContainer
           [ HP.classNames [ "text-red-800" ] ]
           [ HH.text errorMessage ]
 
-handleAction
-  ∷ ∀ s o r m
-  . MonadAff m
-  ⇒ MonadThrow Backend.Error m
-  ⇒ MonadAsk
-      { backendApiUrl ∷ String
-      , notifications ∷ SubscribeIO Notification
-      | r
-      }
-      m
-  ⇒ Action
-  → H.HalogenM State Action s o m Unit
+handleAction ∷ ∀ s o. Action → H.HalogenM State Action s o App Unit
 handleAction = case _ of
   SetUsername str → H.modify_ $ \state →
     state { username { inputValue = str } }
@@ -286,12 +271,17 @@ handleAction = case _ of
       password ← wrap password.result
       username ← wrap username.result
       in
-        Backend.createSession username password >>= case _ of
-          SignedIn token → do
-            H.modify_ _ { response = Just (SignedIn token) }
-            goTo Route.ChatWindow
-          Forbidden →
-            H.modify_ _ { response = Just Forbidden }
+        do
+          signInResponse ←
+            Backend.createSession username password
+              # hoistAppM App.BackendError >>> lift
+          case signInResponse of
+            SignedIn token → do
+              H.modify_ _ { response = Just (SignedIn token) }
+              goTo Route.ChatWindow
+            Forbidden →
+              H.modify_ _ { response = Just Forbidden }
+
 -- Failure str → do
 --   listener ← lift $ asks _.notifications.listener
 --   liftEffect $ HS.notify listener (critical str)
