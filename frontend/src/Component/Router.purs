@@ -35,7 +35,6 @@ data Action = Initialize
 type ChildSlots =
   ( notifications ∷ H.OpaqueSlot Unit
   , home ∷ H.OpaqueSlot Unit
-  , error ∷ H.OpaqueSlot Unit
   , signin ∷ H.OpaqueSlot Unit
   , signup ∷ H.OpaqueSlot Unit
   , debug ∷ H.OpaqueSlot Unit
