@@ -282,7 +282,3 @@ handleAction = case _ of
             Forbidden →
               H.modify_ _ { response = Just Forbidden }
 
--- Failure str → do
---   listener ← lift $ asks _.notifications.listener
---   liftEffect $ HS.notify listener (critical str)
-

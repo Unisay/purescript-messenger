@@ -57,7 +57,7 @@ createSession
 createSession = createSession' AX.request
 
 createSession'
-  ∷ ∀ r m -- m = EitherT Backend.Error Aff
+  ∷ ∀ r m
   . MonadAff m
   ⇒ MonadAsk { backendApiUrl ∷ String | r } m
   ⇒ MonadThrow Error m

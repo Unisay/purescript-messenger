@@ -81,7 +81,6 @@ spec = describe "Backend" do
         getErr = createAccountWithConfig server username password email
       response ← getErr `catchError` checkErrorSignUp "request failed"
       isSignedUp response
-    -- response `isUnexpectedError` "request failed"
 
     it "handles timeout error" do
       let
@@ -89,7 +88,6 @@ spec = describe "Backend" do
         getErr = createAccountWithConfig server username password email
       response ← getErr `catchError` checkErrorSignUp "timeout"
       isSignedUp response
-  -- response `isUnexpectedError` "timeout"
 
   describe "Create session" do
     it "sends proper user data to the backend" do
@@ -115,7 +113,6 @@ spec = describe "Backend" do
         getErr = createSessionWithConfig server username password
       response ← getErr `catchError` checkErrorSignIn "request failed"
       isSignedIn response
-    -- response `isFailure` "request failed"
 
     it "handles timeout error" do
       let
@@ -123,7 +120,6 @@ spec = describe "Backend" do
         getErr = createSessionWithConfig server username password
       response ← getErr `catchError` checkErrorSignIn "timeout"
       isSignedIn response
-    -- response `isFailure` "timeout"
 
     it "handles forbidden" do
       let server _request = respond forbidden403
