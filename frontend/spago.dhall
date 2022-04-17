@@ -23,7 +23,6 @@
   , "maybe"
   , "newtype"
   , "ordered-collections"
-  , "partial"
   , "prelude"
   , "profunctor"
   , "quickcheck"
