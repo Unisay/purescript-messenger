@@ -72,21 +72,21 @@ spec = describe "Backend" do
     it "handles bad requests" do
       let
         server _request = respond badRequest400
-        getErr = createAccountWithConfig server username password email
-      response ← getErr `catchError` checkErrorSignUp "Bad request error"
+      response ← createAccountWithConfig server username password email
+        `catchError` checkErrorSignUp "Bad request error"
       isSignedUp response
     it "handles request error" do
       let
         server _request = pure $ Left AX.RequestFailedError
-        getErr = createAccountWithConfig server username password email
-      response ← getErr `catchError` checkErrorSignUp "request failed"
+      response ← createAccountWithConfig server username password email
+        `catchError` checkErrorSignUp "request failed"
       isSignedUp response
 
     it "handles timeout error" do
       let
         server _request = pure $ Left AX.TimeoutError
-        getErr = createAccountWithConfig server username password email
-      response ← getErr `catchError` checkErrorSignUp "timeout"
+      response ← createAccountWithConfig server username password email
+        `catchError` checkErrorSignUp "timeout"
       isSignedUp response
 
   describe "Create session" do
@@ -110,15 +110,15 @@ spec = describe "Backend" do
     it "handles request error" do
       let
         server _request = pure $ Left AX.RequestFailedError
-        getErr = createSessionWithConfig server username password
-      response ← getErr `catchError` checkErrorSignIn "request failed"
+      response ← createSessionWithConfig server username password
+        `catchError` checkErrorSignIn "request failed"
       isSignedIn response
 
     it "handles timeout error" do
       let
         server _request = pure $ Left AX.TimeoutError
-        getErr = createSessionWithConfig server username password
-      response ← getErr `catchError` checkErrorSignIn "timeout"
+      response ← createSessionWithConfig server username password
+        `catchError` checkErrorSignIn "timeout"
       isSignedIn response
 
     it "handles forbidden" do
