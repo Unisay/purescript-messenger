@@ -27,7 +27,6 @@ data Route
   | Profile Username -- /profile/:username
   | Debug -- /debug 
   | ChatWindow -- /chat
-  | Error -- /oops
 
 derive instance Generic Route _
 derive instance Eq Route
@@ -51,7 +50,7 @@ codec = RouteDuplex i o
     (Username.parse >>> lmap (NEA.intercalate ";"))
   RouteDuplex i o = root $ G.sum
     { "Home": G.noArgs
-    , "Error": path "error" G.noArgs
+
     , "SignIn": path "signin" G.noArgs
     , "SignUp": path "signup" G.noArgs
     , "Profile": path "profile" (username segment)
