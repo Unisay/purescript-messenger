@@ -8,15 +8,20 @@ import Affjax.RequestBody as RequestBody
 import Affjax.ResponseFormat (ResponseFormat)
 import Affjax.ResponseFormat as ResponseFormat
 import Affjax.StatusCode (StatusCode(..))
-import AppM as App
-import AppM as AppM
 import Backend (Transport, createAccount', createSession')
 import Backend as Backend
 import Chat.Api.Http (SignInResponse(..), SignUpResponse(..))
-import Control.Monad.Error.Class (class MonadThrow, catchError, throwError)
-import Data.Argonaut.Core (Json, fromString, jsonEmptyArray, jsonNull, jsonSingletonObject)
+import Control.Monad.Error.Class (class MonadThrow, throwError)
+import Control.Monad.Except (runExceptT)
+import Control.Monad.Reader (runReaderT)
+import Data.Argonaut.Core
+  ( Json
+  , fromString
+  , jsonEmptyArray
+  , jsonNull
+  , jsonSingletonObject
+  )
 import Data.Argonaut.Decode (decodeJson)
-import Data.Auth.Token as Token
 import Data.Either (Either(..), either)
 import Data.Email (Email)
 import Data.Email as Email
@@ -25,7 +30,6 @@ import Data.HTTP.Method (Method(..))
 import Data.Maybe (maybe)
 import Data.Password (Password)
 import Data.Password as Password
-import Data.String (Pattern(..), contains)
 import Data.Username (Username)
 import Data.Username as Username
 import Effect.Aff (Aff)
@@ -62,32 +66,36 @@ spec = describe "Backend" do
               actual.email `shouldEqual` email
             _ → fail "NonJson body"
           respond ok200
-      createAccountWithConfig server username password email >>= isSignedUp
+      createAccountWithConfig server username password email >>= case _ of
+        Right SignedUp → pure unit
+        result → fail $ "SignedUp expected, but got: " <> show result
 
     it "handles already created accounts" do
       let server _ = respond conflict409
       createAccountWithConfig server username password email >>= case _ of
-        SignedUp → fail "Received SignedUp where AlreadyRegistered expected"
-        AlreadyRegistered → pure unit
+        Left backendError → fail (show backendError)
+        Right SignedUp → fail
+          "Received SignedUp where AlreadyRegistered expected"
+        Right AlreadyRegistered → pure unit
+
     it "handles bad requests" do
-      let
-        server _request = respond badRequest400
-      response ← createAccountWithConfig server username password email
-        `catchError` checkErrorSignUp "Bad request error"
-      isSignedUp response
+      let server _request = respond badRequest400
+      createAccountWithConfig server username password email >>= case _ of
+        Left (Backend.ResponseProblem problem) →
+          problem.type `shouldEqual` "urn:puremess:be:bad-request-error"
+        result → fail $ "Expected ResponseProblem but got " <> show result
+
     it "handles request error" do
-      let
-        server _request = pure $ Left AX.RequestFailedError
-      response ← createAccountWithConfig server username password email
-        `catchError` checkErrorSignUp "request failed"
-      isSignedUp response
+      let server _request = pure $ Left AX.RequestFailedError
+      createAccountWithConfig server username password email >>= case _ of
+        Left (Backend.AffjaxError AX.RequestFailedError) → pure unit
+        result → fail $ "Expected RequestFailedError but got " <> show result
 
     it "handles timeout error" do
-      let
-        server _request = pure $ Left AX.TimeoutError
-      response ← createAccountWithConfig server username password email
-        `catchError` checkErrorSignUp "timeout"
-      isSignedUp response
+      let server _request = pure $ Left AX.TimeoutError
+      createAccountWithConfig server username password email >>= case _ of
+        Left (Backend.AffjaxError AX.TimeoutError) → pure unit
+        result → fail $ "Expected TimeoutError but got " <> show result
 
   describe "Create session" do
     it "sends proper user data to the backend" do
@@ -105,58 +113,53 @@ spec = describe "Backend" do
             _ → fail "NonJson body"
           respond ok200
             { body = jsonSingletonObject "token" $ fromString "1234" }
-      createSessionWithConfig server username password >>= isSignedIn
+      createSessionWithConfig server username password >>= case _ of
+        Left backendError → fail (show backendError)
+        Right response → assertSignedIn response
 
     it "handles request error" do
-      let
-        server _request = pure $ Left AX.RequestFailedError
-      response ← createSessionWithConfig server username password
-        `catchError` checkErrorSignIn "request failed"
-      isSignedIn response
+      let server _request = pure $ Left AX.RequestFailedError
+      createSessionWithConfig server username password >>= case _ of
+        Left (Backend.AffjaxError AX.RequestFailedError) → pure unit
+        result → fail $ "Expected RequestFailedError but got " <> show result
 
     it "handles timeout error" do
-      let
-        server _request = pure $ Left AX.TimeoutError
-      response ← createSessionWithConfig server username password
-        `catchError` checkErrorSignIn "timeout"
-      isSignedIn response
+      let server _request = pure $ Left AX.TimeoutError
+      createSessionWithConfig server username password >>= case _ of
+        Left (Backend.AffjaxError AX.TimeoutError) → pure unit
+        result → fail $ "Expected TimeoutError but got " <> show result
 
     it "handles forbidden" do
       let server _request = respond forbidden403
       createSessionWithConfig server username password >>= case _ of
-        SignedIn t →
-          fail $ "Forbidden expected, but got SignedIn: " <> Token.toString t
-        Forbidden → pure unit
+        Right Forbidden → pure unit
+        result → fail $ "Forbidden expected, got: " <> show result
 
 createSessionWithConfig
-  ∷ Transport → Username → Password → Aff SignInResponse
+  ∷ Transport
+  → Username
+  → Password
+  → Aff (Either Backend.Error SignInResponse)
 createSessionWithConfig server username password = do
   notifications ← liftEffect H.create
-  let config = { notifications, backendApiUrl: "http://localhost/mock" }
-  App.run config
-    ( createSession' server username password
-        # AppM.hoistAppM App.BackendError
-    )
+  runExceptT $ runReaderT (createSession' server username password)
+    { notifications, backendApiUrl: "http://localhost/mock" }
 
 createAccountWithConfig
-  ∷ Transport → Username → Password → Email → Aff SignUpResponse
+  ∷ Transport
+  → Username
+  → Password
+  → Email
+  → Aff (Either Backend.Error SignUpResponse)
 createAccountWithConfig server username password email = do
   notifications ← liftEffect H.create
-  let config = { notifications, backendApiUrl: "http://localhost/mock" }
-  App.run config
-    ( createAccount' server username password email
-        # AppM.hoistAppM App.BackendError
-    )
+  runExceptT $ runReaderT (createAccount' server username password email)
+    { notifications, backendApiUrl: "http://localhost/mock" }
 
 -- Assertions:
 
-isSignedUp ∷ ∀ m. MonadThrow Error m ⇒ SignUpResponse → m Unit
-isSignedUp = case _ of
-  SignedUp → pure unit
-  AlreadyRegistered → fail "SignedUp expected, but got: AlreadyRegistered"
-
-isSignedIn ∷ ∀ m. MonadThrow Error m ⇒ SignInResponse → m Unit
-isSignedIn = case _ of
+assertSignedIn ∷ ∀ m. MonadThrow Error m ⇒ SignInResponse → m Unit
+assertSignedIn = case _ of
   SignedIn _ → pure unit
   Forbidden → fail "SignedIn expected, got Forbidden instead"
 
@@ -221,12 +224,3 @@ forbidden403 =
 fromRight ∷ ∀ a m e. Show e ⇒ MonadThrow Error m ⇒ Either e a → m a
 fromRight = either (throwError <<< error <<< show) pure
 
-checkErrorSignIn ∷ String → Error → Aff SignInResponse
-checkErrorSignIn s e =
-  if contains (Pattern s) (show e) then pure $ SignedIn (Token.unsafe "123")
-  else pure Forbidden
-
-checkErrorSignUp ∷ String → Error → Aff SignUpResponse
-checkErrorSignUp s e =
-  if contains (Pattern s) (show e) then pure SignedUp
-  else pure AlreadyRegistered

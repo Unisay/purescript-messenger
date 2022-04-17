@@ -19,6 +19,11 @@ data SignUpResponse
   = SignedUp
   | AlreadyRegistered
 
+instance Show SignUpResponse where
+  show = case _ of
+    SignedUp -> "Signed Up"
+    AlreadyRegistered -> "Already Registered"
+    
 data ListUsersResponse
   = Successful (Array UserPresence)
   | Unauthorized
