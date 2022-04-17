@@ -23,6 +23,7 @@ to generate this file without the comments in this block.
   , "foreign"
   , "foreign-generic"
   , "lists"
+  , "maybe"
   , "prelude"
   , "profunctor"
   , "quickcheck"
