@@ -10,9 +10,13 @@ import Control.Monad.Reader (class MonadAsk, ReaderT, runReaderT)
 import Control.Monad.Reader.Class (ask)
 import Data.Either (Either(..))
 import Data.Newtype (class Newtype, over, unwrap)
+import Data.Notification (critical)
+import Data.Route (Route(..))
+import Data.Route as Route
 import Effect.Aff (Aff, error)
 import Effect.Aff.Class (class MonadAff)
-import Effect.Class (class MonadEffect)
+import Effect.Class (class MonadEffect, liftEffect)
+import Halogen.Subscription as HS
 
 newtype Error = BackendError Backend.Error
 
@@ -37,7 +41,16 @@ type BackM = AppM Backend.Error Config
 run ∷ Config → App ~> Aff
 run c m = runReaderT (runExceptT (unwrap m)) c >>= case _ of
   Right a → pure a
-  Left (BackendError be) → throwError $ error $ show be
+  Left (BackendError be) → do
+    -- Display critical notification
+    liftEffect $ HS.notify c.notifications.listener $ critical
+      """
+      We are really sorry, but application is unable to serve your
+      request at this time because of an unexpected critical error.
+      """
+    -- Go to the error page
+    Route.goTo Error
+    throwError $ error $ show be
 
 config ∷ ∀ e c. AppM e c c
 config = ask
