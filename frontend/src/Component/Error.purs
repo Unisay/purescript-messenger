@@ -2,36 +2,60 @@ module Component.Error where
 
 import Prelude
 
-import Effect.Aff.Class (class MonadAff)
 import Halogen as H
 import Halogen.HTML.Extended as HH
 import Halogen.HTML.Properties.Extended as HP
 
-component ∷ ∀ q i o m. MonadAff m ⇒ H.Component q i o m
+type Input = Unit
+
+type State = Unit
+
+component ∷ ∀ q o m. H.Component q Input o m
 component = H.mkComponent
-  { render
-  , initialState: const unit
+  { initialState
+  , render
   , eval: H.mkEval $ H.defaultEval
   }
 
-render ∷ ∀ m. Unit → H.ComponentHTML Void () m
-render _ = HH.div
+initialState ∷ Input → State
+initialState _ = unit
+
+render ∷ ∀ a m. State → H.ComponentHTML a () m
+render _state = HH.div
   [ HP.classNames
       [ "flex"
-      , "flex-col"
       , "items-center"
       , "justify-center"
       , "min-h-screen"
       , "bg-gray-100"
       ]
   ]
-  [ HH.div_ [ HH.text "Oh noes!" ]
-  , HH.div_
-      [ HH.text
-          """
-          The application is unable to serve your request at this time
-          because of an unexpected error.
-          You might try repeating your request later.
-          """
+  [ HH.div
+      [ HP.classNames
+          [ "max-w-md"
+          , "w-full"
+          , "flex"
+          , "flex-col"
+          , "justify-center"
+          , "items-center"
+          , "space-y-3"
+          , "rounded"
+          , "border"
+          , "border-slate-300"
+          , "p-5"
+          , "shadow-xl"
+          , "bg-white"
+          ]
       ]
+      [ HH.span [ HP.classNames [ "text-8xl", "font-semibold" ] ]
+          [ HH.text "Oooops," ]
+      , HH.span
+          [ HP.classNames [ "font-medium", "text-center" ]
+          ]
+          [ HH.text
+              """Seems like something went wrong! 
+              You may contact our developers or try again later."""
+          ]
+      ]
+
   ]

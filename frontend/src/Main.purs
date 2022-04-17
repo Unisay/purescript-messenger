@@ -3,12 +3,14 @@ module Main where
 import Prelude
 
 import AppM as App
+import Component.Error as Error
 import Component.Router as Router
 import Data.Maybe (Maybe(..))
 import Data.Route as Route
 import Effect (Effect)
-import Effect.Aff (launchAff_)
+import Effect.Aff (catchError, launchAff_)
 import Effect.Class (liftEffect)
+import Effect.Class.Console as Console
 import Halogen as H
 import Halogen.Aff (awaitBody, runHalogenAff)
 import Halogen.Subscription as Subscription
@@ -23,7 +25,12 @@ main = runHalogenAff do
   let
     config = { notifications, backendApiUrl: "http://localhost:8081" }
     ui = H.hoist (App.run config) Router.component
-  router ← runUI ui unit body
-  void $ liftEffect $ matchesWith (RD.parse Route.codec) \old new →
-    when (old /= Just new) do
-      launchAff_ $ router.query $ H.mkTell $ Router.Navigate new
+    runRouter = do
+      router ← runUI ui unit body
+      void $ liftEffect $ matchesWith (RD.parse Route.codec) \old new →
+        when (old /= Just new) do
+          launchAff_ $ router.query $ H.mkTell $ Router.Navigate new
+  runRouter `catchError` \e → do
+    Console.logShow e
+    void $ runUI Error.component unit body
+
