@@ -1,7 +1,5 @@
 module BackendSpec (spec) where
 
-import Chat.Api.Http
-import Chat.Api.Http
 import Prelude
 
 import Affjax (Response)
@@ -11,9 +9,11 @@ import Affjax.ResponseFormat (ResponseFormat)
 import Affjax.ResponseFormat as ResponseFormat
 import Affjax.StatusCode (StatusCode(..))
 import AppM as App
+import AppM as AppM
 import Backend (Transport, createAccount', createSession')
 import Backend as Backend
-import Control.Monad.Error.Class (class MonadThrow, throwError)
+import Chat.Api.Http (SignInResponse(..), SignUpResponse(..))
+import Control.Monad.Error.Class (class MonadThrow, catchError, throwError)
 import Data.Argonaut.Core (Json, fromString, jsonEmptyArray, jsonNull, jsonSingletonObject)
 import Data.Argonaut.Decode (decodeJson)
 import Data.Auth.Token as Token
@@ -25,13 +25,15 @@ import Data.HTTP.Method (Method(..))
 import Data.Maybe (maybe)
 import Data.Password (Password)
 import Data.Password as Password
+import Data.String (Pattern(..), contains)
 import Data.Username (Username)
 import Data.Username as Username
 import Effect.Aff (Aff)
+import Effect.Class (liftEffect)
 import Effect.Exception (Error, error)
+import Halogen.Subscription as H
 import Test.Spec (Spec, describe, it)
 import Test.Spec.Assertions (fail, shouldEqual)
-import Test.Spec.Assertions.String (shouldContain)
 
 spec ∷ Spec Unit
 spec = describe "Backend" do
@@ -67,23 +69,26 @@ spec = describe "Backend" do
       createAccountWithConfig server username password email >>= case _ of
         SignedUp → fail "Received SignedUp where AlreadyRegistered expected"
         AlreadyRegistered → pure unit
-
     it "handles bad requests" do
-      let server _request = respond badRequest400
-      createAccountWithConfig server username password email >>= case _ of
-        SignedUp → fail "Unexpected error was expected"
-        AlreadyRegistered → fail "Unexpected error was expected"
-
+      let
+        server _request = respond badRequest400
+        getErr = createAccountWithConfig server username password email
+      response ← getErr `catchError` checkErrorSignUp "Bad request error"
+      isSignedUp response
     it "handles request error" do
-      let server _request = pure $ Left AX.RequestFailedError
-      response ← createAccountWithConfig server username password email
-      pure unit
+      let
+        server _request = pure $ Left AX.RequestFailedError
+        getErr = createAccountWithConfig server username password email
+      response ← getErr `catchError` checkErrorSignUp "request failed"
+      isSignedUp response
     -- response `isUnexpectedError` "request failed"
 
     it "handles timeout error" do
-      let server _request = pure $ Left AX.TimeoutError
-      response ← createAccountWithConfig server username password email
-      pure unit
+      let
+        server _request = pure $ Left AX.TimeoutError
+        getErr = createAccountWithConfig server username password email
+      response ← getErr `catchError` checkErrorSignUp "timeout"
+      isSignedUp response
   -- response `isUnexpectedError` "timeout"
 
   describe "Create session" do
@@ -105,15 +110,19 @@ spec = describe "Backend" do
       createSessionWithConfig server username password >>= isSignedIn
 
     it "handles request error" do
-      let server _request = pure $ Left AX.RequestFailedError
-      response ← createSessionWithConfig server username password
-      pure unit
+      let
+        server _request = pure $ Left AX.RequestFailedError
+        getErr = createSessionWithConfig server username password
+      response ← getErr `catchError` checkErrorSignIn "request failed"
+      isSignedIn response
     -- response `isFailure` "request failed"
 
     it "handles timeout error" do
-      let server _request = pure $ Left AX.TimeoutError
-      response ← createSessionWithConfig server username password
-      pure unit
+      let
+        server _request = pure $ Left AX.TimeoutError
+        getErr = createSessionWithConfig server username password
+      response ← getErr `catchError` checkErrorSignIn "timeout"
+      isSignedIn response
     -- response `isFailure` "timeout"
 
     it "handles forbidden" do
@@ -123,24 +132,32 @@ spec = describe "Backend" do
           fail $ "Forbidden expected, but got SignedIn: " <> Token.toString t
         Forbidden → pure unit
 
-createAccountWithConfig
-  ∷ Transport → Username → Password → Email → Aff SignUpResponse
-createAccountWithConfig server username password email =
-  App.run { backendApiUrl: "http://localhost/mock" }
-    $ createAccount' server username password email
-
 createSessionWithConfig
   ∷ Transport → Username → Password → Aff SignInResponse
-createSessionWithConfig server username password =
-  App.run { backendApiUrl: "http://localhost/mock" }
-    $ createSession' server username password
+createSessionWithConfig server username password = do
+  notifications ← liftEffect H.create
+  let config = { notifications, backendApiUrl: "http://localhost/mock" }
+  App.run config
+    ( createSession' server username password
+        # AppM.hoistAppM App.BackendError
+    )
+
+createAccountWithConfig
+  ∷ Transport → Username → Password → Email → Aff SignUpResponse
+createAccountWithConfig server username password email = do
+  notifications ← liftEffect H.create
+  let config = { notifications, backendApiUrl: "http://localhost/mock" }
+  App.run config
+    ( createAccount' server username password email
+        # AppM.hoistAppM App.BackendError
+    )
 
 -- Assertions:
 
 isSignedUp ∷ ∀ m. MonadThrow Error m ⇒ SignUpResponse → m Unit
 isSignedUp = case _ of
   SignedUp → pure unit
-  AlreadyRegistered → fail "AlreadyRegistered"
+  AlreadyRegistered → fail "SignedUp expected, but got: AlreadyRegistered"
 
 isSignedIn ∷ ∀ m. MonadThrow Error m ⇒ SignInResponse → m Unit
 isSignedIn = case _ of
@@ -207,3 +224,13 @@ forbidden403 =
 
 fromRight ∷ ∀ a m e. Show e ⇒ MonadThrow Error m ⇒ Either e a → m a
 fromRight = either (throwError <<< error <<< show) pure
+
+checkErrorSignIn ∷ String → Error → Aff SignInResponse
+checkErrorSignIn s e =
+  if contains (Pattern s) (show e) then pure $ SignedIn (Token.unsafe "123")
+  else pure Forbidden
+
+checkErrorSignUp ∷ String → Error → Aff SignUpResponse
+checkErrorSignUp s e =
+  if contains (Pattern s) (show e) then pure SignedUp
+  else pure AlreadyRegistered
