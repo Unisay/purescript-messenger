@@ -27,6 +27,7 @@ data Route
   | Profile Username -- /profile/:username
   | Debug -- /debug 
   | ChatWindow -- /chat
+  | Error -- /oops
 
 derive instance Generic Route _
 derive instance Eq Route
@@ -40,6 +41,7 @@ instance Arbitrary Route where
     , pure SignUp
     , Profile <$> arbitrary
     , pure Debug
+    , pure ChatWindow
     ]
 
 codec ∷ RouteDuplex' Route
@@ -55,6 +57,7 @@ codec = RouteDuplex i o
     , "Profile": path "profile" (username segment)
     , "Debug": path "debug" G.noArgs
     , "ChatWindow": path "chat" G.noArgs
+    , "Error": path "oops" G.noArgs
     }
 
 goTo ∷ ∀ m. MonadEffect m ⇒ Route → m Unit

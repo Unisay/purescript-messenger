@@ -14,7 +14,6 @@ import Component.Navigation as Navigation
 import Component.Notifications as Notifications
 import Component.Signin as Signin
 import Component.Signup as Signup
-import Data.Array ((:))
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
 import Data.Route (Route(..))
@@ -23,8 +22,6 @@ import Effect.Class (class MonadEffect, liftEffect)
 import Effect.Class.Console (log)
 import Halogen.Extended as H
 import Halogen.HTML as HH
-import Partial (crashWith)
-import Partial.Unsafe (unsafePartial)
 import Routing.Duplex as RD
 import Routing.Hash (getHash, setHash)
 import Type.Proxy (Proxy(..))
@@ -43,6 +40,7 @@ type ChildSlots =
   , signup ∷ H.OpaqueSlot Unit
   , debug ∷ H.OpaqueSlot Unit
   , chatWindow ∷ H.OpaqueSlot Unit
+  , error ∷ H.OpaqueSlot Unit
   )
 
 component ∷ ∀ i. H.Component Query i Void App
@@ -90,26 +88,22 @@ navigate route = do
   H.modify_ _ { route = route }
 
 render ∷ ∀ a. State → H.ComponentHTML a ChildSlots App
-render { route } = HH.div_ $
-  HH.slot_ (Proxy ∷ _ "notifications") unit Notifications.component unit :
-    case route of
+render { route } = HH.div_
+  [ HH.slot_ (Proxy ∷ _ "notifications") unit Notifications.component unit
+  , Navigation.render route
+  , case route of
+      Home →
+        HH.slot_ (Proxy ∷ _ "home") unit Home.component unit
+      SignIn →
+        HH.slot_ (Proxy ∷ _ "signin") unit Signin.component unit
+      SignUp →
+        HH.slot_ (Proxy ∷ _ "signup") unit Signup.component unit
+      Profile _username →
+        HH.slot_ (Proxy ∷ _ "signin") unit Signin.component unit
+      Debug →
+        HH.slot_ (Proxy ∷ _ "debug") unit Debug.component unit
+      ChatWindow →
+        HH.slot_ (Proxy ∷ _ "chatWindow") unit ChatWindow.component unit
       Error →
-        [ HH.slot_ (Proxy ∷ _ "error") unit Error.component unit ]
-      _ →
-        [ Navigation.render route
-        , case route of
-            Home →
-              HH.slot_ (Proxy ∷ _ "home") unit Home.component unit
-            SignIn →
-              HH.slot_ (Proxy ∷ _ "signin") unit Signin.component unit
-            SignUp →
-              HH.slot_ (Proxy ∷ _ "signup") unit Signup.component unit
-            Profile _username →
-              HH.slot_ (Proxy ∷ _ "signin") unit Signin.component unit
-            Debug →
-              HH.slot_ (Proxy ∷ _ "debug") unit Debug.component unit
-            ChatWindow →
-              HH.slot_ (Proxy ∷ _ "chatWindow") unit ChatWindow.component unit
-            Error →
-              unsafePartial $ crashWith "Unreachable"
-        ]
+        HH.slot_ (Proxy ∷ _ "error") unit Error.component unit
+  ]
