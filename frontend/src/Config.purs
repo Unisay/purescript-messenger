@@ -19,12 +19,12 @@ type Config =
 
 type HasAuth r = (auth ∷ Ref (Maybe Auth.Token) | r)
 
-askAuth
+getAuth
   ∷ ∀ r m
   . MonadEffect m
   ⇒ MonadAsk (Record (HasAuth r)) m
   ⇒ m (Maybe Auth.Token)
-askAuth = do
+getAuth = do
   r ← asks _.auth
   liftEffect $ Ref.read r
 

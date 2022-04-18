@@ -8,6 +8,7 @@ import Backend as Backend
 import Chat.Api.Http (SignUpResponse(..))
 import Control.Error.Util (hush)
 import Control.Monad.Except (runExceptT)
+import Control.Monad.Reader (asks)
 import Control.Monad.Trans.Class (lift)
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
@@ -17,7 +18,10 @@ import Data.EitherR (flipEither)
 import Data.Email as Email
 import Data.Maybe (Maybe(..), maybe)
 import Data.Newtype (wrap)
+import Data.Notification (important, useful)
 import Data.Password as Password
+import Data.Route (goTo)
+import Data.Route as Route
 import Data.Username as Username
 import Data.Validation (Validation)
 import Halogen (liftEffect)
@@ -25,6 +29,7 @@ import Halogen as H
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Extended as HH
 import Halogen.HTML.Properties.Extended as HP
+import Halogen.Subscription as HS
 import Web.Event.Event (Event)
 import Web.Event.Event as Event
 
@@ -325,8 +330,12 @@ handleAction = case _ of
         do
           signUpResponse ← Backend.createAccount username password email
             # hoistAppM App.BackendError >>> lift
+          notify ← lift (asks _.notifications.listener) <#> \listener →
+            liftEffect <<< HS.notify listener
           case signUpResponse of
-            SignedUp → H.modify_ _ { response = Just SignedUp }
-            AlreadyRegistered → H.modify_ _
-              { response = Just AlreadyRegistered }
+            SignedUp → do
+              notify $ useful "Welcome to the chat!"
+              goTo Route.SignIn
+            AlreadyRegistered →
+              notify $ important "User already registered"
 

@@ -126,12 +126,11 @@ createAccount' transport username password email = do
       case unwrap status, decodeJson body of
         200, _ → pure SignedUp
         409, _ → pure AlreadyRegistered
-        400, Right (srb ∷ SignUpResponseBody) → throwError
-          $ ResponseProblem
-          $ Problem.badRequest
-          $ pure srb.errors
-        _, _ → throwError $ ResponseStatusError
-          { expected: wrap 200, actual: status }
+        400, Right (srb ∷ SignUpResponseBody) →
+          throwError $ ResponseProblem $ Problem.badRequest srb.errors
+        _, _ →
+          throwError $ ResponseStatusError
+            { expected: wrap 200, actual: status }
 
 listUsers
   ∷ ∀ r m

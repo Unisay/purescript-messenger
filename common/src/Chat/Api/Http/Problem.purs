@@ -55,14 +55,16 @@ internalServerError mbArr =
         <$> map (map $ flip append "; ") mbArr
     }
 
-badRequest :: Maybe (Array String) -> Problem
-badRequest mbArr =
+badRequest :: Array String -> Problem
+badRequest details =
   ( defProblem
       { type: "urn:puremess:be:bad-request-error"
       , title: "Bad request error"
       }
   )
     { status = Just 400
-    , detail = Array.fold >>> String.trim
-        <$> map (map $ flip append "; ") mbArr
+    , detail =
+        if Array.null details
+        then Nothing
+        else Just $ String.joinWith "; " (String.trim <$> details)
     }

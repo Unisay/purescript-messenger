@@ -60,7 +60,7 @@ withConnection useResource = do
       ]
     createTable "chat_users"
       [ "username TEXT UNIQUE ON CONFLICT FAIL"
-      , "status TEXT"
+      , "presence TEXT"
       , "FOREIGN KEY(username) REFERENCES users(username)"
       ]
     pure conn
@@ -86,9 +86,9 @@ query
   -> Array SQLite.Param
   -> DbM m a
 query q params = do
-  conn <- ask 
+  conn <- ask
   f <- lift $ wrap $ map (lmap adaptError) $ liftAff $ try $
-      SQLite.queryDB conn q params
+    SQLite.queryDB conn q params
   lift $ mapExceptT (pure <<< lmap Decoding <<< unwrap) (decode f)
 
 adaptError :: Aff.Error -> Error
