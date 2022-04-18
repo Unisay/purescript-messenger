@@ -144,7 +144,9 @@ render { config, route, hasError, errorListener } =
       slotDebug =
         HH.slot_ (Proxy ∷ _ "debug") unit (hoistApp Debug.component) unit
       slotChatWindow =
-        HH.slot_ (Proxy ∷ _ "chatWindow") unit ChatWindow.component unit
+        HH.slot_ (Proxy ∷ _ "chatWindow") unit
+          (hoistApp ChatWindow.component)
+          unit
     true →
       Error.render ClearError
 

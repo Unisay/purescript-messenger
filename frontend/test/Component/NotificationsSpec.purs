@@ -10,6 +10,7 @@ import Data.Traversable (traverse_)
 import Effect.Aff.Class (class MonadAff, liftAff)
 import Effect.Class (liftEffect)
 import Halogen.Driver (runComponent)
+import Halogen.Subscription as HS
 import Halogen.Subscription as Subscription
 import Test.Unit (TestSuite, test)
 import Test.Unit.Assert (shouldEqual)
@@ -17,7 +18,7 @@ import Test.Unit.Assert (shouldEqual)
 spec ∷ TestSuite
 spec = test "Notifications" do
   notifications@{ emitter, listener } ← liftEffect Subscription.create
-  error ← liftEffect Subscription.create
+  error ∷ HS.SubscribeIO App.Error ← liftEffect Subscription.create
   let sendNotification = liftEffect <<< Subscription.notify listener
   let config = { notifications, backendApiUrl: "http://localhost" }
   let runM = App.run config error.listener

@@ -24,10 +24,6 @@ instance Show SignUpResponse where
     SignedUp -> "Signed Up"
     AlreadyRegistered -> "Already Registered"
     
-data ListUsersResponse
-  = Successful (Array UserPresence)
-  | Unauthorized
-
 type SignInResponseBody = { token ∷ Token }
 
 type SignUpResponseBody = { errors ∷ Array String }
