@@ -9,6 +9,7 @@
   , "codec-argonaut"
   , "common"
   , "console"
+  , "contravariant"
   , "effect"
   , "either"
   , "enums"

@@ -8,17 +8,16 @@ import Control.Monad.Error.Class (class MonadError, class MonadThrow)
 import Control.Monad.Except (ExceptT, runExceptT, throwError, withExceptT)
 import Control.Monad.Reader (class MonadAsk, ReaderT, runReaderT)
 import Control.Monad.Reader.Class (ask)
-import Data.Either (Either(..))
-import Data.Newtype (class Newtype, over, unwrap)
-import Data.Notification (critical)
-import Data.Route (Route(..))
-import Data.Route as Route
+import Data.Either (either)
+import Data.Newtype (class Newtype, over)
 import Effect.Aff (Aff, error)
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class (class MonadEffect, liftEffect)
 import Halogen.Subscription as HS
 
 newtype Error = BackendError Backend.Error
+
+derive newtype instance Show Error
 
 newtype AppM e c a = AppM (ExceptT e (ReaderT c Aff) a)
 
@@ -38,19 +37,14 @@ type App = AppM Error Config
 
 type BackM = AppM Backend.Error Config
 
-run ∷ Config → App ~> Aff
-run c m = runReaderT (runExceptT (unwrap m)) c >>= case _ of
-  Right a → pure a
-  Left (BackendError be) → do
-    -- Display critical notification
-    liftEffect $ HS.notify c.notifications.listener $ critical
-      """
-      We are really sorry, but application is unable to serve your
-      request at this time because of an unexpected critical error.
-      """
-    -- Go to the error page
-    Route.goTo Error
-    throwError $ error $ show be
+run ∷ Config → HS.Listener Error → App ~> Aff
+run c errorListener (AppM m) =
+  runReaderT (runExceptT m) c >>= either handleError pure
+  where
+  handleError ∷ ∀ a. Error → Aff a
+  handleError appError = liftEffect do
+    HS.notify errorListener appError
+    throwError $ error $ show appError
 
 config ∷ ∀ e c. AppM e c c
 config = ask

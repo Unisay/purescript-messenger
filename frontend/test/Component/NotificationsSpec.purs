@@ -17,22 +17,19 @@ import Test.Unit.Assert (shouldEqual)
 spec ∷ TestSuite
 spec = test "Notifications" do
   notifications@{ emitter, listener } ← liftEffect Subscription.create
+  error ← liftEffect Subscription.create
   let sendNotification = liftEffect <<< Subscription.notify listener
-  let runM = App.run { notifications, backendApiUrl: "http://localhost" }
+  let config = { notifications, backendApiUrl: "http://localhost" }
+  let runM = App.run config error.listener
   runComponent (initialState emitter) runM evalSpec \simulateAction → do
-    traverse_ sendNotification
-      [ useful "u"
-      , important "i"
-      , critical "c"
-      ]
+    traverse_ sendNotification [ useful "u", important "i", critical "c" ]
     simulateAction $ Close 1
     gets _.queue >>= shouldBe
       [ { id: 0, value: useful "u" }
       , { id: 2, value: critical "c" }
       ]
     simulateAction $ Close 0
-    gets _.queue >>= shouldBe
-      [ { id: 2, value: critical "c" } ]
+    gets _.queue >>= shouldBe [ { id: 2, value: critical "c" } ]
     simulateAction $ Close 2
     gets _.queue >>= shouldBe []
 
