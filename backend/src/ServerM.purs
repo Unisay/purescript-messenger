@@ -2,6 +2,7 @@ module ServerM where
 
 import Prelude
 
+import Chat.Api.Http.Problem as Problem
 import Control.Monad.Error.Class (class MonadThrow)
 import Control.Monad.Except (ExceptT, except, lift, runExcept, runExceptT, withExceptT)
 import Control.Monad.Reader (ReaderT(..), mapReaderT, runReaderT)
@@ -11,7 +12,7 @@ import Data.Auth.Token (Token)
 import Data.Auth.Token as Token
 import Data.Bifunctor (lmap)
 import Data.Either (Either(..), hush)
-import Data.Maybe (Maybe, maybe)
+import Data.Maybe (Maybe(..), maybe)
 import Data.Newtype (class Newtype, wrap)
 import Data.String as Str
 import Database (DbM)
@@ -19,7 +20,7 @@ import Database as Database
 import Effect.Aff (throwError)
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class (class MonadEffect)
-import Effect.Class.Console (log)
+import Effect.Class.Console as Console
 import Foreign (MultipleErrors, renderForeignError)
 import Foreign.Class (class Decode)
 import Node.Express.Handler (Handler, HandlerM)
@@ -53,23 +54,21 @@ derive newtype instance monadThrowServerM :: MonadThrow Error ServerM
 runServerM :: SQLite.DBConnection -> Server -> Handler
 runServerM dbconn (ServerM s) = runExceptT (runReaderT s dbconn) >>= case _ of
   Left (DatabaseErr (Database.Decoding foreignErrors)) -> do
+    Console.logShow foreignErrors
     Response.setStatus 400
-    Response.sendJson
-      { errors:
-          Array.fromFoldable $ map renderForeignError foreignErrors
-      }
-  Left (DatabaseErr (Database.ConstraintViolation column)) -> do
+    Response.sendJson { error: [ Problem.internalServerError Nothing ] }
+  Left (DatabaseErr (Database.ConstraintViolation column)) ->
     case column of
       Database.Username -> do
         Response.setStatus 409
-        Response.sendJson { errors: [ "User already registered" ] }
+        Response.sendJson { errors: [ Problem.usernameExists ] }
       Database.Email -> do
         Response.setStatus 409
-        Response.sendJson { errors: [ "Email already registered" ] }
+        Response.sendJson { errors: [ Problem.emailExists ] }
   Left (DatabaseErr (Database.Other message)) -> do
     Response.setStatus 500
-    log message
-    Response.sendJson { error: "Internal Server Error" }
+    Console.log message
+    Response.sendJson { error: [ Problem.internalServerError Nothing ] }
   Left (BodyDecodingErr me) -> do
     Response.setStatus 400
     Response.sendJson { errors: Array.fromFoldable $ map renderForeignError me }

@@ -20,8 +20,9 @@ main ∷ Effect Unit
 main = runHalogenAff do
   body ← awaitBody
   notifications ← liftEffect Subscription.create
-  let config = { notifications, backendApiUrl: "http://localhost:8081" }
-  let ui = H.hoist (App.run config) Router.component
+  let
+    config = { notifications, backendApiUrl: "http://localhost:8081" }
+    ui = H.hoist (App.run config) Router.component
   router ← runUI ui unit body
   void $ liftEffect $ matchesWith (RD.parse Route.codec) \old new →
     when (old /= Just new) do

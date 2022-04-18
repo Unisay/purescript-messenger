@@ -21,11 +21,12 @@ import Test.QuickCheck.Gen as Gen
 
 data Route
   = Home -- /
+  | Error -- /error
   | SignIn -- /signin
   | SignUp -- /signup
   | Profile Username -- /profile/:username
   | Debug -- /debug 
-  | ChatWindow -- /chatWindow
+  | ChatWindow -- /chat
 
 derive instance Generic Route _
 derive instance Eq Route
@@ -39,6 +40,7 @@ instance Arbitrary Route where
     , pure SignUp
     , Profile <$> arbitrary
     , pure Debug
+    , pure ChatWindow
     ]
 
 codec ∷ RouteDuplex' Route
@@ -48,11 +50,13 @@ codec = RouteDuplex i o
     (Username.parse >>> lmap (NEA.intercalate ";"))
   RouteDuplex i o = root $ G.sum
     { "Home": G.noArgs
+
     , "SignIn": path "signin" G.noArgs
     , "SignUp": path "signup" G.noArgs
     , "Profile": path "profile" (username segment)
     , "Debug": path "debug" G.noArgs
-    , "ChatWindow": path "chatWindow" G.noArgs
+    , "ChatWindow": path "chat" G.noArgs
+    , "Error": path "error" G.noArgs
     }
 
 goTo ∷ ∀ m. MonadEffect m ⇒ Route → m Unit

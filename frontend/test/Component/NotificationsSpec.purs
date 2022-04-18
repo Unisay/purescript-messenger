@@ -20,12 +20,20 @@ spec = test "Notifications" do
   let sendNotification = liftEffect <<< Subscription.notify listener
   let runM = App.run { notifications, backendApiUrl: "http://localhost" }
   runComponent (initialState emitter) runM evalSpec \simulateAction → do
-    traverse_ sendNotification [ useful "u", important "i", critical "c" ]
+    traverse_ sendNotification
+      [ useful "u"
+      , important "i"
+      , critical "c"
+      ]
     simulateAction $ Close 1
-    gets _.queue >>= shouldBe [ critical "c", useful "u" ]
+    gets _.queue >>= shouldBe
+      [ { id: 0, value: useful "u" }
+      , { id: 2, value: critical "c" }
+      ]
     simulateAction $ Close 0
-    gets _.queue >>= shouldBe [ useful "u" ]
-    simulateAction $ Close 0
+    gets _.queue >>= shouldBe
+      [ { id: 2, value: critical "c" } ]
+    simulateAction $ Close 2
     gets _.queue >>= shouldBe []
 
 shouldBe ∷ ∀ a m. MonadAff m ⇒ Eq a ⇒ Show a ⇒ a → a → m Unit

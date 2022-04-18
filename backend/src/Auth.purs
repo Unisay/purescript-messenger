@@ -10,6 +10,7 @@ import Data.Auth.Token (Token)
 import Data.Auth.Token as Token
 import Data.DateTime (adjust)
 import Data.Either (Either(..), hush, note)
+import Data.Email (Email)
 import Data.Enum (enumFromTo)
 import Data.List.NonEmpty (NonEmptyList)
 import Data.Maybe (Maybe(..), fromMaybe)
@@ -46,7 +47,7 @@ instance decodeLogoutReason :: Foreign.Decode SignoutReason where
       Foreign.fail $ Foreign.ForeignError $ "Unknown signout reason: " <> show r
 
 type UserInfo =
-  { email :: String
+  { email :: Email
   , username :: Username
   , password :: Password
   }
