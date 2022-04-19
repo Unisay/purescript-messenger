@@ -7,15 +7,12 @@ import Backend (HasBackendConfig)
 import Backend as Backend
 import Chat.Api.Http (UserPresence)
 import Chat.Presence (Presence(..))
-import Config (HasAuth, getAuth)
+import Config (HasAuth, withAuth)
 import Control.Monad.Except (runExceptT)
 import Control.Monad.Reader (class MonadAsk)
 import Control.Monad.State (class MonadState)
 import Data.Array as Array
 import Data.Maybe (Maybe(..))
-import Data.Route (goTo)
-import Data.Route as Route
-import Data.Traversable (traverse_)
 import Data.Username as Username
 import Effect.Aff.Class (class MonadAff)
 import Halogen as H
@@ -46,17 +43,13 @@ handleAction
   ∷ ∀ r m
   . MonadAff m
   ⇒ MonadState State m
-  ⇒ MonadAsk (Record (HasBackendConfig (HasAuth r))) m
+  ⇒ MonadAsk { | HasBackendConfig (HasAuth r) } m
   ⇒ Action
   → m Unit
-handleAction = case _ of
-  Initialize → getAuth >>= case _ of
-    Just token → do
-      H.modify_ _ { users = RD.Loading }
-      users ← runExceptT (Backend.listUsers token) <#> RD.fromEither
-      H.modify_ _ { users = users }
-    Nothing →
-      goTo Route.SignIn
+handleAction Initialize = withAuth \token → do
+  H.modify_ _ { users = RD.Loading }
+  users ← runExceptT (Backend.listUsers token) <#> RD.fromEither
+  H.modify_ _ { users = users }
 
 render ∷ ∀ m a. State → H.ComponentHTML a () m
 render { users } = HH.div
