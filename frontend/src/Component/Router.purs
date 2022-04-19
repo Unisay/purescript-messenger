@@ -40,7 +40,7 @@ data Query a = Navigate Route a
 type State =
   { config ∷ Config
   , route ∷ Route
-  , error ∷ Maybe App.Error
+  , hasError ∷ Boolean
   , errorListener ∷ HS.Listener App.Error
   }
 
@@ -72,7 +72,7 @@ initialState ∷ Config → State
 initialState config =
   { config
   , route: Home
-  , error: Nothing
+  , hasError: false
   , errorListener: unsafeCoerce (\(_ ∷ App.Error) → pure unit ∷ Effect Unit)
   }
 
@@ -93,8 +93,8 @@ handleAction = case _ of
         Left err → log (show err <> ": " <> show hash) $> Home
         Right route → pure route
     navigate route
-  SetError err → H.modify_ _ { error = Just err }
-  ClearError → H.modify_ _ { error = Nothing }
+  SetError _err → H.modify_ _ { hasError = true }
+  ClearError → H.modify_ _ { hasError = false }
 
 handleQuery
   ∷ ∀ a m
@@ -113,37 +113,38 @@ navigate route = do
   H.modify_ _ { route = route }
 
 render ∷ State → H.ComponentHTML Action ChildSlots Aff
-render { config, route, error, errorListener } = case error of
-  Nothing → HH.div_
-    [ slotNotifications
-    , Navigation.render route
-    , case route of
-        Home → slotHome
-        SignIn → slotSignin
-        SignUp → slotSignup
-        Profile _username → slotProfile
-        Debug → slotDebug
-        ChatWindow → slotChatWindow
-    ]
-    where
-    hoistApp ∷ ∀ q i o. H.Component q i o App → H.Component q i o Aff
-    hoistApp = HC.hoist (App.run config errorListener)
-    slotNotifications =
-      HH.slot_ (Proxy ∷ _ "notifications") unit comp unit
+render { config, route, hasError, errorListener } =
+  case hasError of
+    false → HH.div_
+      [ slotNotifications
+      , Navigation.render route
+      , case route of
+          Home → slotHome
+          SignIn → slotSignin
+          SignUp → slotSignup
+          Profile _username → slotProfile
+          Debug → slotDebug
+          ChatWindow → slotChatWindow
+      ]
       where
-      comp = hoistApp Notifications.component
-    slotHome =
-      HH.slot_ (Proxy ∷ _ "home") unit Home.component unit
-    slotSignin =
-      HH.slot_ (Proxy ∷ _ "signin") unit (hoistApp Signin.component) unit
-    slotSignup =
-      HH.slot_ (Proxy ∷ _ "signup") unit (hoistApp Signup.component) unit
-    slotProfile =
-      HH.slot_ (Proxy ∷ _ "profile") unit (hoistApp Signin.component) unit
-    slotDebug =
-      HH.slot_ (Proxy ∷ _ "debug") unit (hoistApp Debug.component) unit
-    slotChatWindow =
-      HH.slot_ (Proxy ∷ _ "chatWindow") unit ChatWindow.component unit
-  Just _err →
-    Error.render ClearError
+      hoistApp ∷ ∀ q i o. H.Component q i o App → H.Component q i o Aff
+      hoistApp = HC.hoist (App.run config errorListener)
+      slotNotifications =
+        HH.slot_ (Proxy ∷ _ "notifications") unit comp unit
+        where
+        comp = hoistApp Notifications.component
+      slotHome =
+        HH.slot_ (Proxy ∷ _ "home") unit Home.component unit
+      slotSignin =
+        HH.slot_ (Proxy ∷ _ "signin") unit (hoistApp Signin.component) unit
+      slotSignup =
+        HH.slot_ (Proxy ∷ _ "signup") unit (hoistApp Signup.component) unit
+      slotProfile =
+        HH.slot_ (Proxy ∷ _ "profile") unit (hoistApp Signin.component) unit
+      slotDebug =
+        HH.slot_ (Proxy ∷ _ "debug") unit (hoistApp Debug.component) unit
+      slotChatWindow =
+        HH.slot_ (Proxy ∷ _ "chatWindow") unit ChatWindow.component unit
+    true →
+      Error.render ClearError
 

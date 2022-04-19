@@ -11,7 +11,7 @@ import Data.Username as Username
 import Effect.Class (class MonadEffect, liftEffect)
 import Halogen.HTML (IProp)
 import Halogen.HTML.Properties as HP
-import Routing.Duplex (RouteDuplex(..), RouteDuplex', as, path, print, root, segment)
+import Routing.Duplex (RouteDuplex', as, path, print, root, segment)
 import Routing.Duplex.Generic as G
 import Routing.Hash (setHash)
 import Test.QuickCheck.Arbitrary (class Arbitrary, arbitrary)
