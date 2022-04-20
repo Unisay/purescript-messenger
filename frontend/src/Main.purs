@@ -21,8 +21,7 @@ import Web.HTML.Window (localStorage)
 main ∷ Effect Unit
 main = runHalogenAff do
   body ← awaitBody
-  w ← liftEffect window
-  storage ← liftEffect $ localStorage w
+  storage ← liftEffect $ window >>= localStorage
   notifications ← liftEffect Subscription.create
   auth ← liftEffect $ Ref.new Nothing
   let
