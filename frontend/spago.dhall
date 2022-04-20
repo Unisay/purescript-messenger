@@ -40,6 +40,8 @@
   , "unicode"
   , "unsafe-coerce"
   , "web-events"
+  , "web-html"
+  , "web-storage"
   ]
 , packages = ./packages.dhall
 , sources = [ "src/**/*.purs", "test/**/*.purs" ]
