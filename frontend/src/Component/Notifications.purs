@@ -84,7 +84,14 @@ render { queue } =
           , "justify-between"
           ]
       ]
-      [ HH.span_ [ importanceIcon importance [], HH.text message ]
+      [ HH.span
+          [ HP.classNames
+              [ "flex"
+              , "flex-row"
+              , "gap-2"
+              ]
+          ]
+          [ importanceIcon importance [], HH.text message ]
       , HH.button [ HE.onClick \_ → Close id ] [ iconClose [] ]
       ]
 
