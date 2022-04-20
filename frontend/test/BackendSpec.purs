@@ -19,6 +19,7 @@ import Control.Monad.Reader (runReaderT)
 import Data.Argonaut.Core (Json, jsonEmptyArray, jsonNull, jsonSingletonObject)
 import Data.Argonaut.Decode (decodeJson)
 import Data.Argonaut.Encode (encodeJson)
+import Data.Array as Array
 import Data.Auth.Token as Auth
 import Data.Auth.Token as Token
 import Data.Either (Either(..), either)
@@ -46,6 +47,7 @@ spec = describe "Backend" do
     password = Password.unsafe "testpass"
     email = Email.unsafe "john.doe@example.com"
     token = Token.unsafe "1234567890"
+    presence = Online
 
   describe "Create account" do
     it "sends proper user data to the backend" do
@@ -152,7 +154,11 @@ spec = describe "Backend" do
           respond ok200 { body = encodeJson mockUserList }
       listUsersWithConfig server token >>= case _ of
         Left err → fail $ show err
-        Right _srb → pure unit
+        Right srb →
+          Array.head srb # maybe (fail "Response body is empty") \user → do
+            user.username `shouldEqual` username
+            user.presence `shouldEqual` presence
+            pure unit
 
     it "handles request error" do
       let server _request = pure $ Left AX.RequestFailedError
