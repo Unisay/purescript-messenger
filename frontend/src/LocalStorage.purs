@@ -5,7 +5,7 @@ import Prelude
 import Control.Monad.Reader (class MonadAsk, asks)
 import Data.Maybe (Maybe)
 import Effect.Class (class MonadEffect, liftEffect)
-import Web.Storage.Storage (Storage, getItem)
+import Web.Storage.Storage (Storage, getItem, setItem)
 
 type HasStorage r = (storage ∷ Storage | r)
 
@@ -30,3 +30,14 @@ readKey (Key k) dec = do
   v ← liftEffect $ getItem k s
   pure $ dec =<< v
 
+writeKey
+  ∷ ∀ a r m
+  . MonadEffect m
+  ⇒ MonadAsk { | HasStorage r } m
+  ⇒ Key a
+  → Enc a
+  → a
+  → m Unit
+writeKey (Key k) f v = do
+  s ← getStorage
+  liftEffect $ setItem k (f v) s

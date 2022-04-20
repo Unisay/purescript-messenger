@@ -8,10 +8,9 @@ import Data.Auth.Token as Token
 import Data.Either (hush)
 import Data.Maybe (Maybe(..))
 import Data.Route (Route(..), goTo)
-import Effect.Class (class MonadEffect, liftEffect)
-import LocalStorage (HasStorage, getStorage)
+import Effect.Class (class MonadEffect)
+import LocalStorage (HasStorage, writeKey)
 import LocalStorage as Storage
-import Web.Storage.Storage (setItem)
 
 tokenKey ∷ Storage.Key Auth.Token
 tokenKey = Storage.Key "auth.token"
@@ -29,9 +28,7 @@ setAuth
   ⇒ MonadAsk { | HasStorage r } m
   ⇒ Auth.Token
   → m Unit
-setAuth token = do
-  s ← getStorage
-  liftEffect $ setItem "auth.token" (Token.toString token) s
+setAuth token = writeKey tokenKey Token.toString token
 
 withAuth
   ∷ ∀ r m
