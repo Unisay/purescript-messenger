@@ -16,6 +16,7 @@
   , "errors"
   , "exceptions"
   , "foldable-traversable"
+  , "foreign-object"
   , "free"
   , "freeap"
   , "halogen"
