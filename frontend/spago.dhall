@@ -28,6 +28,7 @@
   , "profunctor"
   , "quickcheck"
   , "refs"
+  , "remotedata"
   , "routing"
   , "routing-duplex"
   , "spec"

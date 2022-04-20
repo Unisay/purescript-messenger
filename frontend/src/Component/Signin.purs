@@ -6,6 +6,7 @@ import AppM (App, hoistAppM)
 import AppM as App
 import Backend as Backend
 import Chat.Api.Http (SignInResponse(..))
+import Config (setAuth)
 import Control.Monad.Except.Trans (runExceptT)
 import Control.Monad.Trans.Class (lift)
 import Data.Array as Array
@@ -277,6 +278,7 @@ handleAction = case _ of
               # hoistAppM App.BackendError >>> lift
           case signInResponse of
             SignedIn token → do
+              setAuth token
               H.modify_ _ { response = Just (SignedIn token) }
               goTo Route.ChatWindow
             Forbidden →

@@ -4,9 +4,10 @@ import Prelude
 
 import Affjax (Error, Request, Response, defaultRequest, printError, request) as AX
 import Affjax.RequestBody (RequestBody(..)) as AX
+import Affjax.RequestHeader (RequestHeader(..)) as AX
 import Affjax.ResponseFormat as ResponseFormat
 import Affjax.StatusCode (StatusCode)
-import Chat.Api.Http (ListUsersResponse(..), SignInResponse(..), SignInResponseBody, SignUpResponse(..), SignUpResponseBody, UserPresence)
+import Chat.Api.Http (SignInResponse(..), SignInResponseBody, SignUpResponse(..), SignUpResponseBody, UserPresence)
 import Chat.Api.Http.Problem (Problem)
 import Chat.Api.Http.Problem as Problem
 import Control.Monad.Error.Class (class MonadThrow)
@@ -15,6 +16,7 @@ import Control.Monad.Reader.Class (asks)
 import Data.Argonaut.Core (Json)
 import Data.Argonaut.Decode (JsonDecodeError, decodeJson)
 import Data.Argonaut.Encode (encodeJson) as Json
+import Data.Auth.Token as Auth
 import Data.Either (Either(..))
 import Data.Email (Email)
 import Data.HTTP.Method (Method(..))
@@ -26,6 +28,9 @@ import Data.Username (Username)
 import Data.Username as Username
 import Effect.Aff (Aff, throwError)
 import Effect.Aff.Class (class MonadAff, liftAff)
+
+type HasBackendConfig r = (backendApiUrl ∷ String | r)
+type Transport = AX.Request Json → Aff (Either AX.Error (AX.Response Json))
 
 data Error
   = AffjaxError AX.Error
@@ -49,7 +54,7 @@ instance Show Error where
 createSession
   ∷ ∀ r m
   . MonadAff m
-  ⇒ MonadAsk { backendApiUrl ∷ String | r } m
+  ⇒ MonadAsk (Record (HasBackendConfig r)) m
   ⇒ MonadThrow Error m
   ⇒ Username
   → Password
@@ -59,7 +64,7 @@ createSession = createSession' AX.request
 createSession'
   ∷ ∀ r m
   . MonadAff m
-  ⇒ MonadAsk { backendApiUrl ∷ String | r } m
+  ⇒ MonadAsk (Record (HasBackendConfig r)) m
   ⇒ MonadThrow Error m
   ⇒ Transport
   → Username
@@ -67,15 +72,13 @@ createSession'
   → m SignInResponse
 createSession' transport username password = do
   backendApiUrl ← asks _.backendApiUrl
-  response ← liftAff $
-    transport
-      AX.defaultRequest
-        { method = Left PUT
-        , url = String.joinWith "/"
-            [ backendApiUrl, "users", Username.toString username, "session" ]
-        , content = Just $ AX.Json $ Json.encodeJson { username, password }
-        , responseFormat = ResponseFormat.json
-        }
+  response ← liftAff $ transport AX.defaultRequest
+    { method = Left PUT
+    , url = String.joinWith "/"
+        [ backendApiUrl, "users", Username.toString username, "session" ]
+    , content = Just $ AX.Json $ Json.encodeJson { username, password }
+    , responseFormat = ResponseFormat.json
+    }
   case response of
     Left err → throwError $ AffjaxError err
     Right { status, body } →
@@ -89,7 +92,7 @@ createSession' transport username password = do
 createAccount
   ∷ ∀ r m
   . MonadAff m
-  ⇒ MonadAsk { backendApiUrl ∷ String | r } m
+  ⇒ MonadAsk (Record (HasBackendConfig r)) m
   ⇒ MonadThrow Error m
   ⇒ Username
   → Password
@@ -97,12 +100,10 @@ createAccount
   → m SignUpResponse
 createAccount = createAccount' AX.request
 
-type Transport = AX.Request Json → Aff (Either AX.Error (AX.Response Json))
-
 createAccount'
   ∷ ∀ r m
   . MonadAff m
-  ⇒ MonadAsk { backendApiUrl ∷ String | r } m
+  ⇒ MonadAsk (Record (HasBackendConfig r)) m
   ⇒ MonadThrow Error m
   ⇒ Transport
   → Username
@@ -125,30 +126,45 @@ createAccount' transport username password email = do
       case unwrap status, decodeJson body of
         200, _ → pure SignedUp
         409, _ → pure AlreadyRegistered
-        400, Right (srb ∷ SignUpResponseBody) → throwError
-          $ ResponseProblem
-          $ Problem.badRequest
-          $ pure srb.errors
-        _, _ → throwError $ ResponseStatusError
-          { expected: wrap 200, actual: status }
+        400, Right (srb ∷ SignUpResponseBody) →
+          throwError $ ResponseProblem $ Problem.badRequest srb.errors
+        _, _ →
+          throwError $ ResponseStatusError
+            { expected: wrap 200, actual: status }
 
-listUsers ∷ ∀ m. MonadAff m ⇒ MonadThrow Error m ⇒ m ListUsersResponse
+listUsers
+  ∷ ∀ r m
+  . MonadAff m
+  ⇒ MonadAsk (Record (HasBackendConfig r)) m
+  ⇒ MonadThrow Error m
+  ⇒ Auth.Token
+  → m (Array UserPresence)
 listUsers = listUsers' AX.request
 
 listUsers'
-  ∷ ∀ m. MonadAff m ⇒ MonadThrow Error m ⇒ Transport → m ListUsersResponse
-listUsers' transport = do
+  ∷ ∀ r m
+  . MonadAff m
+  ⇒ MonadAsk (Record (HasBackendConfig r)) m
+  ⇒ MonadThrow Error m
+  ⇒ Transport
+  → Auth.Token
+  → m (Array UserPresence)
+listUsers' transport token = do
+  backendApiUrl ← asks _.backendApiUrl
   response ← liftAff $ transport AX.defaultRequest
     { method = Left GET
-    , url = "http://localhost:8081/chat/users"
+    , url = String.joinWith "/" [ backendApiUrl, "chat", "users" ]
     , responseFormat = ResponseFormat.json
+    , headers =
+        [ AX.RequestHeader "Authorization"
+            ("Bearer " <> Auth.toString token)
+        ]
     }
   case response of
     Left err → throwError $ AffjaxError err
     Right { status, body } →
       case unwrap status, decodeJson body of
-        200, Right (srb ∷ Array UserPresence) → pure $ Successful srb
-        403, _ → pure Unauthorized
+        200, Right users → pure users
         _, Left err → throwError $ ResponseDecodeError err
         _, _ → throwError $ ResponseStatusError
           { expected: wrap 200, actual: status }

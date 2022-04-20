@@ -4,7 +4,14 @@ import Prelude
 
 import Chat.Api.Http.Problem as Problem
 import Control.Monad.Error.Class (class MonadThrow)
-import Control.Monad.Except (ExceptT, except, lift, runExcept, runExceptT, withExceptT)
+import Control.Monad.Except
+  ( ExceptT
+  , except
+  , lift
+  , runExcept
+  , runExceptT
+  , withExceptT
+  )
 import Control.Monad.Reader (ReaderT(..), mapReaderT, runReaderT)
 import Data.Argonaut.Encode (class EncodeJson, encodeJson)
 import Data.Array as Array
@@ -67,11 +74,14 @@ runServerM dbconn (ServerM s) = runExceptT (runReaderT s dbconn) >>= case _ of
         Response.sendJson { errors: [ Problem.emailExists ] }
   Left (DatabaseErr (Database.Other message)) -> do
     Response.setStatus 500
-    Console.log message
-    Response.sendJson { error: [ Problem.internalServerError Nothing ] }
-  Left (BodyDecodingErr me) -> do
+    Console.log $ "Database Error: " <> message
+    Response.sendJson { errors: [ Problem.internalServerError Nothing ] }
+  Left (BodyDecodingErr decodingErrs) -> do
     Response.setStatus 400
-    Response.sendJson { errors: Array.fromFoldable $ map renderForeignError me }
+    Response.sendJson
+      { errors: Problem.badRequest <<< map renderForeignError $
+          Array.fromFoldable decodingErrs
+      }
   Left RouteParamIsMissing -> do
     Response.setStatus 404
     Response.send ""

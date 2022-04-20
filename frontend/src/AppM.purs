@@ -37,11 +37,11 @@ type App = AppM Error Config
 
 type BackM = AppM Backend.Error Config
 
-run ∷ Config → HS.Listener Error → App ~> Aff
+run ∷ ∀ e c. Show e ⇒ c → HS.Listener e → AppM e c ~> Aff
 run c errorListener (AppM m) =
   runReaderT (runExceptT m) c >>= either handleError pure
   where
-  handleError ∷ ∀ a. Error → Aff a
+  handleError ∷ ∀ a. e → Aff a
   handleError appError = liftEffect do
     HS.notify errorListener appError
     throwError $ error $ show appError

@@ -70,7 +70,9 @@ app { dbConn, jwtSecret, staticPath } = do
     username <- readUsername
     { password } :: { password :: Password } <- readBody
     signin jwtSecret username password >>= case _ of
-      SigninSuccess token -> replyJson { token }
+      SigninSuccess token -> do
+        Chat.enter username
+        replyJson { token }
       SigninFailure -> replyStatus 403
   post "/signout" $ runServerM dbConn do
     readBody <#> signout >>= case _ of

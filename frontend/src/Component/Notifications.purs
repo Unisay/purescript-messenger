@@ -19,6 +19,7 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties.Extended as HP
 import Halogen.Query as HQ
+import Halogen.Subscription as HS
 import Svg.Renderer.Halogen (icon)
 
 type State =
@@ -30,6 +31,7 @@ type State =
 type Slots ∷ ∀ k. Row k
 type Slots = ()
 
+type HasNotifications r = (notifications ∷ HS.SubscribeIO Notification | r)
 type NotificationId = Int
 type ActiveNotification = { id ∷ NotificationId, value ∷ Notification }
 
@@ -43,9 +45,9 @@ component ∷ ∀ q m o i. MonadAff m ⇒ MonadAsk Config m ⇒ H.Component q i 
 component = H.mkComponent { initialState, render, eval: H.mkEval evalSpec }
 
 evalSpec
-  ∷ ∀ q m o i
+  ∷ ∀ q m o i c
   . MonadAff m
-  ⇒ MonadAsk Config m
+  ⇒ MonadAsk (Record (HasNotifications c)) m
   ⇒ HC.EvalSpec State q Action Slots i o m
 evalSpec = H.defaultEval
   { initialize = Just Initialize
@@ -93,8 +95,8 @@ render { queue } =
     Critical → "bg-red-600/75"
 
 handleAction
-  ∷ ∀ o m
-  . MonadAsk Config m
+  ∷ ∀ o m c
+  . MonadAsk (Record (HasNotifications c)) m
   ⇒ MonadAff m
   ⇒ Action
   → H.HalogenM State Action () o m Unit

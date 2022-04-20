@@ -2,44 +2,54 @@ module Component.ChatWindow where
 
 import Prelude
 
+import AppM (App)
+import Backend (HasBackendConfig)
+import Backend as Backend
+import Chat.Api.Http (UserPresence)
 import Chat.Presence (Presence(..))
+import Config (HasAuth, withAuth)
+import Control.Monad.Except (runExceptT)
+import Control.Monad.Reader (class MonadAsk)
+import Control.Monad.State (class MonadState)
 import Data.Array as Array
-import Data.Username (Username)
+import Data.Maybe (Maybe(..))
 import Data.Username as Username
 import Effect.Aff.Class (class MonadAff)
 import Halogen as H
 import Halogen.HTML.Extended as HH
 import Halogen.HTML.Properties.Extended as HP
+import Network.RemoteData (RemoteData)
+import Network.RemoteData as RD
 
-type User = { username ∷ Username, presence ∷ Presence, self ∷ Boolean }
+type State = { users ∷ RemoteData Backend.Error (Array UserPresence) }
 
-type State = { users ∷ Array User }
+data Action = Initialize
 
-component ∷ ∀ q i o m. MonadAff m ⇒ H.Component q i o m
+component ∷ ∀ q i o. H.Component q i o App
 component =
   H.mkComponent
     { initialState
     , render
     , eval: H.mkEval $ H.defaultEval
+        { initialize = Just Initialize
+        , handleAction = handleAction
+        }
     }
 
 initialState ∷ ∀ i. i → State
-initialState _input =
-  { users:
-      [ { username: Username.unsafe "Vadym"
-        , presence: Online
-        , self: true
-        }
-      , { username: Username.unsafe "Yura"
-        , presence: Online
-        , self: false
-        }
-      , { username: Username.unsafe "Andrey"
-        , presence: Away
-        , self: false
-        }
-      ]
-  }
+initialState _input = { users: RD.NotAsked }
+
+handleAction
+  ∷ ∀ r m
+  . MonadAff m
+  ⇒ MonadState State m
+  ⇒ MonadAsk { | HasBackendConfig (HasAuth r) } m
+  ⇒ Action
+  → m Unit
+handleAction Initialize = withAuth \token → do
+  H.modify_ _ { users = RD.Loading }
+  users ← runExceptT (Backend.listUsers token) <#> RD.fromEither
+  H.modify_ _ { users = users }
 
 render ∷ ∀ m a. State → H.ComponentHTML a () m
 render { users } = HH.div
@@ -53,12 +63,11 @@ render { users } = HH.div
       , "opacity-90"
       ]
   ]
-  [ HH.ul
-      [ HP.classNames [ "w-full", "p-2" ] ] $
-      renderUsers <$> Array.sortWith _.presence users
+  [ HH.ul [ HP.classNames [ "w-full", "p-2" ] ] $
+      renderUsers <$> Array.sortWith _.presence (RD.withDefault [] users)
   ]
   where
-  renderUsers ∷ User → HH.ComponentHTML a () m
+  renderUsers ∷ UserPresence → HH.ComponentHTML a () m
   renderUsers st =
     HH.li
       [ HP.classNames [ "flex", "flex-row" ] ]
@@ -92,10 +101,7 @@ render { users } = HH.div
                     , "font-medium"
                     ]
                 ]
-                [ HH.text $ Username.toString st.username <>
-                    if st.self then " (You)"
-                    else ""
-                ]
+                [ HH.text $ Username.toString st.username ]
             ]
       ]
 

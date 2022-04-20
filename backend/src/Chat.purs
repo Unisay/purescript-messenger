@@ -16,7 +16,7 @@ enter :: Username -> ServerM Unit
 enter username = liftDbM $
   Db.execute
     """
-      INSERT OR IGNORE INTO chat_users (username, status)
+      INSERT OR IGNORE INTO chat_users (username, presence)
       VALUES (?, ?)
     """
     [ Foreign.encode username, Foreign.encode Online ]
