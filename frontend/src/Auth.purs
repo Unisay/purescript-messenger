@@ -9,7 +9,7 @@ import Data.Either (hush)
 import Data.Maybe (Maybe(..))
 import Data.Route (Route(..), goTo)
 import Effect.Class (class MonadEffect)
-import LocalStorage (HasStorage, writeKey)
+import LocalStorage (HasStorage)
 import LocalStorage as Storage
 
 tokenKey ∷ Storage.Key Auth.Token
@@ -28,7 +28,7 @@ setAuth
   ⇒ MonadAsk { | HasStorage r } m
   ⇒ Auth.Token
   → m Unit
-setAuth token = writeKey tokenKey Token.toString token
+setAuth token = Storage.writeKey tokenKey Token.toString token
 
 withAuth
   ∷ ∀ r m
