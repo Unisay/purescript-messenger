@@ -38,6 +38,6 @@ writeKey
   → Enc a
   → a
   → m Unit
-writeKey (Key k) f v = do
+writeKey (Key k) enc v = do
   s ← getStorage
-  liftEffect $ setItem k (f v) s
+  liftEffect $ setItem k (enc v) s
