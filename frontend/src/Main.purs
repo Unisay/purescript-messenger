@@ -15,10 +15,14 @@ import Halogen.Subscription as Subscription
 import Halogen.VDom.Driver (runUI)
 import Routing.Duplex as RD
 import Routing.Hash (matchesWith)
+import Web.HTML (window)
+import Web.HTML.Window (localStorage)
 
 main ∷ Effect Unit
 main = runHalogenAff do
   body ← awaitBody
+  w ← liftEffect window
+  storage ← liftEffect $ localStorage w
   notifications ← liftEffect Subscription.create
   auth ← liftEffect $ Ref.new Nothing
   let
@@ -26,6 +30,7 @@ main = runHalogenAff do
       { notifications
       , backendApiUrl: "http://localhost:8081"
       , auth
+      , storage
       }
   router ← runUI Router.component config body
   void $ liftEffect $ matchesWith (RD.parse Route.codec) \old new →

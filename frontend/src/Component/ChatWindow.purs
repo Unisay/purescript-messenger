@@ -3,11 +3,11 @@ module Component.ChatWindow where
 import Prelude
 
 import AppM (App)
+import Auth (withAuth)
 import Backend (HasBackendConfig)
 import Backend as Backend
 import Chat.Api.Http (UserPresence)
 import Chat.Presence (Presence(..))
-import Config (HasAuth, withAuth)
 import Control.Monad.Except (runExceptT)
 import Control.Monad.Reader (class MonadAsk)
 import Control.Monad.State (class MonadState)
@@ -18,6 +18,7 @@ import Effect.Aff.Class (class MonadAff)
 import Halogen as H
 import Halogen.HTML.Extended as HH
 import Halogen.HTML.Properties.Extended as HP
+import LocalStorage (HasStorage)
 import Network.RemoteData (RemoteData)
 import Network.RemoteData as RD
 
@@ -43,7 +44,7 @@ handleAction
   ∷ ∀ r m
   . MonadAff m
   ⇒ MonadState State m
-  ⇒ MonadAsk { | HasBackendConfig (HasAuth r) } m
+  ⇒ MonadAsk { | HasBackendConfig (HasStorage r) } m
   ⇒ Action
   → m Unit
 handleAction Initialize = withAuth \token → do

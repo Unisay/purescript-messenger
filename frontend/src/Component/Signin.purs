@@ -4,9 +4,9 @@ import Prelude
 
 import AppM (App, hoistAppM)
 import AppM as App
+import Auth (setAuth)
 import Backend as Backend
 import Chat.Api.Http (SignInResponse(..))
-import Config (setAuth)
 import Control.Monad.Except.Trans (runExceptT)
 import Control.Monad.Trans.Class (lift)
 import Data.Array as Array
