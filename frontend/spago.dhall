@@ -16,6 +16,7 @@
   , "errors"
   , "exceptions"
   , "foldable-traversable"
+  , "foreign-object"
   , "free"
   , "freeap"
   , "halogen"
@@ -40,6 +41,8 @@
   , "unicode"
   , "unsafe-coerce"
   , "web-events"
+  , "web-html"
+  , "web-storage"
   ]
 , packages = ./packages.dhall
 , sources = [ "src/**/*.purs", "test/**/*.purs" ]

@@ -6,7 +6,7 @@ import Control.Monad.Reader (class MonadAsk)
 import Data.Auth.Token as Auth
 import Data.Auth.Token as Token
 import Data.Either (hush)
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe, maybe)
 import Data.Route (Route(..), goTo)
 import Effect.Class (class MonadEffect)
 import LocalStorage (HasStorage)
@@ -28,7 +28,7 @@ setAuth
   ⇒ MonadAsk { | HasStorage r } m
   ⇒ Auth.Token
   → m Unit
-setAuth token = pure unit -- TODO
+setAuth token = Storage.writeKey tokenKey Token.toString token
 
 withAuth
   ∷ ∀ r m
@@ -36,6 +36,4 @@ withAuth
   ⇒ MonadAsk { | HasStorage r } m
   ⇒ (Auth.Token → m Unit)
   → m Unit
-withAuth cb = getAuth >>= case _ of
-  Nothing → goTo SignIn
-  Just token → cb token
+withAuth cb = maybe (goTo SignIn) cb =<< getAuth
