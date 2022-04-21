@@ -8,7 +8,6 @@ import Data.Route as Route
 import Effect (Effect)
 import Effect.Aff (launchAff_)
 import Effect.Class (liftEffect)
-import Effect.Ref as Ref
 import Halogen as H
 import Halogen.Aff (awaitBody, runHalogenAff)
 import Halogen.Subscription as Subscription
@@ -23,12 +22,10 @@ main = runHalogenAff do
   body ← awaitBody
   storage ← liftEffect $ window >>= localStorage
   notifications ← liftEffect Subscription.create
-  auth ← liftEffect $ Ref.new Nothing
   let
     config =
       { notifications
       , backendApiUrl: "http://localhost:8081"
-      , auth
       , storage
       }
   router ← runUI Router.component config body
