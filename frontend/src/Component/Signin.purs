@@ -4,7 +4,7 @@ import Prelude
 
 import AppM (App, hoistAppM)
 import AppM as App
-import Auth (setAuth)
+import Auth (getAuth, setAuth)
 import Backend as Backend
 import Chat.Api.Http (SignInResponse(..))
 import Control.Monad.Except.Trans (runExceptT)
@@ -14,11 +14,11 @@ import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NEA
 import Data.Either (Either(..), either, hush, isLeft)
 import Data.EitherR (flipEither)
-import Data.Maybe (Maybe(..), maybe)
+import Data.Maybe (Maybe(..), isJust, maybe)
 import Data.Newtype (wrap)
 import Data.Password (Password)
 import Data.Password as Password
-import Data.Route (goTo)
+import Data.Route (Route(..), goTo)
 import Data.Route as Route
 import Data.Username (Username)
 import Data.Username as Username
@@ -41,7 +41,8 @@ type State =
 type Input = Unit
 
 data Action
-  = SetUsername String
+  = Initialize
+  | SetUsername String
   | ValidateUsername
   | SetPassword String
   | ValidatePassword
@@ -52,7 +53,11 @@ component =
   H.mkComponent
     { initialState
     , render
-    , eval: H.mkEval $ H.defaultEval { handleAction = handleAction }
+
+    , eval: H.mkEval $ H.defaultEval
+        { handleAction = handleAction
+        , initialize = Just Initialize
+        }
     }
 
 initialState ∷ Input → State
@@ -246,6 +251,8 @@ render state = signinFormContainer
 
 handleAction ∷ ∀ s o. Action → H.HalogenM State Action s o App Unit
 handleAction = case _ of
+  Initialize →
+    whenM (getAuth <#> isJust) (goTo ChatWindow)
   SetUsername str → H.modify_ $ \state →
     state { username { inputValue = str } }
   SetPassword str → H.modify_ $ \state →
