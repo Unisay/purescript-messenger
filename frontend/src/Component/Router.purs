@@ -36,11 +36,11 @@ data Query a = Navigate Route a
 type State =
   { config ∷ Config
   , route ∷ Route
-  , hasError ∷ Boolean
+  , error ∷ Maybe App.Error
   , errorListener ∷ HS.Listener App.Error
   }
 
-data Action = Initialize | SetError App.Error | ClearError
+data Action = Initialize | SetError App.Error | HandleButton Error.Output
 
 type ChildSlots =
   ( notifications ∷ H.OpaqueSlot Unit
@@ -52,6 +52,7 @@ type ChildSlots =
   , debug ∷ H.OpaqueSlot Unit
   , chatWindow ∷ H.OpaqueSlot Unit
   , error ∷ H.OpaqueSlot Unit
+  , button ∷ ∀ query. H.Slot query Error.Output Int
   )
 
 component ∷ H.Component Query Config Void Aff
@@ -69,7 +70,7 @@ initialState ∷ Config → State
 initialState config =
   { config
   , route: Home
-  , hasError: false
+  , error: Nothing
   , errorListener: unsafeCoerce (\(_ ∷ App.Error) → pure unit ∷ Effect Unit)
   }
 
@@ -90,8 +91,9 @@ handleAction = case _ of
         Left err → log (show err <> ": " <> show hash) $> Home
         Right route → pure route
     navigate route
-  SetError _err → H.modify_ _ { hasError = true }
-  ClearError → H.modify_ _ { hasError = false }
+  SetError err → H.modify_ _ { error = Just err }
+  HandleButton output → case output of
+    Error.Clicked → H.modify_ _ { error = Nothing }
 
 handleQuery
   ∷ ∀ a m
@@ -110,9 +112,9 @@ navigate route = do
   H.modify_ _ { route = route }
 
 render ∷ State → H.ComponentHTML Action ChildSlots Aff
-render { config, route, hasError, errorListener } =
-  case hasError of
-    false → HH.div_
+render { config, route, error, errorListener } =
+  case error of
+    Nothing → HH.div_
       [ slotNotifications
       , slotNavigation
       , case route of
@@ -148,6 +150,9 @@ render { config, route, hasError, errorListener } =
         HH.slot_ (Proxy ∷ _ "chatWindow") unit
           (hoistApp ChatWindow.component)
           unit
-    true →
-      Error.render ClearError
+    Just err →
+      HH.div_ [ slotError ]
+      where
+      slotError =
+        HH.slot (Proxy ∷ _ "button") 0 Error.component err HandleButton
 
