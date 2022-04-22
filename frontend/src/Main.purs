@@ -4,7 +4,6 @@ import Preamble
 
 import Component.Router as Router
 import Data.Route as Route
-import Effect (Effect)
 import Effect.Aff (launchAff_)
 import Effect.Class (liftEffect)
 import Halogen as H
