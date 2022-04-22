@@ -9,7 +9,7 @@ import AppM (App)
 import AppM as App
 import Component.ChatWindow as ChatWindow
 import Component.Debug as Debug
-import Component.HTML.Error as Error
+import Component.Error as Error
 import Component.Home as Home
 import Component.Navigation as Navigation
 import Component.Notifications as Notifications
@@ -113,8 +113,8 @@ navigate route = do
 
 render ∷ State → H.ComponentHTML Action ChildSlots Aff
 render { config, route, error, errorListener } =
-  case error of
-    Nothing → HH.div_
+  HH.div_ case error of
+    Nothing →
       [ slotNotifications
       , slotNavigation
       , case route of
@@ -151,8 +151,5 @@ render { config, route, error, errorListener } =
           (hoistApp ChatWindow.component)
           unit
     Just err →
-      HH.div_ [ slotError ]
-      where
-      slotError =
-        HH.slot (Proxy ∷ _ "button") 0 Error.component err HandleButton
+      [ HH.slot (Proxy ∷ _ "button") 0 Error.component err HandleButton ]
 

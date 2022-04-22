@@ -1,10 +1,10 @@
-module Component.HTML.Error where
+module Component.Error where
 
 import Preamble
 
+import Affjax.StatusCode (StatusCode(..))
 import AppM as App
 import Backend (Error(..))
-import Data.Newtype (unwrap)
 import Halogen as H
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Extended as HH
@@ -20,13 +20,10 @@ type State = App.Error
 
 component ∷ ∀ m q. H.Component q Input Output m
 component = H.mkComponent
-  { initialState
+  { initialState: identity
   , render
   , eval: H.mkEval $ H.defaultEval { handleAction = handleAction }
   }
-
-initialState ∷ Input → State
-initialState = identity
 
 render ∷ ∀ m s. State → H.ComponentHTML Action s m
 render error = HH.div
@@ -56,9 +53,9 @@ render error = HH.div
           ]
       ]
       [ HH.span [ HP.classNames [ "text-8xl", "font-semibold" ] ]
-          [ HH.text "Oooops," ]
+          [ HH.text "Ouch," ]
       , HH.span [ HP.classNames [ "font-medium", "text-center" ] ]
-          [ HH.text $ parseError error ]
+          [ HH.text $ renderError error ]
       , HH.button
           [ HP.classNames
               [ "group"
@@ -87,23 +84,18 @@ render error = HH.div
   ]
 
 handleAction ∷ ∀ m. Action → H.HalogenM State Action () Output m Unit
-handleAction = case _ of
-  Click → do
-    H.raise Clicked
+handleAction Click = H.raise Clicked
 
-parseError ∷ App.Error → String
-parseError (App.BackendError err) = case err of
-  ResponseStatusError { actual } → case unwrap actual of
-    403 →
+renderError ∷ App.Error → String
+renderError (App.BackendError err) =
+  case err of
+    ResponseStatusError { actual: StatusCode 403 } →
       """
       It seems that your user information is out of date! 
       Please, re-login to your account.
       """
-    _ → generalText
-  _ → generalText
-  where
-  generalText =
-    """
-    We are really sorry, but application is unable to serve your
-    request at this time because of an unexpected critical error.
-    """
+    _ →
+      """
+      We are really sorry, but application is unable to serve your
+      request at this time because of an unexpected critical error.
+      """

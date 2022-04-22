@@ -19,7 +19,8 @@ type State =
   }
 
 type Input = Route
-data Action = Initialize
+
+data Action = Initialize | SetRoute Route
 
 component ∷ ∀ q o. H.Component q Input o App
 component =
@@ -29,6 +30,7 @@ component =
     , eval: H.mkEval $ H.defaultEval
         { initialize = Just Initialize
         , handleAction = handleAction
+        , receive = Just <<< SetRoute
         }
     }
 
@@ -38,6 +40,7 @@ initialState route = { route, auth: Nothing }
 handleAction ∷ ∀ s o. Action → H.HalogenM State Action s o App Unit
 handleAction = case _ of
   Initialize → getAuth >>= \token → H.modify_ _ { auth = token }
+  SetRoute newRoute → H.modify_ _ { route = newRoute }
 
 render ∷ ∀ a s m. State → H.ComponentHTML a s m
 render { route, auth } = HH.nav_

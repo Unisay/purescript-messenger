@@ -6,7 +6,7 @@ import Affjax (Error, Request, Response, defaultRequest, printError, request) as
 import Affjax.RequestBody (RequestBody(..)) as AX
 import Affjax.RequestHeader (RequestHeader(..)) as AX
 import Affjax.ResponseFormat as ResponseFormat
-import Affjax.StatusCode (StatusCode)
+import Affjax.StatusCode (StatusCode(..))
 import Chat.Api.Http (SignInResponse(..), SignInResponseBody, SignUpResponse(..), SignUpResponseBody, UserPresence)
 import Chat.Api.Http.Problem (Problem)
 import Chat.Api.Http.Problem as Problem
@@ -162,9 +162,8 @@ listUsers' transport token = do
   case response of
     Left err → throwError $ AffjaxError err
     Right { status, body } →
-      case unwrap status of
-        200 → case decodeJson body of
-          Right users → pure users
-          Left err → throwError $ ResponseDecodeError err
+      case status of
+        StatusCode 200 →
+          decodeJson body # either (throwError <<< ResponseDecodeError) pure
         _ → throwError $ ResponseStatusError
           { expected: wrap 200, actual: status }
