@@ -3,7 +3,7 @@ module Component.Router
   , Query(..)
   ) where
 
-import Prelude
+import Preamble
 
 import AppM (App)
 import AppM as App
@@ -16,15 +16,11 @@ import Component.Notifications as Notifications
 import Component.Signin as Signin
 import Component.Signup as Signup
 import Config (Config)
-import Data.Either (Either(..))
 import Data.Functor.Contravariant ((>$<))
-import Data.Maybe (Maybe(..))
 import Data.Route (Route(..))
 import Data.Route as Route
-import Effect (Effect)
 import Effect.Aff (Aff)
 import Effect.Class (class MonadEffect, liftEffect)
-import Effect.Class.Console (log)
 import Halogen.Component as HC
 import Halogen.Extended as H
 import Halogen.HTML as HH
@@ -49,6 +45,7 @@ data Action = Initialize | SetError App.Error | ClearError
 type ChildSlots =
   ( notifications ∷ H.OpaqueSlot Unit
   , home ∷ H.OpaqueSlot Unit
+  , navigation ∷ H.OpaqueSlot Unit
   , signin ∷ H.OpaqueSlot Unit
   , signup ∷ H.OpaqueSlot Unit
   , profile ∷ H.OpaqueSlot Unit
@@ -117,7 +114,7 @@ render { config, route, hasError, errorListener } =
   case hasError of
     false → HH.div_
       [ slotNotifications
-      , Navigation.render route
+      , slotNavigation
       , case route of
           Home → slotHome
           SignIn → slotSignin
@@ -135,6 +132,10 @@ render { config, route, hasError, errorListener } =
         comp = hoistApp Notifications.component
       slotHome =
         HH.slot_ (Proxy ∷ _ "home") unit Home.component unit
+      slotNavigation =
+        HH.slot_ (Proxy ∷ _ "navigation") unit
+          (hoistApp Navigation.component)
+          route
       slotSignin =
         HH.slot_ (Proxy ∷ _ "signin") unit (hoistApp Signin.component) unit
       slotSignup =

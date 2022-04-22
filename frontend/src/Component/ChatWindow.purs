@@ -1,28 +1,24 @@
 module Component.ChatWindow where
 
-import Prelude
+import Preamble
 
 import AppM (App)
+import AppM as App
 import Auth (withAuth)
-import Backend (HasBackendConfig)
 import Backend as Backend
 import Chat.Api.Http (UserPresence)
 import Chat.Presence (Presence(..))
+import Control.Monad.Error.Class (throwError)
 import Control.Monad.Except (runExceptT)
-import Control.Monad.Reader (class MonadAsk)
-import Control.Monad.State (class MonadState)
 import Data.Array as Array
-import Data.Maybe (Maybe(..))
 import Data.Username as Username
-import Effect.Aff.Class (class MonadAff)
 import Halogen as H
 import Halogen.HTML.Extended as HH
 import Halogen.HTML.Properties.Extended as HP
-import LocalStorage (HasStorage)
 import Network.RemoteData (RemoteData)
 import Network.RemoteData as RD
 
-type State = { users ∷ RemoteData Backend.Error (Array UserPresence) }
+type State = { users ∷ RemoteData Unit (Array UserPresence) }
 
 data Action = Initialize
 
@@ -40,17 +36,15 @@ component =
 initialState ∷ ∀ i. i → State
 initialState _input = { users: RD.NotAsked }
 
-handleAction
-  ∷ ∀ r m
-  . MonadAff m
-  ⇒ MonadState State m
-  ⇒ MonadAsk { | HasBackendConfig (HasStorage r) } m
-  ⇒ Action
-  → m Unit
+handleAction ∷ ∀ s o. Action → H.HalogenM State Action s o App Unit
 handleAction Initialize = withAuth \token → do
   H.modify_ _ { users = RD.Loading }
-  users ← runExceptT (Backend.listUsers token) <#> RD.fromEither
-  H.modify_ _ { users = users }
+  runExceptT (Backend.listUsers token) >>= case _ of
+    Left backendError → do
+      H.modify_ _ { users = RD.Failure unit }
+      throwError $ App.BackendError backendError
+    Right userPresenses → do
+      H.modify_ _ { users = RD.Success userPresenses }
 
 render ∷ ∀ m a. State → H.ComponentHTML a () m
 render { users } = HH.div
@@ -64,8 +58,9 @@ render { users } = HH.div
       , "opacity-90"
       ]
   ]
-  [ HH.ul [ HP.classNames [ "w-full", "p-2" ] ] $
-      renderUsers <$> Array.sortWith _.presence (RD.withDefault [] users)
+  [ HH.ul [ HP.classNames [ "w-full", "p-2" ] ]
+      $ renderUsers
+      <$> Array.sortWith _.presence (RD.withDefault [] users)
   ]
   where
   renderUsers ∷ UserPresence → HH.ComponentHTML a () m
@@ -79,21 +74,23 @@ render { users } = HH.div
               , "h-fit"
               , "items-center"
               ]
-          ] $
-          ( if st.presence == Online then
-              [ HH.div
-                  [ HP.classNames
-                      [ "rounded-full"
-                      , "bg-green-700"
-                      , "h-2"
-                      , "w-2"
-                      , "mr-2"
-                      ]
-                  ]
-                  []
-              ]
-            else []
-          ) <>
+          ]
+          $
+            ( if st.presence == Online then
+                [ HH.div
+                    [ HP.classNames
+                        [ "rounded-full"
+                        , "bg-green-700"
+                        , "h-2"
+                        , "w-2"
+                        , "mr-2"
+                        ]
+                    ]
+                    []
+                ]
+              else []
+            )
+          <>
             [ HH.span
                 [ HP.classNames
                     [ if st.presence == Online then "text-green-700"

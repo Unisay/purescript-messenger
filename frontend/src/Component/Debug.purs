@@ -7,12 +7,11 @@ module Component.Debug
   , render
   ) where
 
-import Prelude
+import Preamble
 
 import Config (Config)
 import Control.Monad.Reader.Class (class MonadAsk, asks)
 import Data.Enum (enumFromTo)
-import Data.Maybe (Maybe(..))
 import Data.Notification
   ( Importance(..)
   , Notification
@@ -78,13 +77,15 @@ render state = HH.div
       [ HH.button
           [ HP.type_ HP.ButtonButton
           , HE.onClick \_ → SendNotification
-          , HP.classNames $
-              [ "font-medium"
-              , "border-2"
-              , "w-3/5"
-              , "mb-2"
-              , "h-12"
-              ] <> buttonColor
+          , HP.classNames
+              $
+                [ "font-medium"
+                , "border-2"
+                , "w-3/5"
+                , "mb-2"
+                , "h-12"
+                ]
+              <> buttonColor
           ]
           [ HH.span_
               [ HH.text "Send notification" ]

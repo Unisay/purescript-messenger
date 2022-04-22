@@ -37,9 +37,9 @@ render onClick = HH.div
       , HH.span [ HP.classNames [ "font-medium", "text-center" ] ]
           [ HH.text
               """
-              We are really sorry, but application is unable to serve your
-              request at this time because of an unexpected critical error.
-              """
+            We are really sorry, but application is unable to serve your
+            request at this time because of an unexpected critical error.
+            """
           ]
       , HH.button
           [ HP.classNames

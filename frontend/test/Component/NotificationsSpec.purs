@@ -1,6 +1,6 @@
 module Component.NotificationsSpec where
 
-import Prelude
+import Preamble
 
 import AppM as App
 import Component.Notifications (Action(..), evalSpec, initialState)

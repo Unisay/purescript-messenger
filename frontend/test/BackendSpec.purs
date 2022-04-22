@@ -1,6 +1,6 @@
 module BackendSpec (spec) where
 
-import Prelude
+import Preamble
 
 import Affjax (Error(..)) as AX
 import Affjax (Response)
@@ -22,12 +22,10 @@ import Data.Argonaut.Encode (encodeJson)
 import Data.Array as Array
 import Data.Auth.Token as Auth
 import Data.Auth.Token as Token
-import Data.Either (Either(..), either)
 import Data.Email (Email)
 import Data.Email as Email
 import Data.Function (on)
 import Data.HTTP.Method (Method(..))
-import Data.Maybe (maybe)
 import Data.Password (Password)
 import Data.Password as Password
 import Data.Username (Username)
@@ -218,7 +216,9 @@ assertResponseFormat
 assertResponseFormat r1 r2 =
   if r1 `eqResponseFormat` r2 then pure unit
   else fail
-    $ showResponseFormat r1 <> " doesn't equal " <> showResponseFormat r2
+    $ showResponseFormat r1
+    <> " doesn't equal "
+    <> showResponseFormat r2
 
 eqResponseFormat ∷ ∀ a. ResponseFormat a → ResponseFormat a → Boolean
 eqResponseFormat = eq `on` showResponseFormat

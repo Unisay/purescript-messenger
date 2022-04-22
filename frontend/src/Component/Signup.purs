@@ -1,22 +1,20 @@
 module Component.Signup where
 
-import Prelude
+import Preamble
 
 import AppM (App, hoistAppM)
 import AppM as App
 import Backend as Backend
 import Chat.Api.Http (SignUpResponse(..))
-import Control.Error.Util (hush)
 import Control.Monad.Except (runExceptT)
 import Control.Monad.Reader (asks)
 import Control.Monad.Trans.Class (lift)
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NEA
-import Data.Either (Either(..), either, isLeft)
+import Data.Either (isLeft)
 import Data.EitherR (flipEither)
 import Data.Email as Email
-import Data.Maybe (Maybe(..), maybe)
 import Data.Newtype (wrap)
 import Data.Notification (important, useful)
 import Data.Password as Password
@@ -134,24 +132,26 @@ render state = signupFormContainer
                 , HP.value state.email.inputValue
                 , HE.onValueInput SetEmail
                 , HE.onBlur \_ → ValidateEmail
-                , HP.classNames $
-                    [ "appearance-none"
-                    , "rounded"
-                    , "relative"
-                    , "block"
-                    , "w-full"
-                    , "px-3"
-                    , "py-2"
-                    , "border"
-                    , "border-gray-300"
-                    , "placeholder-gray-500"
-                    , "text-gray-900"
-                    , "focus-outline-none"
-                    , "focus-ring-indigo-500"
-                    , "focus-border-indigo-500"
-                    , "focus-z-10"
-                    , "sm-text-sm"
-                    ] <>
+                , HP.classNames
+                    $
+                      [ "appearance-none"
+                      , "rounded"
+                      , "relative"
+                      , "block"
+                      , "w-full"
+                      , "px-3"
+                      , "py-2"
+                      , "border"
+                      , "border-gray-300"
+                      , "placeholder-gray-500"
+                      , "text-gray-900"
+                      , "focus-outline-none"
+                      , "focus-ring-indigo-500"
+                      , "focus-border-indigo-500"
+                      , "focus-z-10"
+                      , "sm-text-sm"
+                      ]
+                    <>
                       if maybe false isLeft state.email.result then
                         errorClasses
                       else []
@@ -172,24 +172,26 @@ render state = signupFormContainer
                 , HP.value state.username.inputValue
                 , HE.onValueInput SetUsername
                 , HE.onBlur \_ → ValidateUsername
-                , HP.classNames $
-                    [ "appearance-none"
-                    , "rounded"
-                    , "relative"
-                    , "block"
-                    , "w-full"
-                    , "px-3"
-                    , "py-2"
-                    , "border"
-                    , "border-gray-300"
-                    , "placeholder-gray-500"
-                    , "text-gray-900"
-                    , "focus-outline-none"
-                    , "focus-ring-indigo-500"
-                    , "focus-border-indigo-500"
-                    , "focus-z-10"
-                    , "sm-text-sm"
-                    ] <>
+                , HP.classNames
+                    $
+                      [ "appearance-none"
+                      , "rounded"
+                      , "relative"
+                      , "block"
+                      , "w-full"
+                      , "px-3"
+                      , "py-2"
+                      , "border"
+                      , "border-gray-300"
+                      , "placeholder-gray-500"
+                      , "text-gray-900"
+                      , "focus-outline-none"
+                      , "focus-ring-indigo-500"
+                      , "focus-border-indigo-500"
+                      , "focus-z-10"
+                      , "sm-text-sm"
+                      ]
+                    <>
                       if maybe false isLeft state.username.result then
                         errorClasses
                       else []
@@ -210,24 +212,26 @@ render state = signupFormContainer
                 , HP.value state.password.inputValue
                 , HE.onValueInput SetPassword
                 , HE.onBlur \_ → ValidatePassword
-                , HP.classNames $
-                    [ "appearance-none"
-                    , "rounded"
-                    , "relative"
-                    , "block"
-                    , "w-full"
-                    , "px-3"
-                    , "py-2"
-                    , "border"
-                    , "border-gray-300"
-                    , "placeholder-gray-500"
-                    , "text-gray-900"
-                    , "focus-outline-none"
-                    , "focus-ring-indigo-500"
-                    , "focus-border-indigo-500"
-                    , "focus-z-10"
-                    , "sm-text-sm"
-                    ] <>
+                , HP.classNames
+                    $
+                      [ "appearance-none"
+                      , "rounded"
+                      , "relative"
+                      , "block"
+                      , "w-full"
+                      , "px-3"
+                      , "py-2"
+                      , "border"
+                      , "border-gray-300"
+                      , "placeholder-gray-500"
+                      , "text-gray-900"
+                      , "focus-outline-none"
+                      , "focus-ring-indigo-500"
+                      , "focus-border-indigo-500"
+                      , "focus-z-10"
+                      , "sm-text-sm"
+                      ]
+                    <>
                       if maybe false isLeft state.password.result then
                         errorClasses
                       else []
@@ -329,7 +333,8 @@ handleAction = case _ of
       in
         do
           signUpResponse ← Backend.createAccount username password email
-            # hoistAppM App.BackendError >>> lift
+            # hoistAppM App.BackendError
+            >>> lift
           notify ← lift (asks _.notifications.listener) <#> \listener →
             liftEffect <<< HS.notify listener
           case signUpResponse of

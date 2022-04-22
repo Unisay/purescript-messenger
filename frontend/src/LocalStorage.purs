@@ -1,9 +1,8 @@
 module LocalStorage where
 
-import Prelude
+import Preamble
 
 import Control.Monad.Reader (class MonadAsk, asks)
-import Data.Maybe (Maybe)
 import Effect.Class (class MonadEffect, liftEffect)
 import Web.Storage.Storage (Storage, getItem, setItem)
 

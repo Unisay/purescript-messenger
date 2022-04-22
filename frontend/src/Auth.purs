@@ -1,12 +1,10 @@
 module Auth where
 
-import Prelude
+import Preamble
 
 import Control.Monad.Reader (class MonadAsk)
 import Data.Auth.Token as Auth
 import Data.Auth.Token as Token
-import Data.Either (hush)
-import Data.Maybe (Maybe, maybe)
 import Data.Route (Route(..), goTo)
 import Effect.Class (class MonadEffect)
 import LocalStorage (HasStorage)

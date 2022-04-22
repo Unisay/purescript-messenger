@@ -1,14 +1,12 @@
 module Data.BaseUrl (BaseUrl, toString, parse, codec) where
 
-import Prelude
+import Preamble
 
 import Data.Codec.Argonaut (JsonCodec)
 import Data.Codec.Argonaut as CA
-import Data.Maybe (Maybe(..))
 import Data.Profunctor (dimap)
 
-newtype BaseUrl
-  = BaseUrl String
+newtype BaseUrl = BaseUrl String
 
 derive instance eqBaseUrl ∷ Eq BaseUrl
 

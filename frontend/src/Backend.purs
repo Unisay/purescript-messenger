@@ -1,6 +1,6 @@
 module Backend where
 
-import Prelude
+import Preamble
 
 import Affjax (Error, Request, Response, defaultRequest, printError, request) as AX
 import Affjax.RequestBody (RequestBody(..)) as AX
@@ -17,10 +17,8 @@ import Data.Argonaut.Core (Json)
 import Data.Argonaut.Decode (JsonDecodeError, decodeJson)
 import Data.Argonaut.Encode (encodeJson) as Json
 import Data.Auth.Token as Auth
-import Data.Either (Either(..))
 import Data.Email (Email)
 import Data.HTTP.Method (Method(..))
-import Data.Maybe (Maybe(..))
 import Data.Newtype (unwrap, wrap)
 import Data.Password (Password)
 import Data.String as String
@@ -45,8 +43,9 @@ instance Show Error where
     ResponseDecodeError e →
       "Decoding response JSON failed: " <> show e
     ResponseStatusError { expected, actual } →
-      "unexpected response status (" <> show actual
-        <> "), expected: "
+      "unexpected response status "
+        <> show actual
+        <> ", expected: "
         <> show expected
     ResponseProblem problem →
       "server responded with Problem " <> show problem
@@ -163,8 +162,9 @@ listUsers' transport token = do
   case response of
     Left err → throwError $ AffjaxError err
     Right { status, body } →
-      case unwrap status, decodeJson body of
-        200, Right users → pure users
-        _, Left err → throwError $ ResponseDecodeError err
-        _, _ → throwError $ ResponseStatusError
+      case unwrap status of
+        200 → case decodeJson body of
+          Right users → pure users
+          Left err → throwError $ ResponseDecodeError err
+        _ → throwError $ ResponseStatusError
           { expected: wrap 200, actual: status }

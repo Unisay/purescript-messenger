@@ -1,10 +1,8 @@
 module Test.Main where
 
-import Prelude
+import Preamble
 
 import BackendSpec as Backend
--- import Data.RouteSpec as Route
-import Effect (Effect)
 import Effect.Aff (launchAff_)
 import Test.Spec.Reporter (consoleReporter)
 import Test.Spec.Runner (runSpec)

@@ -1,6 +1,6 @@
 module Data.Notification where
 
-import Prelude
+import Preamble
 
 import Data.Bounded.Generic (genericBottom, genericTop)
 import Data.Enum (class BoundedEnum, class Enum)

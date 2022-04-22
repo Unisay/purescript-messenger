@@ -1,9 +1,8 @@
 module Main where
 
-import Prelude
+import Preamble
 
 import Component.Router as Router
-import Data.Maybe (Maybe(..))
 import Data.Route as Route
 import Effect (Effect)
 import Effect.Aff (launchAff_)
