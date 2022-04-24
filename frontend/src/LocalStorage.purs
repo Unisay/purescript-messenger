@@ -42,9 +42,6 @@ writeKey (Key k) enc v = do
   liftEffect $ setItem k (enc v) s
 
 removeKey
-  ∷ ∀ a r m
-  . MonadEffect m
-  ⇒ MonadAsk { | HasStorage r } m
-  ⇒ Key a
-  → m Unit
+  ∷ ∀ a r m. MonadEffect m ⇒ MonadAsk { | HasStorage r } m ⇒ Key a → m Unit
 removeKey (Key k) = getStorage >>= removeItem k >>> liftEffect
+

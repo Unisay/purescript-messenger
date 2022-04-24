@@ -28,6 +28,9 @@ setAuth
   → m Unit
 setAuth token = Storage.writeKey tokenKey Token.toString token
 
+removeAuth ∷ ∀ r m. MonadEffect m ⇒ MonadAsk { | HasStorage r } m ⇒ m Unit
+removeAuth = Storage.removeKey tokenKey
+
 withAuth
   ∷ ∀ r m
   . MonadEffect m
