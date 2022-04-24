@@ -10,9 +10,9 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Extended as HH
 import Halogen.HTML.Properties.Extended as HP
 
-data Output = Clicked
+data Output = Retry | SignIn
 
-data Action = Click
+data Action = Notify Output
 
 type Input = App.Error
 
@@ -56,43 +56,51 @@ render error = HH.div
           [ HH.text "Ouch," ]
       , HH.span [ HP.classNames [ "font-medium", "text-center" ] ]
           [ HH.text $ renderError error ]
-      , HH.button
-          [ HP.classNames
-              [ "group"
-              , "w-full"
-              , "flex"
-              , "justify-center"
-              , "py-2"
-              , "px-4"
-              , "border"
-              , "border-transparent"
-              , "text-sm"
-              , "font-medium"
-              , "rounded-md"
-              , "text-white"
-              , "bg-indigo-600"
-              , "hover-bg-indigo-700"
-              , "focus-outline-none"
-              , "focus-ring-2"
-              , "focus-ring-offset-2"
-              , "focus-ring-indigo-500"
-              ]
-          , HE.onClick \_ → Click
-          ]
-          [ HH.text "Retry" ]
+      , errorAction error # \{ action, caption } →
+          HH.button
+            [ HP.classNames
+                [ "group"
+                , "w-full"
+                , "flex"
+                , "justify-center"
+                , "py-2"
+                , "px-4"
+                , "border"
+                , "border-transparent"
+                , "text-sm"
+                , "font-medium"
+                , "rounded-md"
+                , "text-white"
+                , "bg-indigo-600"
+                , "hover-bg-indigo-700"
+                , "focus-outline-none"
+                , "focus-ring-2"
+                , "focus-ring-offset-2"
+                , "focus-ring-indigo-500"
+                ]
+            , HE.onClick \_ → Notify action
+            ]
+            [ HH.text caption ]
       ]
   ]
 
 handleAction ∷ ∀ m. Action → H.HalogenM State Action () Output m Unit
-handleAction Click = H.raise Clicked
+handleAction (Notify action) = H.raise action
+
+errorAction ∷ App.Error → { action ∷ Output, caption ∷ String }
+errorAction (App.BackendError err) =
+  case err of
+    ResponseStatusError { actual: StatusCode 403 } →
+      { action: SignIn, caption: "Okay" }
+    _ →
+      { action: Retry, caption: "Retry" }
 
 renderError ∷ App.Error → String
 renderError (App.BackendError err) =
   case err of
     ResponseStatusError { actual: StatusCode 403 } →
       """
-      It seems that your user information is out of date! 
-      Please, re-login to your account.
+      Your session has expired! Please sign in to your account again.
       """
     _ →
       """

@@ -17,7 +17,7 @@ import Component.Signin as Signin
 import Component.Signup as Signup
 import Config (Config)
 import Data.Functor.Contravariant ((>$<))
-import Data.Route (Route(..))
+import Data.Route (Route(..), goTo)
 import Data.Route as Route
 import Effect.Aff (Aff)
 import Effect.Class (class MonadEffect, liftEffect)
@@ -40,7 +40,7 @@ type State =
   , errorListener ∷ HS.Listener App.Error
   }
 
-data Action = Initialize | SetError App.Error | HandleButton Error.Output
+data Action = Initialize | SetError App.Error | ErrorAction Error.Output
 
 type ChildSlots =
   ( notifications ∷ H.OpaqueSlot Unit
@@ -51,8 +51,7 @@ type ChildSlots =
   , profile ∷ H.OpaqueSlot Unit
   , debug ∷ H.OpaqueSlot Unit
   , chatWindow ∷ H.OpaqueSlot Unit
-  , error ∷ H.OpaqueSlot Unit
-  , button ∷ ∀ query. H.Slot query Error.Output Int
+  , error ∷ ∀ query. H.Slot query Error.Output Int
   )
 
 component ∷ H.Component Query Config Void Aff
@@ -92,8 +91,9 @@ handleAction = case _ of
         Right route → pure route
     navigate route
   SetError err → H.modify_ _ { error = Just err }
-  HandleButton output → case output of
-    Error.Clicked → H.modify_ _ { error = Nothing }
+  ErrorAction action → case action of
+    Error.Retry → H.modify_ _ { error = Nothing }
+    Error.SignIn → goTo Route.SignIn
 
 handleQuery
   ∷ ∀ a m
@@ -151,5 +151,5 @@ render { config, route, error, errorListener } =
           (hoistApp ChatWindow.component)
           unit
     Just err →
-      [ HH.slot (Proxy ∷ _ "button") 0 Error.component err HandleButton ]
+      [ HH.slot (Proxy ∷ _ "error") 0 Error.component err ErrorAction ]
 
