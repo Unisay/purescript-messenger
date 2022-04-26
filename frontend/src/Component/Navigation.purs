@@ -4,14 +4,22 @@ module Component.Navigation
 
 import Preamble
 
-import AppM (App)
-import Auth (getAuth)
+import AppM (App, hoistAppM)
+import AppM as App
+import Auth (getAuth, removeAuth)
+import Backend (deleteSession)
+import Chat.Api.Http (SignOutResponse(..), SignoutReason(..))
+import Control.Monad.Reader (asks)
 import Data.Auth.Token as Auth
-import Data.Route (Route(..))
+import Data.Notification (critical, important, useful)
+import Data.Route (Route(..), goTo)
 import Data.Route as Route
+import Halogen (lift, liftEffect)
 import Halogen as H
+import Halogen.HTML.Events as HE
 import Halogen.HTML.Extended as HH
 import Halogen.HTML.Properties.Extended as HP
+import Halogen.Subscription as HS
 
 type State =
   { route ∷ Route
@@ -20,7 +28,7 @@ type State =
 
 type Input = Route
 
-data Action = Initialize | SetRoute Route
+data Action = Initialize | SetRoute Route | SignedOut SignoutReason
 
 component ∷ ∀ q o. H.Component q Input o App
 component =
@@ -40,9 +48,28 @@ initialState route = { route, auth: Nothing }
 handleAction ∷ ∀ s o. Action → H.HalogenM State Action s o App Unit
 handleAction = case _ of
   Initialize → getAuth >>= \token → H.modify_ _ { auth = token }
-  SetRoute newRoute → H.modify_ _ { route = newRoute }
+  SetRoute newRoute → do
+    H.modify_ _ { route = newRoute }
+    handleAction Initialize
+  SignedOut reason → do
+    response ← deleteSession reason # hoistAppM App.BackendError
+      >>> lift
+    notify ← lift (asks _.notifications.listener) <#> \listener →
+      liftEffect <<< HS.notify listener
+    case response of
+      SignedOutUser → do
+        removeAuth
+        notify $ useful "You successfully signed out!"
+        goTo Route.Home
+      SignedOutTimeout → do
+        removeAuth
+        notify $ important
+          "You were signed out due to inactivity. Please sign in again"
+        goTo Route.SignIn
+      Refused → notify $ critical
+        "Unable to sign out. You may refresh the page or try again later"
 
-render ∷ ∀ a s m. State → H.ComponentHTML a s m
+render ∷ ∀ s m. State → H.ComponentHTML Action s m
 render { route, auth } = HH.nav_
   [ HH.ul
       [ HP.classNames
@@ -95,6 +122,9 @@ render { route, auth } = HH.nav_
           ]
       , HH.maybeElem auth \_token →
           HH.li [ HP.classNames [ "list-none", "mr-16", "mt-8", "text-xl" ] ]
-            [ HH.a [] [ HH.text "Sign Out" ] ]
+            [ HH.a [ Route.href Home, HE.onClick \_ → SignedOut UserAction ]
+                [ HH.text "Sign Out" ]
+            ]
       ]
   ]
+

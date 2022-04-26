@@ -2,8 +2,9 @@ module Main where
 
 import Prelude
 
-import Auth (SigninResult(..), SignoutReason(..), SignoutResult(..), SignupResult(..), signin, signout, signup, tokenInfo)
+import Auth (SigninResult(..), SignupResult(..), signin, signout, signup, tokenInfo)
 import Chat as Chat
+import Chat.Api.Http (SignoutReason)
 import Data.Either (Either(..), hush)
 import Data.Email (Email)
 import Data.Int as Int
@@ -17,11 +18,11 @@ import Effect.Aff (Aff, error, launchAff_, never, throwError)
 import Effect.Class (liftEffect)
 import Effect.Class.Console (log, logShow)
 import Middleware as Middleware
-import Node.Express.App (App, delete, get, listenHttp, post, put)
+import Node.Express.App (App, delete, get, listenHttp, put)
 import Node.Jwt as Jwt
 import Node.Process (lookupEnv)
 import SQLite3 as SQLite
-import ServerM (Error(..), ServerM, readBody, readPathParam, readToken, reply, replyJson, replyStatus, runServerM)
+import ServerM (Error(..), ServerM, readBody, readPathParam, readToken, replyJson, replyStatus, runServerM)
 
 type Resources =
   { port :: Int
@@ -74,16 +75,13 @@ app { dbConn, jwtSecret, staticPath } = do
         Chat.enter username
         replyJson { token }
       SigninFailure -> replyStatus 403
-  post "/signout" $ runServerM dbConn do
-    readBody <#> signout >>= case _ of
-      SignoutSuccess Timeout -> reply "Signout successful: timeout."
-      SignoutSuccess UserAction -> reply "Signout successful: bye bye!"
   get "/chat/users" $ runServerM dbConn $ withTokenInfo \_username ->
     Chat.users >>= replyJson
   put "/chat/users/:username" $ runServerM dbConn $ withAuthUsername \username ->
     Chat.enter username *> replyStatus 201
-  delete "/chat/users/:username" $ runServerM dbConn $ withAuthUsername \username ->
-    Chat.exit username *> replyStatus 200
+  delete "/users/:username" $ runServerM dbConn do
+    reason :: { reason :: SignoutReason } <- readBody
+    withAuthUsername \_username -> signout reason *> replyStatus 200
   where
   readUsername :: ServerM Username
   readUsername = do

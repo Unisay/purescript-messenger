@@ -7,7 +7,7 @@ import Data.Auth.Token as Auth
 import Data.Auth.Token as Token
 import Data.Route (Route(..), goTo)
 import Effect.Class (class MonadEffect)
-import LocalStorage (HasStorage)
+import LocalStorage (HasStorage, removeKey)
 import LocalStorage as Storage
 
 tokenKey ∷ Storage.Key Auth.Token
@@ -35,3 +35,10 @@ withAuth
   ⇒ (Auth.Token → m Unit)
   → m Unit
 withAuth cb = maybe (goTo SignIn) cb =<< getAuth
+
+removeAuth
+  ∷ ∀ m r
+  . MonadEffect m
+  ⇒ MonadAsk { | HasStorage r } m
+  ⇒ m Unit
+removeAuth = removeKey tokenKey

@@ -101,7 +101,7 @@ paths:
         "204":
           description: User is in the chat
     delete:
-      summary: User exits chat
+      summary: Sign out a user
       tags:
         - chat
       security:
@@ -109,10 +109,10 @@ paths:
       parameters:
         - $ref: "#/components/parameters/username"
       responses:
-        "204":
-          description: User successfully exited chat
-        "404":
-          description: User is not in the chat
+        "200":
+          description: User successfully signed out
+        "403":
+          description: Access denied
 
 components:
   parameters:
