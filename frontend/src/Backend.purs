@@ -215,10 +215,9 @@ deleteSession' transport reason = do
         { expected: wrap 200, actual: status }
   where
   decodeToken ∷ m (Jwt.Token () Jwt.Unverified)
-  decodeToken = getToken >>= \token → token # Token.toString >>> Jwt.decode >>>
-    either
-      (NEL.intercalate "; " >>> TokenError >>> throwError)
-      pure
+  decodeToken = getToken >>= Token.toString >>> Jwt.decode >>> either
+    (NEL.intercalate "; " >>> TokenError >>> throwError)
+    pure
   getToken = getAuth >>= maybe
     (throwError $ TokenError "couldn't find token in the storage")
     pure
