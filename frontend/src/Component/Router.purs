@@ -5,11 +5,9 @@ module Component.Router
 
 import Preamble
 
-import Affjax.StatusCode (StatusCode(..))
 import AppM (App)
 import AppM as App
 import Auth (removeAuth)
-import Backend as Backend
 import Component.ChatWindow as ChatWindow
 import Component.Debug as Debug
 import Component.Error as Error

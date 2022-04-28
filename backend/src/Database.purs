@@ -20,27 +20,27 @@ import SQLite3 as SQLite
 
 data DbConstraint = Username | Email
 
-instance show :: Show DbConstraint where
+instance show ∷ Show DbConstraint where
   show = case _ of
-    Username -> "users.username"
-    Email -> "users.email"
+    Username → "users.username"
+    Email → "users.email"
 
 data Error
   = ConstraintViolation DbConstraint
   | Decoding MultipleErrors
   | Other String
 
-derive instance genericDatabaseError :: Generic Error _
-instance showDatabaseError :: Show Error where
+derive instance genericDatabaseError ∷ Generic Error _
+instance showDatabaseError ∷ Show Error where
   show = genericShow
 
-withConnection :: forall a. (SQLite.DBConnection -> Aff a) -> Aff a
+withConnection ∷ ∀ a. (SQLite.DBConnection → Aff a) → Aff a
 withConnection useResource = do
   bracket initResource disposeResource useResource
   where
   initResource = do
     log "Opening DB connection"
-    conn <- SQLite.newDB "db/backend.sqlite3"
+    conn ← SQLite.newDB "db/backend.sqlite3"
     let
       run s = void $ SQLite.queryDB conn s []
       createTable table fields = run do
@@ -71,31 +71,31 @@ withConnection useResource = do
 type DbM m a = ReaderT SQLite.DBConnection (ExceptT Error m) a
 
 execute
-  :: forall m
-   . MonadAff m
-  => SQLite.Query
-  -> Array SQLite.Param
-  -> DbM m Unit
+  ∷ ∀ m
+  . MonadAff m
+  ⇒ SQLite.Query
+  → Array SQLite.Param
+  → DbM m Unit
 execute = query
 
 query
-  :: forall m a
-   . MonadAff m
-  => Decode a
-  => SQLite.Query
-  -> Array SQLite.Param
-  -> DbM m a
+  ∷ ∀ m a
+  . MonadAff m
+  ⇒ Decode a
+  ⇒ SQLite.Query
+  → Array SQLite.Param
+  → DbM m a
 query q params = do
-  conn <- ask
-  f <- lift $ wrap $ map (lmap adaptError) $ liftAff $ try $
+  conn ← ask
+  f ← lift $ wrap $ map (lmap adaptError) $ liftAff $ try $
     SQLite.queryDB conn q params
   lift $ mapExceptT (pure <<< lmap Decoding <<< unwrap) (decode f)
 
-adaptError :: Aff.Error -> Error
+adaptError ∷ Aff.Error → Error
 adaptError e = case Ex.message e of
-  "SQLITE_CONSTRAINT: UNIQUE constraint failed: users.username" ->
+  "SQLITE_CONSTRAINT_PRIMARYKEY: UNIQUE constraint failed: users.username" →
     ConstraintViolation Username
-  "SQLITE_CONSTRAINT: UNIQUE constraint failed: users.email" ->
+  "SQLITE_CONSTRAINT_PRIMARYKEY: UNIQUE constraint failed: users.email" →
     ConstraintViolation Email
-  _ -> Other $ Ex.message e
+  _ → Other $ Ex.message e
 
