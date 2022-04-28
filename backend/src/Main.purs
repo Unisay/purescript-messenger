@@ -79,7 +79,7 @@ app { dbConn, jwtSecret, staticPath } = do
     Chat.users >>= replyJson
   put "/chat/users/:username" $ runServerM dbConn $ withAuthUsername \username ->
     Chat.enter username *> replyStatus 201
-  delete "/users/:username" $ runServerM dbConn do
+  delete "/chat/users/:username" $ runServerM dbConn do
     reason :: { reason :: SignoutReason } <- readBody
     withAuthUsername \_username -> signout reason *> replyStatus 200
   where

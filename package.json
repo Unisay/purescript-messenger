@@ -7,7 +7,7 @@
     "doc": "docs"
   },
   "scripts": {
-    "zephyr": "wget https://github.com/MaybeJustJames/zephyr/releases/download/c074270/Linux.tar.gz && tar -xzvf Linux.tar.gz && rm Linux.tar.gz && mv zephyr/zephyr node_modules/.bin/zephyr && rm -rf zephyr",
+    "zephyr": "wget https://github.com/MaybeJustJames/zephyr/releases/download/v0.4.0/Linux.tar.gz && tar -xzvf Linux.tar.gz && rm Linux.tar.gz && mv zephyr/zephyr node_modules/.bin/zephyr && rm -rf zephyr",
     "postinstall": "npm run zephyr && npm i -g spago purescript && (cd common && spago build); npm run bundle -w frontend; npm run bundle -w backend && ln -sf ../backend/dist/main.js dist/backend.js",
     "start": "node dist/backend.js"
   },

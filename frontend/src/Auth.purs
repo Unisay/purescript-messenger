@@ -5,38 +5,34 @@ import Preamble
 import Control.Monad.Error.Class (class MonadThrow)
 import Control.Monad.Except (throwError)
 import Control.Monad.Reader (class MonadAsk)
-import Data.Array.NonEmpty (NonEmptyArray)
-import Data.Array.NonEmpty as NEA
+import Data.Argonaut.Decode (JsonDecodeError, decodeJson)
 import Data.Auth.Token (Token)
 import Data.Auth.Token as Auth
 import Data.Auth.Token as Token
-import Data.List.NonEmpty (NonEmptyList)
-import Data.List.NonEmpty as NEL
 import Data.Route (Route(..), goTo)
 import Data.Username (Username)
-import Data.Username as Username
 import Effect.Class (class MonadEffect)
+import Jwt (JwtError(..))
+import Jwt as Jwt
 import LocalStorage (HasStorage)
 import LocalStorage as Storage
-import Node.Jwt as Jwt
 
 data Error
-  = TokenDecoding (NonEmptyList String)
+  = TokenDecoding (JwtError JsonDecodeError)
   | TokenIsMissing
-  | TokenInvalidUsername (NonEmptyArray String)
   | TokenNoSub
 
 instance Show Error where
   show = case _ of
-    TokenDecoding errs →
-      "Failed to decode auth token: " <> NEL.intercalate "; " errs
-    TokenIsMissing →
-      "Authentication token is missing"
-    TokenInvalidUsername errs →
-      "Authentication token contains invalid username: "
-        <> NEA.intercalate "; " errs
-    TokenNoSub →
-      "Authentication token contains no sub claim"
+    TokenDecoding err →
+      "Failed to decode auth token: " <>
+        case err of
+          MalformedToken → "Malformed token"
+          Base64DecodeError e → "Base63 decode error: " <> show e
+          JsonDecodeError a → "JSON decode error: " <> show a
+          JsonParseError e → "JSON parse error: " <> show e
+    TokenIsMissing → "Authentication token is missing"
+    TokenNoSub → "Authentication token contains no sub claim"
 
 tokenKey ∷ Storage.Key Auth.Token
 tokenKey = Storage.Key "auth.token"
@@ -75,9 +71,7 @@ username
   ⇒ m Username
 username =
   jwtToken >>= case _ of
-    { claims: { sub: Just subject } } →
-      Username.parse subject #
-        either (throwError <<< TokenInvalidUsername) pure
+    { sub: Just name } → pure name
     _ → throwError TokenNoSub
 
 token
@@ -88,13 +82,15 @@ token
   ⇒ m Token
 token = getAuth >>= maybe (throwError TokenIsMissing) pure
 
+type JwtToken = { sub ∷ Maybe Username }
+
 jwtToken
   ∷ ∀ r m
   . MonadEffect m
   ⇒ MonadThrow Error m
   ⇒ MonadAsk { | HasStorage r } m
-  ⇒ m (Jwt.Token () Jwt.Unverified)
+  ⇒ m JwtToken
 jwtToken =
   token >>= Token.toString
-    >>> Jwt.decode
+    >>> Jwt.decodeWith decodeJson
     >>> either (TokenDecoding >>> throwError) pure

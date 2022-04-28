@@ -5,8 +5,11 @@ module Component.Router
 
 import Preamble
 
+import Affjax.StatusCode (StatusCode(..))
 import AppM (App)
 import AppM as App
+import Auth (removeAuth)
+import Backend as Backend
 import Component.ChatWindow as ChatWindow
 import Component.Debug as Debug
 import Component.Error as Error
@@ -16,6 +19,7 @@ import Component.Notifications as Notifications
 import Component.Signin as Signin
 import Component.Signup as Signup
 import Config (Config)
+import Control.Monad.Reader (runReaderT)
 import Data.Functor.Contravariant ((>$<))
 import Data.Route (Route(..), goTo)
 import Data.Route as Route
@@ -70,7 +74,10 @@ initialState config =
   { config
   , route: Home
   , error: Nothing
-  , errorListener: unsafeCoerce (\(_ ∷ App.Error) → pure unit ∷ Effect Unit)
+  , errorListener: unsafeCoerce
+      ( \(_ ∷ App.Error) →
+          log "This should never happen" ∷ Effect Unit
+      )
   }
 
 handleAction
@@ -90,10 +97,19 @@ handleAction = case _ of
         Left err → log (show err <> ": " <> show hash) $> Home
         Right route → pure route
     navigate route
-  SetError err → H.modify_ _ { error = Just err }
-  ErrorAction action → case action of
-    Error.Retry → H.modify_ _ { error = Nothing }
-    Error.SignIn → goTo Route.SignIn
+  SetError err → do
+    log $ "Setting error: " <> show err
+    H.modify_ _ { error = Just err }
+  ErrorAction action → do
+    logShow action
+    case action of
+      Error.Retry → do
+        H.modify_ _ { error = Nothing }
+      Error.SignIn → do
+        log "removing token: "
+        H.gets _.config >>= runReaderT removeAuth
+        H.modify_ _ { error = Nothing }
+        goTo Route.SignIn
 
 handleQuery
   ∷ ∀ a m

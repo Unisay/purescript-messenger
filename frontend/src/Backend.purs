@@ -18,10 +18,9 @@ import Auth as Auth
 import Chat.Api.Http
   ( SignInResponse(..)
   , SignInResponseBody
-  , SignOutResponse(..)
   , SignUpResponse(..)
   , SignUpResponseBody
-  , SignoutReason(..)
+  , SignoutReason
   , UserPresence
   )
 import Chat.Api.Http.Problem (Problem)
@@ -192,7 +191,7 @@ deleteSession
   ⇒ MonadThrow Error m
   ⇒ MonadAsk (Record (HasBackendConfig (HasStorage r))) m
   ⇒ SignoutReason
-  → m SignOutResponse
+  → m Unit
 deleteSession = deleteSession' AX.request
 
 deleteSession'
@@ -202,7 +201,7 @@ deleteSession'
   ⇒ MonadAsk (Record (HasBackendConfig (HasStorage r))) m
   ⇒ Transport
   → SignoutReason
-  → m SignOutResponse
+  → m Unit
 deleteSession' transport reason = do
   backendApiUrl ← asks _.backendApiUrl
   username ← hoistError AuthError Auth.username
@@ -210,20 +209,16 @@ deleteSession' transport reason = do
   response ← liftAff $ transport AX.defaultRequest
     { method = Left DELETE
     , url = String.joinWith "/"
-        [ backendApiUrl, "users", Username.toString username ]
+        [ backendApiUrl, "chat", "users", Username.toString username ]
     , responseFormat = ResponseFormat.json
     , content = Just $ AX.Json $ Json.encodeJson { reason }
     , headers = [ authorization token ]
     }
   case response of
     Left err → throwError $ AffjaxError err
-    Right { status } →
-      case unwrap status, reason of
-        200, UserAction → pure SignedOutUser
-        200, Timeout → pure SignedOutTimeout
-        403, _ → pure Refused
-        _, _ → throwError $
-          ResponseStatusError { expected: StatusCode 200, actual: status }
+    Right { status: StatusCode 200 } → pass
+    Right { status: actual } →
+      throwError $ ResponseStatusError { expected: StatusCode 200, actual }
 
 hoistError ∷ ∀ m e e'. MonadThrow e' m ⇒ (e → e') → ExceptT e m ~> m
 hoistError f ma = runExceptT ma >>= either (throwError <<< f) pure

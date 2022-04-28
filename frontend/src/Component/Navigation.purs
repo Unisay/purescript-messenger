@@ -8,10 +8,10 @@ import AppM (App, hoistAppM)
 import AppM as App
 import Auth (getAuth, removeAuth)
 import Backend (deleteSession)
-import Chat.Api.Http (SignOutResponse(..), SignoutReason(..))
+import Chat.Api.Http (SignoutReason(..))
 import Control.Monad.Reader (asks)
 import Data.Auth.Token as Auth
-import Data.Notification (critical, important, useful)
+import Data.Notification (useful)
 import Data.Route (Route(..), goTo)
 import Data.Route as Route
 import Halogen (lift, liftEffect)
@@ -52,22 +52,11 @@ handleAction = case _ of
     H.modify_ _ { route = newRoute }
     handleAction Initialize
   SignedOut reason → do
-    response ← deleteSession reason # hoistAppM App.BackendError
-      >>> lift
-    notify ← lift (asks _.notifications.listener) <#> \listener →
-      liftEffect <<< HS.notify listener
-    case response of
-      SignedOutUser → do
-        removeAuth
-        notify $ useful "You successfully signed out!"
-        goTo Route.Home
-      SignedOutTimeout → do
-        removeAuth
-        notify $ important
-          "You were signed out due to inactivity. Please sign in again"
-        goTo Route.SignIn
-      Refused → notify $ critical
-        "Unable to sign out. You may refresh the page or try again later"
+    deleteSession reason # hoistAppM App.BackendError >>> lift
+    lift (asks _.notifications.listener) >>= \listener →
+      liftEffect $ HS.notify listener $ useful "You successfully signed out!"
+    removeAuth
+    goTo Route.Home
 
 render ∷ ∀ s m. State → H.ComponentHTML Action s m
 render { route, auth } = HH.nav_
