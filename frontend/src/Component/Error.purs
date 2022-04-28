@@ -12,6 +12,11 @@ import Halogen.HTML.Properties.Extended as HP
 
 data Output = Retry | SignIn
 
+instance Show Output where
+  show = case _ of
+    Retry → "Retry"
+    SignIn → "SignIn"
+
 data Action = Notify Output
 
 type Input = App.Error

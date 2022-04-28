@@ -2,26 +2,41 @@ module Backend where
 
 import Preamble
 
-import Affjax (Error, Request, Response, defaultRequest, printError, request) as AX
+import Affjax
+  ( Error
+  , Request
+  , Response
+  , defaultRequest
+  , printError
+  , request
+  ) as AX
 import Affjax.RequestBody (RequestBody(..)) as AX
 import Affjax.RequestHeader (RequestHeader(..)) as AX
 import Affjax.ResponseFormat as ResponseFormat
 import Affjax.StatusCode (StatusCode(..))
-import Auth (getAuth)
-import Chat.Api.Http (SignInResponse(..), SignInResponseBody, SignOutResponse(..), SignUpResponse(..), SignUpResponseBody, SignoutReason(..), UserPresence)
+import Auth as Auth
+import Chat.Api.Http
+  ( SignInResponse(..)
+  , SignInResponseBody
+  , SignOutResponse(..)
+  , SignUpResponse(..)
+  , SignUpResponseBody
+  , SignoutReason(..)
+  , UserPresence
+  )
 import Chat.Api.Http.Problem (Problem)
 import Chat.Api.Http.Problem as Problem
 import Control.Monad.Error.Class (class MonadThrow)
+import Control.Monad.Except (ExceptT, runExceptT)
 import Control.Monad.Reader (class MonadAsk)
 import Control.Monad.Reader.Class (asks)
 import Data.Argonaut.Core (Json)
 import Data.Argonaut.Decode (JsonDecodeError, decodeJson)
 import Data.Argonaut.Encode (encodeJson) as Json
-import Data.Auth.Token as Auth
+import Data.Auth.Token (Token)
 import Data.Auth.Token as Token
 import Data.Email (Email)
 import Data.HTTP.Method (Method(..))
-import Data.List.NonEmpty as NEL
 import Data.Newtype (unwrap, wrap)
 import Data.Password (Password)
 import Data.String as String
@@ -30,17 +45,16 @@ import Data.Username as Username
 import Effect.Aff (Aff, throwError)
 import Effect.Aff.Class (class MonadAff, liftAff)
 import LocalStorage (HasStorage)
-import Node.Jwt as Jwt
 
 type HasBackendConfig r = (backendApiUrl ∷ String | r)
 type Transport = AX.Request Json → Aff (Either AX.Error (AX.Response Json))
 
 data Error
   = AffjaxError AX.Error
+  | AuthError Auth.Error
   | ResponseDecodeError JsonDecodeError
   | ResponseStatusError { expected ∷ StatusCode, actual ∷ StatusCode }
   | ResponseProblem Problem
-  | TokenError String
 
 instance Show Error where
   show err = "Backend error: " <> case err of
@@ -55,7 +69,7 @@ instance Show Error where
         <> show expected
     ResponseProblem problem →
       "server responded with Problem: " <> show problem
-    TokenError e → "token handling failed with error: " <> e
+    AuthError ae → "Authentication error: " <> show ae
 
 createSession
   ∷ ∀ r m
@@ -143,7 +157,7 @@ listUsers
   . MonadAff m
   ⇒ MonadAsk (Record (HasBackendConfig r)) m
   ⇒ MonadThrow Error m
-  ⇒ Auth.Token
+  ⇒ Token
   → m (Array UserPresence)
 listUsers = listUsers' AX.request
 
@@ -153,7 +167,7 @@ listUsers'
   ⇒ MonadAsk (Record (HasBackendConfig r)) m
   ⇒ MonadThrow Error m
   ⇒ Transport
-  → Auth.Token
+  → Token
   → m (Array UserPresence)
 listUsers' transport token = do
   backendApiUrl ← asks _.backendApiUrl
@@ -161,8 +175,7 @@ listUsers' transport token = do
     { method = Left GET
     , url = String.joinWith "/" [ backendApiUrl, "chat", "users" ]
     , responseFormat = ResponseFormat.json
-    , headers =
-        [ AX.RequestHeader "Authorization" ("Bearer " <> Auth.toString token) ]
+    , headers = [ authorization token ]
     }
   case response of
     Left err → throwError $ AffjaxError err
@@ -192,32 +205,29 @@ deleteSession'
   → m SignOutResponse
 deleteSession' transport reason = do
   backendApiUrl ← asks _.backendApiUrl
-  username ← decodeToken >>= \{ claims } → maybe
-    (throwError $ TokenError "token's claims are invalid!")
-    pure
-    claims.sub
-  token ← getToken
+  username ← hoistError AuthError Auth.username
+  token ← hoistError AuthError Auth.token
   response ← liftAff $ transport AX.defaultRequest
     { method = Left DELETE
-    , url = String.joinWith "/" [ backendApiUrl, "users", username ]
+    , url = String.joinWith "/"
+        [ backendApiUrl, "users", Username.toString username ]
     , responseFormat = ResponseFormat.json
     , content = Just $ AX.Json $ Json.encodeJson { reason }
-    , headers =
-        [ AX.RequestHeader "Authorization" ("Bearer " <> Auth.toString token) ]
+    , headers = [ authorization token ]
     }
   case response of
     Left err → throwError $ AffjaxError err
-    Right { status } → case unwrap status, reason of
-      200, UserAction → pure SignedOutUser
-      200, Timeout → pure SignedOutTimeout
-      403, _ → pure Refused
-      _, _ → throwError $ ResponseStatusError
-        { expected: wrap 200, actual: status }
-  where
-  decodeToken ∷ m (Jwt.Token () Jwt.Unverified)
-  decodeToken = getToken >>= Token.toString >>> Jwt.decode >>> either
-    (NEL.intercalate "; " >>> TokenError >>> throwError)
-    pure
-  getToken = getAuth >>= maybe
-    (throwError $ TokenError "couldn't find token in the storage")
-    pure
+    Right { status } →
+      case unwrap status, reason of
+        200, UserAction → pure SignedOutUser
+        200, Timeout → pure SignedOutTimeout
+        403, _ → pure Refused
+        _, _ → throwError $
+          ResponseStatusError { expected: StatusCode 200, actual: status }
+
+hoistError ∷ ∀ m e e'. MonadThrow e' m ⇒ (e → e') → ExceptT e m ~> m
+hoistError f ma = runExceptT ma >>= either (throwError <<< f) pure
+
+authorization ∷ Token → AX.RequestHeader
+authorization token =
+  AX.RequestHeader "Authorization" ("Bearer " <> Token.toString token)
