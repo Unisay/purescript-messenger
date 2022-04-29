@@ -3,7 +3,7 @@ module Halogen.HTML.Properties.Extended
   , classNames
   ) where
 
-import Prelude
+import Preamble
 
 import Halogen (ClassName(..))
 import Halogen.HTML.Properties

@@ -1,26 +1,41 @@
 module Backend where
 
-import Prelude
+import Preamble
 
-import Affjax (Error, Request, Response, defaultRequest, printError, request) as AX
+import Affjax
+  ( Error
+  , Request
+  , Response
+  , defaultRequest
+  , printError
+  , request
+  ) as AX
 import Affjax.RequestBody (RequestBody(..)) as AX
 import Affjax.RequestHeader (RequestHeader(..)) as AX
 import Affjax.ResponseFormat as ResponseFormat
-import Affjax.StatusCode (StatusCode)
-import Chat.Api.Http (SignInResponse(..), SignInResponseBody, SignUpResponse(..), SignUpResponseBody, UserPresence)
+import Affjax.StatusCode (StatusCode(..))
+import Auth as Auth
+import Chat.Api.Http
+  ( SignInResponse(..)
+  , SignInResponseBody
+  , SignUpResponse(..)
+  , SignUpResponseBody
+  , SignoutReason
+  , UserPresence
+  )
 import Chat.Api.Http.Problem (Problem)
 import Chat.Api.Http.Problem as Problem
 import Control.Monad.Error.Class (class MonadThrow)
+import Control.Monad.Except (ExceptT, runExceptT)
 import Control.Monad.Reader (class MonadAsk)
 import Control.Monad.Reader.Class (asks)
 import Data.Argonaut.Core (Json)
 import Data.Argonaut.Decode (JsonDecodeError, decodeJson)
 import Data.Argonaut.Encode (encodeJson) as Json
-import Data.Auth.Token as Auth
-import Data.Either (Either(..))
+import Data.Auth.Token (Token)
+import Data.Auth.Token as Token
 import Data.Email (Email)
 import Data.HTTP.Method (Method(..))
-import Data.Maybe (Maybe(..))
 import Data.Newtype (unwrap, wrap)
 import Data.Password (Password)
 import Data.String as String
@@ -28,12 +43,14 @@ import Data.Username (Username)
 import Data.Username as Username
 import Effect.Aff (Aff, throwError)
 import Effect.Aff.Class (class MonadAff, liftAff)
+import LocalStorage (HasStorage)
 
 type HasBackendConfig r = (backendApiUrl ∷ String | r)
 type Transport = AX.Request Json → Aff (Either AX.Error (AX.Response Json))
 
 data Error
   = AffjaxError AX.Error
+  | AuthError Auth.Error
   | ResponseDecodeError JsonDecodeError
   | ResponseStatusError { expected ∷ StatusCode, actual ∷ StatusCode }
   | ResponseProblem Problem
@@ -43,13 +60,15 @@ instance Show Error where
     AffjaxError e →
       "AJAX request failed: " <> AX.printError e
     ResponseDecodeError e →
-      "Decoding response JSON failed: " <> show e
+      "decoding response JSON failed: " <> show e
     ResponseStatusError { expected, actual } →
-      "unexpected response status (" <> show actual
-        <> "), expected: "
+      "unexpected response status: "
+        <> show actual
+        <> ", expected: "
         <> show expected
     ResponseProblem problem →
-      "server responded with Problem " <> show problem
+      "server responded with Problem: " <> show problem
+    AuthError ae → "Authentication error: " <> show ae
 
 createSession
   ∷ ∀ r m
@@ -137,7 +156,7 @@ listUsers
   . MonadAff m
   ⇒ MonadAsk (Record (HasBackendConfig r)) m
   ⇒ MonadThrow Error m
-  ⇒ Auth.Token
+  ⇒ Token
   → m (Array UserPresence)
 listUsers = listUsers' AX.request
 
@@ -147,7 +166,7 @@ listUsers'
   ⇒ MonadAsk (Record (HasBackendConfig r)) m
   ⇒ MonadThrow Error m
   ⇒ Transport
-  → Auth.Token
+  → Token
   → m (Array UserPresence)
 listUsers' transport token = do
   backendApiUrl ← asks _.backendApiUrl
@@ -155,16 +174,55 @@ listUsers' transport token = do
     { method = Left GET
     , url = String.joinWith "/" [ backendApiUrl, "chat", "users" ]
     , responseFormat = ResponseFormat.json
-    , headers =
-        [ AX.RequestHeader "Authorization"
-            ("Bearer " <> Auth.toString token)
-        ]
+    , headers = [ authorization token ]
     }
   case response of
     Left err → throwError $ AffjaxError err
     Right { status, body } →
-      case unwrap status, decodeJson body of
-        200, Right users → pure users
-        _, Left err → throwError $ ResponseDecodeError err
-        _, _ → throwError $ ResponseStatusError
+      case status of
+        StatusCode 200 →
+          decodeJson body # either (ResponseDecodeError >>> throwError) pure
+        _ → throwError $ ResponseStatusError
           { expected: wrap 200, actual: status }
+
+deleteSession
+  ∷ ∀ r m
+  . MonadAff m
+  ⇒ MonadThrow Error m
+  ⇒ MonadAsk (Record (HasBackendConfig (HasStorage r))) m
+  ⇒ SignoutReason
+  → m Unit
+deleteSession = deleteSession' AX.request
+
+deleteSession'
+  ∷ ∀ r m
+  . MonadAff m
+  ⇒ MonadThrow Error m
+  ⇒ MonadAsk (Record (HasBackendConfig (HasStorage r))) m
+  ⇒ Transport
+  → SignoutReason
+  → m Unit
+deleteSession' transport reason = do
+  backendApiUrl ← asks _.backendApiUrl
+  username ← hoistError AuthError Auth.username
+  token ← hoistError AuthError Auth.token
+  response ← liftAff $ transport AX.defaultRequest
+    { method = Left DELETE
+    , url = String.joinWith "/"
+        [ backendApiUrl, "chat", "users", Username.toString username ]
+    , responseFormat = ResponseFormat.json
+    , content = Just $ AX.Json $ Json.encodeJson { reason }
+    , headers = [ authorization token ]
+    }
+  case response of
+    Left err → throwError $ AffjaxError err
+    Right { status: StatusCode 200 } → pass
+    Right { status: actual } →
+      throwError $ ResponseStatusError { expected: StatusCode 200, actual }
+
+hoistError ∷ ∀ m e e'. MonadThrow e' m ⇒ (e → e') → ExceptT e m ~> m
+hoistError f ma = runExceptT ma >>= either (throwError <<< f) pure
+
+authorization ∷ Token → AX.RequestHeader
+authorization token =
+  AX.RequestHeader "Authorization" ("Bearer " <> Token.toString token)

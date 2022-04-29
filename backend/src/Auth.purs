@@ -3,13 +3,12 @@ module Auth where
 import Prelude
 
 import Auth.Hash (Hash, Salt(..), hashPassword)
-import Control.Monad.Error.Class (throwError)
-import Control.Monad.Except (runExcept)
+import Chat.Api.Http (SignoutReason)
 import Data.Array as Array
 import Data.Auth.Token (Token)
 import Data.Auth.Token as Token
 import Data.DateTime (adjust)
-import Data.Either (Either(..), hush, note)
+import Data.Either (Either, hush, note)
 import Data.Email (Email)
 import Data.Enum (enumFromTo)
 import Data.List.NonEmpty (NonEmptyList)
@@ -27,24 +26,14 @@ import Effect.Aff.Class (liftAff)
 import Effect.Class (liftEffect)
 import Effect.Now (nowDateTime)
 import Effect.Random (randomInt)
-import Foreign (fail, readInt) as Foreign
-import Foreign.Generic (class Decode, ForeignError(..), encode) as Foreign
+import Foreign.Generic (encode) as Foreign
 import Node.Jwt as Jwt
 import ServerM (ServerM, liftDbM)
 
 data SigninResult = SigninSuccess Token | SigninFailure
 data SignupResult = SignedUp | UserInfoUpdated | NotSignedUpInvalidCredentials
 type SignoutRequest = { reason :: SignoutReason }
-data SignoutReason = Timeout | UserAction
 data SignoutResult = SignoutSuccess SignoutReason
-
-instance decodeLogoutReason :: Foreign.Decode SignoutReason where
-  decode f = case runExcept (Foreign.readInt f) of
-    Left errs -> throwError errs
-    Right 0 -> pure Timeout
-    Right 1 -> pure UserAction
-    Right r ->
-      Foreign.fail $ Foreign.ForeignError $ "Unknown signout reason: " <> show r
 
 type UserInfo =
   { email :: Email
@@ -123,8 +112,8 @@ usernameHashedData username =
         [ Foreign.encode username ]
     )
 
-signout :: SignoutRequest -> SignoutResult
-signout { reason } = SignoutSuccess reason
+signout :: SignoutRequest -> ServerM SignoutResult
+signout { reason } = pure $ SignoutSuccess reason
 
 type TokenErrors = NonEmptyList String
 

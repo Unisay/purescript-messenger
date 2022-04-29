@@ -1,19 +1,15 @@
 module Data.RouteSpec (spec) where
 
-import Prelude
+import Preamble
 
 import Component.NotificationsSpec as Notifications
 import Data.Array (all, length)
 import Data.CodePoint.Unicode (isPrint)
-import Data.Either (Either(..))
-import Data.Maybe (Maybe(..))
 import Data.Route (Route(..), codec)
 import Data.String (toCodePointArray)
 import Data.String as String
 import Data.Username as Username
-import Effect (Effect)
 import Effect.Class (class MonadEffect, liftEffect)
-import Effect.Class.Console (log)
 import Routing.Duplex as Routing
 import Test.QuickCheck
   ( class Testable

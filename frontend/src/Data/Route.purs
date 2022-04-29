@@ -1,6 +1,6 @@
 module Data.Route where
 
-import Prelude
+import Preamble
 
 import Data.Array.NonEmpty as NEA
 import Data.Bifunctor (lmap)

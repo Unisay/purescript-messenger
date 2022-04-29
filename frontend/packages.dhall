@@ -15,6 +15,21 @@ let additions =
         , version = "v2.0.0"
         , dependencies = [ "prelude", "halogen", "svg-parser" ]
         }
+      , node-jwt =
+        { dependencies =
+          [ "effect"
+          , "console"
+          , "options"
+          , "prelude"
+          , "newtype"
+          , "foreign-generic"
+          , "aff"
+          , "aff-promise"
+          , "psci-support"
+          ]
+        , repo = "https://github.com/gaku-sei/purescript-node-jwt.git"
+        , version = "master"
+        }
       }
 
 in  (overrides // upstream // additions)

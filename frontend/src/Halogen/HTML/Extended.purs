@@ -4,9 +4,8 @@ module Halogen.HTML.Extended
   , whenElem
   ) where
 
-import Prelude
+import Preamble
 
-import Data.Maybe (Maybe(..))
 import Halogen.HTML
   ( class IsProp
   , AttrName(..)

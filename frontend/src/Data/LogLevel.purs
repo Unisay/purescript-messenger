@@ -1,6 +1,6 @@
 module Data.LogLevel where
 
-import Prelude
+import Preamble
 
 data LogLevel
   = Dev

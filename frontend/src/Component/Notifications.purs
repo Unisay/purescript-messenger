@@ -1,6 +1,6 @@
 module Component.Notifications where
 
-import Prelude
+import Preamble
 
 import Config (Config)
 import Control.Monad.Reader.Class (class MonadAsk, asks)
@@ -9,7 +9,6 @@ import Control.Monad.Trans.Class (lift)
 import Data.Array ((:))
 import Data.Array as Array
 import Data.Foldable (traverse_)
-import Data.Maybe (Maybe(..))
 import Data.Notification (Importance(..), Notification(..))
 import Effect.Aff (Milliseconds(..), delay)
 import Effect.Aff.Class (class MonadAff, liftAff)

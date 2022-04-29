@@ -3,28 +3,26 @@ module Component.Router
   , Query(..)
   ) where
 
-import Prelude
+import Preamble
 
 import AppM (App)
 import AppM as App
+import Auth (removeAuth)
 import Component.ChatWindow as ChatWindow
 import Component.Debug as Debug
-import Component.HTML.Error as Error
+import Component.Error as Error
 import Component.Home as Home
 import Component.Navigation as Navigation
 import Component.Notifications as Notifications
 import Component.Signin as Signin
 import Component.Signup as Signup
 import Config (Config)
-import Data.Either (Either(..))
+import Control.Monad.Reader (runReaderT)
 import Data.Functor.Contravariant ((>$<))
-import Data.Maybe (Maybe(..))
-import Data.Route (Route(..))
+import Data.Route (Route(..), goTo)
 import Data.Route as Route
-import Effect (Effect)
 import Effect.Aff (Aff)
 import Effect.Class (class MonadEffect, liftEffect)
-import Effect.Class.Console (log)
 import Halogen.Component as HC
 import Halogen.Extended as H
 import Halogen.HTML as HH
@@ -40,21 +38,22 @@ data Query a = Navigate Route a
 type State =
   { config ∷ Config
   , route ∷ Route
-  , hasError ∷ Boolean
+  , error ∷ Maybe App.Error
   , errorListener ∷ HS.Listener App.Error
   }
 
-data Action = Initialize | SetError App.Error | ClearError
+data Action = Initialize | SetError App.Error | ErrorAction Error.Output
 
 type ChildSlots =
   ( notifications ∷ H.OpaqueSlot Unit
   , home ∷ H.OpaqueSlot Unit
+  , navigation ∷ H.OpaqueSlot Unit
   , signin ∷ H.OpaqueSlot Unit
   , signup ∷ H.OpaqueSlot Unit
   , profile ∷ H.OpaqueSlot Unit
   , debug ∷ H.OpaqueSlot Unit
   , chatWindow ∷ H.OpaqueSlot Unit
-  , error ∷ H.OpaqueSlot Unit
+  , error ∷ ∀ query. H.Slot query Error.Output Int
   )
 
 component ∷ H.Component Query Config Void Aff
@@ -72,8 +71,11 @@ initialState ∷ Config → State
 initialState config =
   { config
   , route: Home
-  , hasError: false
-  , errorListener: unsafeCoerce (\(_ ∷ App.Error) → pure unit ∷ Effect Unit)
+  , error: Nothing
+  , errorListener: unsafeCoerce
+      ( \(_ ∷ App.Error) →
+          log "This should never happen" ∷ Effect Unit
+      )
   }
 
 handleAction
@@ -93,8 +95,19 @@ handleAction = case _ of
         Left err → log (show err <> ": " <> show hash) $> Home
         Right route → pure route
     navigate route
-  SetError _err → H.modify_ _ { hasError = true }
-  ClearError → H.modify_ _ { hasError = false }
+  SetError err → do
+    log $ "Setting error: " <> show err
+    H.modify_ _ { error = Just err }
+  ErrorAction action → do
+    logShow action
+    case action of
+      Error.Retry → do
+        H.modify_ _ { error = Nothing }
+      Error.SignIn → do
+        log "removing token: "
+        H.gets _.config >>= runReaderT removeAuth
+        H.modify_ _ { error = Nothing }
+        goTo Route.SignIn
 
 handleQuery
   ∷ ∀ a m
@@ -113,11 +126,11 @@ navigate route = do
   H.modify_ _ { route = route }
 
 render ∷ State → H.ComponentHTML Action ChildSlots Aff
-render { config, route, hasError, errorListener } =
-  case hasError of
-    false → HH.div_
+render { config, route, error, errorListener } =
+  HH.div_ case error of
+    Nothing →
       [ slotNotifications
-      , Navigation.render route
+      , slotNavigation
       , case route of
           Home → slotHome
           SignIn → slotSignin
@@ -135,6 +148,10 @@ render { config, route, hasError, errorListener } =
         comp = hoistApp Notifications.component
       slotHome =
         HH.slot_ (Proxy ∷ _ "home") unit Home.component unit
+      slotNavigation =
+        HH.slot_ (Proxy ∷ _ "navigation") unit
+          (hoistApp Navigation.component)
+          route
       slotSignin =
         HH.slot_ (Proxy ∷ _ "signin") unit (hoistApp Signin.component) unit
       slotSignup =
@@ -147,6 +164,6 @@ render { config, route, hasError, errorListener } =
         HH.slot_ (Proxy ∷ _ "chatWindow") unit
           (hoistApp ChatWindow.component)
           unit
-    true →
-      Error.render ClearError
+    Just err →
+      [ HH.slot (Proxy ∷ _ "error") 0 Error.component err ErrorAction ]
 

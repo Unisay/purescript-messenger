@@ -1,12 +1,11 @@
 module Halogen.Driver where
 
-import Prelude
+import Preamble
 
 import Control.Applicative.Free (retractFreeAp)
 import Control.Monad.Free (foldFree)
 import Data.Map (Map)
 import Data.Map as Map
-import Data.Maybe (Maybe(..))
 import Data.Traversable (traverse_)
 import Data.Tuple (Tuple(..))
 import Effect.Aff (Aff)

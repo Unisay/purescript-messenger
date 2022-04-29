@@ -1,8 +1,8 @@
 module Data.Validation (Validation) where
 
+import Preamble
+
 import Data.Array.NonEmpty (NonEmptyArray)
-import Data.Either (Either)
-import Data.Maybe (Maybe)
 
 type Validation a =
   { inputValue ∷ String

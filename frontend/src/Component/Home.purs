@@ -1,6 +1,6 @@
 module Component.Home where
 
-import Prelude
+import Preamble
 
 import Data.Route (Route(..), goTo)
 import Effect.Aff.Class (class MonadAff)

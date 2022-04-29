@@ -1,11 +1,10 @@
 module LocalStorage where
 
-import Prelude
+import Preamble
 
 import Control.Monad.Reader (class MonadAsk, asks)
-import Data.Maybe (Maybe)
 import Effect.Class (class MonadEffect, liftEffect)
-import Web.Storage.Storage (Storage, getItem, setItem)
+import Web.Storage.Storage (Storage, getItem, removeItem, setItem)
 
 type HasStorage r = (storage ∷ Storage | r)
 
@@ -41,3 +40,8 @@ writeKey
 writeKey (Key k) enc v = do
   s ← getStorage
   liftEffect $ setItem k (enc v) s
+
+removeKey
+  ∷ ∀ a r m. MonadEffect m ⇒ MonadAsk { | HasStorage r } m ⇒ Key a → m Unit
+removeKey (Key k) = getStorage >>= removeItem k >>> liftEffect
+
