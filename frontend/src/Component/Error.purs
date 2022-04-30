@@ -93,22 +93,20 @@ handleAction ∷ ∀ m. Action → H.HalogenM State Action () Output m Unit
 handleAction (Notify action) = H.raise action
 
 errorAction ∷ App.Error → { action ∷ Output, caption ∷ String }
-errorAction (App.BackendError err) =
-  case err of
-    ResponseStatusError { actual: StatusCode 403 } →
-      { action: SignIn, caption: "Okay" }
-    _ →
-      { action: Retry, caption: "Retry" }
+errorAction = case _ of
+  App.BackendError (ResponseStatusError { actual: StatusCode 403 }) → signin
+  App.AuthError _ → signin
+  _ → retry
+  where
+  signin = { action: SignIn, caption: "Okay" }
+  retry = { action: Retry, caption: "Retry" }
 
 renderError ∷ App.Error → String
-renderError (App.BackendError err) =
-  case err of
-    ResponseStatusError { actual: StatusCode 403 } →
-      """
-      Your session has expired! Please sign in to your account again.
-      """
-    _ →
-      """
-      We are really sorry, but application is unable to serve your
-      request at this time because of an unexpected critical error.
-      """
+renderError = case _ of
+  App.BackendError (ResponseStatusError { actual: StatusCode 403 }) →
+    "Your session has expired! Please sign in to your account again."
+  _ →
+    """
+    We are really sorry, but application is unable to serve your
+    request at this time because of an unexpected critical error.
+    """

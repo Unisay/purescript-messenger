@@ -54,6 +54,7 @@ data Error
   | ResponseDecodeError JsonDecodeError
   | ResponseStatusError { expected ∷ StatusCode, actual ∷ StatusCode }
   | ResponseProblem Problem
+  | DeleteSessionWithoutUsername
 
 instance Show Error where
   show err = "Backend error: " <> case err of
@@ -69,6 +70,8 @@ instance Show Error where
     ResponseProblem problem →
       "server responded with Problem: " <> show problem
     AuthError ae → "Authentication error: " <> show ae
+    DeleteSessionWithoutUsername →
+      "deleteSession is invoked but current token has no username"
 
 createSession
   ∷ ∀ r m
@@ -204,7 +207,8 @@ deleteSession'
   → m Unit
 deleteSession' transport reason = do
   backendApiUrl ← asks _.backendApiUrl
-  username ← hoistError AuthError Auth.username
+  username ← hoistError AuthError Auth.username >>=
+    maybe (throwError DeleteSessionWithoutUsername) pure
   token ← hoistError AuthError Auth.token
   response ← liftAff $ transport AX.defaultRequest
     { method = Left DELETE

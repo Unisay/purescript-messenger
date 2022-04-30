@@ -1,16 +1,16 @@
 module Halogen.Extended
   ( module H
   , OpaqueSlot
+  , raiseErrors
+  , raiseErrors_
   , raiseError
   , raiseError_
   ) where
 
-import Control.Alternative (pure)
-import Control.Bind ((>>=))
+import Prelude
+
 import Control.Monad.Except (ExceptT, runExceptT)
 import Data.Either (Either(..))
-import Data.Unit (Unit)
-import Data.Void (Void)
 import Halogen
   ( AttrName(..)
   , ClassName(..)
@@ -70,19 +70,34 @@ import Halogen
 -- | component is by sending input.
 type OpaqueSlot slot = ∀ query. H.Slot query Void slot
 
+raiseErrors
+  ∷ ∀ m e e' r s a l
+  . ExceptT e (H.HalogenM s a l e' m) r
+  → (e → e')
+  → (r → H.HalogenM s a l e' m Unit)
+  → H.HalogenM s a l e' m Unit
+raiseErrors et f k = do
+  runExceptT et >>=
+    case _ of
+      Left e → H.raise (f e)
+      Right a → k a
+
 raiseError
   ∷ ∀ m e r s a l
   . ExceptT e (H.HalogenM s a l e m) r
   → (r → H.HalogenM s a l e m Unit)
   → H.HalogenM s a l e m Unit
-raiseError et k =
-  runExceptT et >>=
-    case _ of
-      Left e → H.raise e
-      Right a → k a
+raiseError et = raiseErrors et identity
+
+raiseErrors_
+  ∷ ∀ s a l e e' m
+  . ExceptT e (H.HalogenM s a l e' m) Unit
+  → (e → e')
+  → H.HalogenM s a l e' m Unit
+raiseErrors_ e f = raiseErrors e f pure
 
 raiseError_
   ∷ ∀ s a l e m
   . ExceptT e (H.HalogenM s a l e m) Unit
   → H.HalogenM s a l e m Unit
-raiseError_ e = raiseError e pure
+raiseError_ e = raiseErrors_ e identity

@@ -3,7 +3,7 @@ module Component.Signin where
 import Preamble
 
 import AppM (App)
-import Auth (getAuth, setAuth)
+import Auth as Auth
 import Backend as Backend
 import Chat.Api.Http (SignInResponse(..))
 import Control.Monad.Except.Trans (runExceptT)
@@ -252,7 +252,7 @@ render state = signinFormContainer
 handleAction ∷ ∀ s. Action → H.HalogenM State Action s Backend.Error App Unit
 handleAction = case _ of
   Initialize →
-    whenM (getAuth <#> isJust) (goTo ChatWindow)
+    whenM (Auth.tryToken <#> isJust) (goTo ChatWindow)
   SetUsername str → H.modify_ $ \state →
     state { username { inputValue = str } }
   SetPassword str → H.modify_ $ \state →
@@ -282,7 +282,7 @@ handleAction = case _ of
         do
           H.raiseError (Backend.createSession username password) case _ of
             SignedIn token → do
-              setAuth token
+              Auth.setToken token
               H.modify_ _ { response = Just (SignedIn token) }
               goTo Route.ChatWindow
             Forbidden →

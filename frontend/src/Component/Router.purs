@@ -7,7 +7,7 @@ import Preamble
 
 import AppM (App)
 import AppM as App
-import Auth (removeAuth)
+import Auth as Auth
 import Backend as Backend
 import Component.ChatWindow as ChatWindow
 import Component.Debug as Debug
@@ -38,12 +38,12 @@ type State =
   , error ∷ Maybe App.Error
   }
 
-data Action = Initialize | SetError App.Error | ErrorAction Error.Output
+data Action = Initialize | RecordAppError App.Error | ErrorAction Error.Output
 
 type ChildSlots =
   ( notifications ∷ H.OpaqueSlot Unit
   , home ∷ H.OpaqueSlot Unit
-  , navigation ∷ ∀ query. H.Slot query Backend.Error Int
+  , navigation ∷ ∀ query. H.Slot query App.Error Int
   , signin ∷ ∀ query. H.Slot query Backend.Error Int
   , signup ∷ ∀ query. H.Slot query Backend.Error Int
   , profile ∷ ∀ query. H.Slot query Backend.Error Int
@@ -83,7 +83,7 @@ handleAction = case _ of
         Left err → log (show err <> ": " <> show hash) $> Home
         Right route → pure route
     navigate route
-  SetError err → do
+  RecordAppError err → do
     log $ "Setting error: " <> show err
     H.modify_ _ { error = Just err }
   ErrorAction action → do
@@ -93,7 +93,7 @@ handleAction = case _ of
         H.modify_ _ { error = Nothing }
       Error.SignIn → do
         log "removing token: "
-        H.gets _.config >>= runReaderT removeAuth
+        H.gets _.config >>= runReaderT Auth.remove
         H.modify_ _ { error = Nothing }
         goTo Route.SignIn
 
@@ -140,21 +140,21 @@ render { config, route, error } =
         HH.slot (Proxy ∷ _ "navigation") 0
           (hoistApp Navigation.component)
           route
-          (SetError <<< App.BackendError)
+          RecordAppError
       slotSignin =
         HH.slot (Proxy ∷ _ "signin") 1 (hoistApp Signin.component) unit
-          (SetError <<< App.BackendError)
+          (RecordAppError <<< App.BackendError)
       slotSignup =
         HH.slot (Proxy ∷ _ "signup") 2 (hoistApp Signup.component) unit
-          (SetError <<< App.BackendError)
+          (RecordAppError <<< App.BackendError)
       slotProfile =
         HH.slot (Proxy ∷ _ "profile") 3 (hoistApp Signin.component) unit
-          (SetError <<< App.BackendError)
+          (RecordAppError <<< App.BackendError)
       slotDebug =
         HH.slot_ (Proxy ∷ _ "debug") unit (hoistApp Debug.component) unit
       slotChatWindow =
         HH.slot (Proxy ∷ _ "chatWindow") 4 (hoistApp ChatWindow.component) unit
-          (SetError <<< App.BackendError)
+          (RecordAppError <<< App.BackendError)
     Just err →
       [ HH.slot (Proxy ∷ _ "error") 5 Error.component err ErrorAction ]
 

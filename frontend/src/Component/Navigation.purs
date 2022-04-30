@@ -5,16 +5,17 @@ module Component.Navigation
 import Preamble
 
 import AppM (App)
-import Auth (getAuth, removeAuth)
+import AppM as App
+import Auth as Auth
 import Backend (deleteSession)
-import Backend as Backend
 import Chat.Api.Http (SignoutReason(..))
 import Control.Monad.Reader (asks)
-import Data.Auth.Token as Auth
 import Data.Notification (useful)
 import Data.Route (Route(..), goTo)
 import Data.Route as Route
-import Halogen (lift, liftEffect)
+import Data.Username (Username)
+import Data.Username as Username
+import Halogen (liftEffect)
 import Halogen.Extended as H
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Extended as HH
@@ -23,14 +24,14 @@ import Halogen.Subscription as HS
 
 type State =
   { route ∷ Route
-  , auth ∷ Maybe Auth.Token
+  , auth ∷ Maybe Username
   }
 
 type Input = Route
 
 data Action = Initialize | SetRoute Route | SignedOut SignoutReason
 
-component ∷ ∀ q. H.Component q Input Backend.Error App
+component ∷ ∀ q. H.Component q Input App.Error App
 component =
   H.mkComponent
     { initialState
@@ -45,17 +46,19 @@ component =
 initialState ∷ Route → State
 initialState route = { route, auth: Nothing }
 
-handleAction ∷ ∀ s. Action → H.HalogenM State Action s Backend.Error App Unit
+handleAction ∷ ∀ s. Action → H.HalogenM State Action s App.Error App Unit
 handleAction = case _ of
-  Initialize → getAuth >>= \token → H.modify_ _ { auth = token }
-  SetRoute newRoute → do
-    H.modify_ _ { route = newRoute }
-    handleAction Initialize
+  Initialize → H.raiseErrors Auth.username App.AuthError \username → do
+    H.modify_ _ { auth = username }
+  SetRoute newRoute →
+    H.raiseErrors Auth.username App.AuthError \username → do
+      H.modify_ _ { route = newRoute, auth = username }
   SignedOut reason → do
-    H.raiseError_ $ deleteSession reason
-    lift (asks _.notifications.listener) >>= \listener →
-      liftEffect $ HS.notify listener $ useful "You successfully signed out!"
-    removeAuth
+    H.raiseErrors_ (deleteSession reason) App.BackendError
+    listener ← asks _.notifications.listener
+    liftEffect $ HS.notify listener $ useful "You successfully signed out!"
+    Auth.remove
+    H.modify_ _ { auth = Nothing }
     goTo Route.Home
 
 render ∷ ∀ s m. State → H.ComponentHTML Action s m
@@ -70,50 +73,59 @@ render { route, auth } = HH.nav_
           , "align-center"
           ]
       ]
-      [ HH.li [ HP.classNames [ "list-none", "ml-8", "mr-auto", "mt-8" ] ]
-          [ HH.a
-              [ HP.classNames
-                  [ if route == Home then "overline"
-                    else "no-underline"
-                  , if route == Home then "text-blue-800"
-                    else "text-black"
-                  , "font-bold"
-                  , "text-2xl"
-                  ]
-              , Route.href Home
-              ]
-              [ HH.text "PureMess" ]
-          ]
-      , HH.li
-          [ HP.classNames [ "list-none", "mr-16", "mt-8", "text-xl" ] ]
-          [ HH.a
-              [ HP.classNames
-                  [ if route == SignIn then "overline"
-                    else "no-underline"
-                  , if route == SignIn then "text-blue-800"
-                    else "text-black"
-                  ]
-              , Route.href SignIn
-              ]
-              [ HH.text "SignIn" ]
-          ]
-      , HH.li [ HP.classNames [ "list-none", "mr-16", "mt-8", "text-xl" ] ]
-          [ HH.a
-              [ HP.classNames
-                  [ if route == SignUp then "overline"
-                    else "no-underline"
-                  , if route == SignUp then "text-blue-800"
-                    else "text-black"
-                  ]
-              , Route.href SignUp
-              ]
-              [ HH.text "SignUp" ]
-          ]
-      , HH.maybeElem auth \_token →
-          HH.li [ HP.classNames [ "list-none", "mr-16", "mt-8", "text-xl" ] ]
-            [ HH.a [ Route.href Home, HE.onClick \_ → SignedOut UserAction ]
-                [ HH.text "Sign Out" ]
+      $
+        [ HH.li [ HP.classNames [ "list-none", "ml-8", "mr-auto", "mt-8" ] ]
+            [ HH.a
+                [ HP.classNames
+                    [ if route == Home then "overline"
+                      else "no-underline"
+                    , if route == Home then "text-blue-800"
+                      else "text-black"
+                    , "font-bold"
+                    , "text-2xl"
+                    ]
+                , Route.href Home
+                ]
+                [ HH.text "PureMess" ]
             ]
-      ]
+        ]
+      <>
+        case auth of
+          Nothing →
+            [ HH.li
+                [ HP.classNames [ "list-none", "mr-16", "mt-8", "text-xl" ] ]
+                [ HH.a
+                    [ HP.classNames
+                        [ if route == SignIn then "overline"
+                          else "no-underline"
+                        , if route == SignIn then "text-blue-800"
+                          else "text-black"
+                        ]
+                    , Route.href SignIn
+                    ]
+                    [ HH.text "SignIn" ]
+                ]
+            , HH.li
+                [ HP.classNames [ "list-none", "mr-16", "mt-8", "text-xl" ] ]
+                [ HH.a
+                    [ HP.classNames
+                        [ if route == SignUp then "overline"
+                          else "no-underline"
+                        , if route == SignUp then "text-blue-800"
+                          else "text-black"
+                        ]
+                    , Route.href SignUp
+                    ]
+                    [ HH.text "SignUp" ]
+                ]
+            ]
+          Just username →
+            [ HH.text (Username.toString username)
+            , HH.li
+                [ HP.classNames [ "list-none", "mr-16", "mt-8", "text-xl" ] ]
+                [ HH.a [ Route.href Home, HE.onClick \_ → SignedOut UserAction ]
+                    [ HH.text "Sign Out" ]
+                ]
+            ]
   ]
 

@@ -2,6 +2,7 @@ module AppM where
 
 import Preamble
 
+import Auth as Auth
 import Backend as Backend
 import Config (Config)
 import Control.Monad.Reader (class MonadAsk, ReaderT, runReaderT)
@@ -11,9 +12,14 @@ import Effect.Aff (Aff)
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class (class MonadEffect)
 
-newtype Error = BackendError Backend.Error
+data Error
+  = BackendError Backend.Error
+  | AuthError Auth.Error
 
-derive newtype instance Show Error
+instance Show Error where
+  show = case _ of
+    BackendError be → "Backend error: " <> show be
+    AuthError ae → "Auth error: " <> show ae
 
 newtype AppM c a = AppM ((ReaderT c Aff) a)
 

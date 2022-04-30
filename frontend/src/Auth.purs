@@ -10,6 +10,7 @@ import Data.Auth.Token (Token)
 import Data.Auth.Token as Auth
 import Data.Auth.Token as Token
 import Data.Route (Route(..), goTo)
+import Data.Traversable (for)
 import Data.Username (Username)
 import Effect.Class (class MonadEffect)
 import Jwt (JwtError(..))
@@ -37,42 +38,12 @@ instance Show Error where
 tokenKey ∷ Storage.Key Auth.Token
 tokenKey = Storage.Key "auth.token"
 
-getAuth
+tryToken
   ∷ ∀ r m
   . MonadEffect m
   ⇒ MonadAsk { | HasStorage r } m
   ⇒ m (Maybe Auth.Token)
-getAuth = Storage.readKey tokenKey (Token.parse >>> hush)
-
-setAuth
-  ∷ ∀ r m
-  . MonadEffect m
-  ⇒ MonadAsk { | HasStorage r } m
-  ⇒ Auth.Token
-  → m Unit
-setAuth = Storage.writeKey tokenKey Token.toString
-
-removeAuth ∷ ∀ r m. MonadEffect m ⇒ MonadAsk { | HasStorage r } m ⇒ m Unit
-removeAuth = Storage.removeKey tokenKey
-
-withAuth
-  ∷ ∀ r m
-  . MonadEffect m
-  ⇒ MonadAsk { | HasStorage r } m
-  ⇒ (Auth.Token → m Unit)
-  → m Unit
-withAuth cb = maybe (goTo SignIn) cb =<< getAuth
-
-username
-  ∷ ∀ r m
-  . MonadEffect m
-  ⇒ MonadThrow Error m
-  ⇒ MonadAsk { | HasStorage r } m
-  ⇒ m Username
-username =
-  jwtToken >>= case _ of
-    { sub: Just name } → pure name
-    _ → throwError TokenNoSub
+tryToken = Storage.readKey tokenKey (Token.parse >>> hush)
 
 token
   ∷ ∀ m r
@@ -80,7 +51,37 @@ token
   ⇒ MonadAsk { | HasStorage r } m
   ⇒ MonadThrow Error m
   ⇒ m Token
-token = getAuth >>= maybe (throwError TokenIsMissing) pure
+token = tryToken >>= maybe (throwError TokenIsMissing) pure
+
+setToken
+  ∷ ∀ r m
+  . MonadEffect m
+  ⇒ MonadAsk { | HasStorage r } m
+  ⇒ Auth.Token
+  → m Unit
+setToken = Storage.writeKey tokenKey Token.toString
+
+remove ∷ ∀ r m. MonadEffect m ⇒ MonadAsk { | HasStorage r } m ⇒ m Unit
+remove = Storage.removeKey tokenKey
+
+with
+  ∷ ∀ r m
+  . MonadEffect m
+  ⇒ MonadAsk { | HasStorage r } m
+  ⇒ (Auth.Token → m Unit)
+  → m Unit
+with cb = maybe (goTo SignIn) cb =<< tryToken
+
+username
+  ∷ ∀ r m
+  . MonadEffect m
+  ⇒ MonadThrow Error m
+  ⇒ MonadAsk { | HasStorage r } m
+  ⇒ m (Maybe Username)
+username =
+  jwtToken <#> case _ of
+    Just { sub: Just name } → Just name
+    _ → Nothing
 
 type JwtToken = { sub ∷ Maybe Username }
 
@@ -89,8 +90,9 @@ jwtToken
   . MonadEffect m
   ⇒ MonadThrow Error m
   ⇒ MonadAsk { | HasStorage r } m
-  ⇒ m JwtToken
-jwtToken =
-  token >>= Token.toString
+  ⇒ m (Maybe JwtToken)
+jwtToken = do
+  tok ← tryToken
+  for tok $ Token.toString
     >>> Jwt.decodeWith decodeJson
     >>> either (TokenDecoding >>> throwError) pure

@@ -3,7 +3,7 @@ module Component.ChatWindow where
 import Preamble
 
 import AppM (App)
-import Auth (withAuth)
+import Auth as Auth
 import Backend as Backend
 import Chat.Api.Http (UserPresence)
 import Chat.Presence (Presence(..))
@@ -34,7 +34,7 @@ initialState ∷ ∀ i. i → State
 initialState _input = { users: RD.NotAsked }
 
 handleAction ∷ ∀ s. Action → H.HalogenM State Action s Backend.Error App Unit
-handleAction Initialize = withAuth \token → do
+handleAction Initialize = Auth.with \token → do
   H.modify_ _ { users = RD.Loading }
   H.raiseError (Backend.listUsers token) \userPresenses →
     H.modify_ _ { users = RD.Success userPresenses }
