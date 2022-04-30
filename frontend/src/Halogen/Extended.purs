@@ -1,8 +1,15 @@
 module Halogen.Extended
   ( module H
   , OpaqueSlot
+  , raiseError
+  , raiseError_
   ) where
 
+import Control.Alternative (pure)
+import Control.Bind ((>>=))
+import Control.Monad.Except (ExceptT, runExceptT)
+import Data.Either (Either(..))
+import Data.Unit (Unit)
 import Data.Void (Void)
 import Halogen
   ( AttrName(..)
@@ -62,3 +69,20 @@ import Halogen
 -- | considered an "opaque" component. The only way for a parent to interact with the
 -- | component is by sending input.
 type OpaqueSlot slot = ∀ query. H.Slot query Void slot
+
+raiseError
+  ∷ ∀ m e r s a l
+  . ExceptT e (H.HalogenM s a l e m) r
+  → (r → H.HalogenM s a l e m Unit)
+  → H.HalogenM s a l e m Unit
+raiseError et k =
+  runExceptT et >>=
+    case _ of
+      Left e → H.raise e
+      Right a → k a
+
+raiseError_
+  ∷ ∀ s a l e m
+  . ExceptT e (H.HalogenM s a l e m) Unit
+  → H.HalogenM s a l e m Unit
+raiseError_ e = raiseError e pure

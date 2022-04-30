@@ -2,13 +2,11 @@ module Component.Signin where
 
 import Preamble
 
-import AppM (App, hoistAppM)
-import AppM as App
+import AppM (App)
 import Auth (getAuth, setAuth)
 import Backend as Backend
 import Chat.Api.Http (SignInResponse(..))
 import Control.Monad.Except.Trans (runExceptT)
-import Control.Monad.Trans.Class (lift)
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NEA
@@ -22,8 +20,8 @@ import Data.Route as Route
 import Data.Username (Username)
 import Data.Username as Username
 import Data.Validation (Validation)
-import Halogen (liftEffect)
-import Halogen as H
+import Effect.Class (liftEffect)
+import Halogen.Extended as H
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Extended as HH
 import Halogen.HTML.Properties.Extended as HP
@@ -47,12 +45,11 @@ data Action
   | ValidatePassword
   | SubmitForm Event
 
-component ∷ ∀ q o. H.Component q Input o App
+component ∷ ∀ q. H.Component q Input Backend.Error App
 component =
   H.mkComponent
     { initialState
     , render
-
     , eval: H.mkEval $ H.defaultEval
         { handleAction = handleAction
         , initialize = Just Initialize
@@ -252,7 +249,7 @@ render state = signinFormContainer
           [ HP.classNames [ "text-red-800" ] ]
           [ HH.text errorMessage ]
 
-handleAction ∷ ∀ s o. Action → H.HalogenM State Action s o App Unit
+handleAction ∷ ∀ s. Action → H.HalogenM State Action s Backend.Error App Unit
 handleAction = case _ of
   Initialize →
     whenM (getAuth <#> isJust) (goTo ChatWindow)
@@ -283,11 +280,7 @@ handleAction = case _ of
       username ← wrap username.result
       in
         do
-          signInResponse ←
-            Backend.createSession username password
-              # hoistAppM App.BackendError
-              >>> lift
-          case signInResponse of
+          H.raiseError (Backend.createSession username password) case _ of
             SignedIn token → do
               setAuth token
               H.modify_ _ { response = Just (SignedIn token) }

@@ -21,7 +21,7 @@ spec = test "Notifications" do
   error ∷ HS.SubscribeIO App.Error ← liftEffect Subscription.create
   let sendNotification = liftEffect <<< Subscription.notify listener
   let config = { notifications, backendApiUrl: "http://localhost" }
-  let runM = App.run config error.listener
+  let runM = App.run config
   runComponent (initialState emitter) runM evalSpec \simulateAction → do
     traverse_ sendNotification [ useful "u", important "i", critical "c" ]
     simulateAction $ Close 1

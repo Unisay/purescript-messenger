@@ -4,10 +4,10 @@ module Component.Navigation
 
 import Preamble
 
-import AppM (App, hoistAppM)
-import AppM as App
+import AppM (App)
 import Auth (getAuth, removeAuth)
 import Backend (deleteSession)
+import Backend as Backend
 import Chat.Api.Http (SignoutReason(..))
 import Control.Monad.Reader (asks)
 import Data.Auth.Token as Auth
@@ -15,7 +15,7 @@ import Data.Notification (useful)
 import Data.Route (Route(..), goTo)
 import Data.Route as Route
 import Halogen (lift, liftEffect)
-import Halogen as H
+import Halogen.Extended as H
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Extended as HH
 import Halogen.HTML.Properties.Extended as HP
@@ -30,7 +30,7 @@ type Input = Route
 
 data Action = Initialize | SetRoute Route | SignedOut SignoutReason
 
-component ∷ ∀ q o. H.Component q Input o App
+component ∷ ∀ q. H.Component q Input Backend.Error App
 component =
   H.mkComponent
     { initialState
@@ -45,14 +45,14 @@ component =
 initialState ∷ Route → State
 initialState route = { route, auth: Nothing }
 
-handleAction ∷ ∀ s o. Action → H.HalogenM State Action s o App Unit
+handleAction ∷ ∀ s. Action → H.HalogenM State Action s Backend.Error App Unit
 handleAction = case _ of
   Initialize → getAuth >>= \token → H.modify_ _ { auth = token }
   SetRoute newRoute → do
     H.modify_ _ { route = newRoute }
     handleAction Initialize
   SignedOut reason → do
-    deleteSession reason # hoistAppM App.BackendError >>> lift
+    H.raiseError_ $ deleteSession reason
     lift (asks _.notifications.listener) >>= \listener →
       liftEffect $ HS.notify listener $ useful "You successfully signed out!"
     removeAuth

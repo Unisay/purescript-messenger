@@ -3,16 +3,13 @@ module Component.ChatWindow where
 import Preamble
 
 import AppM (App)
-import AppM as App
 import Auth (withAuth)
 import Backend as Backend
 import Chat.Api.Http (UserPresence)
 import Chat.Presence (Presence(..))
-import Control.Monad.Error.Class (throwError)
-import Control.Monad.Except (runExceptT)
 import Data.Array as Array
 import Data.Username as Username
-import Halogen as H
+import Halogen.Extended as H
 import Halogen.HTML.Extended as HH
 import Halogen.HTML.Properties.Extended as HP
 import Network.RemoteData (RemoteData)
@@ -22,7 +19,7 @@ type State = { users ∷ RemoteData Unit (Array UserPresence) }
 
 data Action = Initialize
 
-component ∷ ∀ q i o. H.Component q i o App
+component ∷ ∀ q i. H.Component q i Backend.Error App
 component =
   H.mkComponent
     { initialState
@@ -36,15 +33,11 @@ component =
 initialState ∷ ∀ i. i → State
 initialState _input = { users: RD.NotAsked }
 
-handleAction ∷ ∀ s o. Action → H.HalogenM State Action s o App Unit
+handleAction ∷ ∀ s. Action → H.HalogenM State Action s Backend.Error App Unit
 handleAction Initialize = withAuth \token → do
   H.modify_ _ { users = RD.Loading }
-  runExceptT (Backend.listUsers token) >>= case _ of
-    Left backendError → do
-      H.modify_ _ { users = RD.Failure unit }
-      throwError $ App.BackendError backendError
-    Right userPresenses → do
-      H.modify_ _ { users = RD.Success userPresenses }
+  H.raiseError (Backend.listUsers token) \userPresenses →
+    H.modify_ _ { users = RD.Success userPresenses }
 
 render ∷ ∀ m a. State → H.ComponentHTML a () m
 render { users } = HH.div

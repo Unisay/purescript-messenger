@@ -2,8 +2,7 @@ module Component.Signup where
 
 import Preamble
 
-import AppM (App, hoistAppM)
-import AppM as App
+import AppM (App)
 import Backend as Backend
 import Chat.Api.Http (SignUpResponse(..))
 import Control.Monad.Except (runExceptT)
@@ -23,7 +22,7 @@ import Data.Route as Route
 import Data.Username as Username
 import Data.Validation (Validation)
 import Halogen (liftEffect)
-import Halogen as H
+import Halogen.Extended as H
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Extended as HH
 import Halogen.HTML.Properties.Extended as HP
@@ -57,7 +56,7 @@ initialState _input =
   , response: Nothing
   }
 
-component ∷ ∀ q i o. H.Component q i o App
+component ∷ ∀ q i. H.Component q i Backend.Error App
 component =
   H.mkComponent
     { initialState
@@ -292,7 +291,7 @@ render state = signupFormContainer
           [ HP.classNames [ "text-red-800" ] ]
           [ HH.text errorMessage ]
 
-handleAction ∷ ∀ i o. Action → H.HalogenM State Action i o App Unit
+handleAction ∷ ∀ i. Action → H.HalogenM State Action i Backend.Error App Unit
 handleAction = case _ of
   SetUsername str → H.modify_ $ \state →
     state { username { inputValue = str } }
@@ -332,12 +331,9 @@ handleAction = case _ of
       email ← wrap email.result
       in
         do
-          signUpResponse ← Backend.createAccount username password email
-            # hoistAppM App.BackendError
-            >>> lift
           notify ← lift (asks _.notifications.listener) <#> \listener →
             liftEffect <<< HS.notify listener
-          case signUpResponse of
+          H.raiseError (Backend.createAccount username password email) case _ of
             SignedUp → do
               notify $ useful "Welcome to the chat!"
               goTo Route.SignIn

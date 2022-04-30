@@ -8,7 +8,7 @@
   , "bifunctors"
   , "codec-argonaut"
   , "common"
-  , "contravariant"
+  , "control"
   , "effect"
   , "either"
   , "enums"
