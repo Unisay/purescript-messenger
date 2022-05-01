@@ -91,40 +91,28 @@ render { route, auth } = HH.nav_
         ]
       <>
         case auth of
-          Nothing →
+          Nothing → [ SignIn, SignUp ] >>= \route' → pure $
+            HH.li
+              [ HP.classNames [ "list-none", "mr-16", "mt-8", "text-xl" ] ]
+              [ HH.a
+                  [ HP.classNames
+                      [ if route == route' then "overline"
+                        else "no-underline"
+                      , if route == route' then "text-blue-800"
+                        else "text-black"
+                      ]
+                  , Route.href route'
+                  ]
+                  [ HH.text $ show route' ]
+              ]
+          Just username →
             [ HH.li
                 [ HP.classNames [ "list-none", "mr-16", "mt-8", "text-xl" ] ]
-                [ HH.a
-                    [ HP.classNames
-                        [ if route == SignIn then "overline"
-                          else "no-underline"
-                        , if route == SignIn then "text-blue-800"
-                          else "text-black"
-                        ]
-                    , Route.href SignIn
-                    ]
-                    [ HH.text "SignIn" ]
-                ]
-            , HH.li
-                [ HP.classNames [ "list-none", "mr-16", "mt-8", "text-xl" ] ]
-                [ HH.a
-                    [ HP.classNames
-                        [ if route == SignUp then "overline"
-                          else "no-underline"
-                        , if route == SignUp then "text-blue-800"
-                          else "text-black"
-                        ]
-                    , Route.href SignUp
-                    ]
-                    [ HH.text "SignUp" ]
-                ]
-            ]
-          Just username →
-            [ HH.text (Username.toString username)
+                [ HH.text $ Username.toString username ]
             , HH.li
                 [ HP.classNames [ "list-none", "mr-16", "mt-8", "text-xl" ] ]
                 [ HH.a [ Route.href Home, HE.onClick \_ → SignedOut UserAction ]
-                    [ HH.text "Sign Out" ]
+                    [ HH.text "SignOut" ]
                 ]
             ]
   ]
