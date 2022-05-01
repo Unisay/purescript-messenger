@@ -2,29 +2,21 @@ module Component.Home where
 
 import Preamble
 
-import Data.Route (Route(..), goTo)
+import Data.Route as Route
 import Effect.Aff.Class (class MonadAff)
 import Halogen as H
-import Halogen.HTML.Events as HE
 import Halogen.HTML.Extended as HH
 import Halogen.HTML.Properties.Extended as HP
 
-type State = Unit
-
-data Action = SignInButtonClicked | SignUpButtonClicked | DebugButtonClicked
-
-component ∷ ∀ q i o m. MonadAff m ⇒ H.Component q i o m
+component ∷ ∀ m o q i. MonadAff m ⇒ H.Component q i o m
 component =
   H.mkComponent
-    { initialState
+    { initialState: const unit
     , render
-    , eval: H.mkEval $ H.defaultEval { handleAction = handleAction }
+    , eval: H.mkEval H.defaultEval
     }
 
-initialState ∷ ∀ i. i → State
-initialState _input = unit
-
-render ∷ ∀ m. State → H.ComponentHTML Action () m
+render ∷ ∀ m a s. s → H.ComponentHTML a () m
 render _state = HH.div
   [ HP.classNames
       [ "flex"
@@ -64,53 +56,17 @@ render _state = HH.div
               , "basis-auto"
               ]
           ]
-          [ HH.button
-              [ HP.type_ HP.ButtonButton
-              , HE.onClick \_ → SignInButtonClicked
-              , HP.classNames
+          $ [ Route.SignIn, Route.SignUp, Route.Debug ]
+          >>= \route → pure $
+            HH.a
+              [ HP.classNames
                   [ "justify-center"
                   , "flex"
                   , "font-medium"
                   , "w-full"
                   ]
+              , Route.href route
               ]
-              [ HH.span_
-                  [ HH.text "Go to SignIn" ]
-              ]
-          , HH.button
-              [ HP.type_ HP.ButtonButton
-              , HE.onClick \_ → SignUpButtonClicked
-              , HP.classNames
-                  [ "justify-center"
-                  , "flex"
-                  , "font-medium"
-                  , "w-full"
-                  ]
-              ]
-              [ HH.span_
-                  [ HH.text "Go to SignUp" ]
-              ]
-          , HH.button
-              [ HP.type_ HP.ButtonButton
-              , HE.onClick \_ → DebugButtonClicked
-              , HP.classNames
-                  [ "justify-center"
-                  , "flex"
-                  , "font-medium"
-                  , "w-full"
-                  ]
-              ]
-              [ HH.span_
-                  [ HH.text "Go to Debug" ]
-              ]
-          ]
+              [ HH.span_ [ HH.text $ "Go to " <> show route ] ]
       ]
   ]
-
-handleAction
-  ∷ ∀ i o m. MonadAff m ⇒ Action → H.HalogenM State Action i o m Unit
-handleAction = goTo <<< case _ of
-  SignUpButtonClicked → SignUp
-  SignInButtonClicked → SignIn
-  DebugButtonClicked → Debug
-
