@@ -7,12 +7,14 @@ import Auth as Auth
 import Backend as Backend
 import Chat.Api.Http (SignInResponse(..))
 import Control.Monad.Except.Trans (runExceptT)
+import Control.Monad.Reader (asks)
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NEA
 import Data.Either (isLeft)
 import Data.EitherR (flipEither)
 import Data.Newtype (wrap)
+import Data.Notification (useful)
 import Data.Password (Password)
 import Data.Password as Password
 import Data.Route (Route(..), goTo)
@@ -25,6 +27,7 @@ import Halogen.Extended as H
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Extended as HH
 import Halogen.HTML.Properties.Extended as HP
+import Halogen.Subscription as HS
 import Web.Event.Event (Event)
 import Web.Event.Event as Event
 
@@ -273,6 +276,7 @@ handleAction = case _ of
         state { password { result = pure $ Right password' } }
   SubmitForm ev → do
     liftEffect $ Event.preventDefault ev
+    H.modify_ _ { loading = true }
     { password, username } ← H.get
     let pass = pure unit
     maybe pass (either (const pass) identity) $ runExceptT ado
@@ -282,9 +286,11 @@ handleAction = case _ of
         do
           H.raiseError (Backend.createSession username password) case _ of
             SignedIn token → do
+              notify ← asks _.notifications.listener <#> \listener →
+                HS.notify listener >>> liftEffect
               Auth.setToken token
-              H.modify_ _ { response = Just (SignedIn token) }
               goTo Route.ChatWindow
+              H.modify_ _ { response = Just (SignedIn token), loading = false }
+              notify $ useful "Welcome to the chat!"
             Forbidden →
-              H.modify_ _ { response = Just Forbidden }
-
+              H.modify_ _ { response = Just Forbidden, loading = false }
