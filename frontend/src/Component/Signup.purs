@@ -7,7 +7,6 @@ import Backend as Backend
 import Chat.Api.Http (SignUpResponse(..))
 import Control.Monad.Except (runExceptT)
 import Control.Monad.Reader (asks)
-import Control.Monad.Trans.Class (lift)
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NEA
@@ -293,34 +292,28 @@ render state = signupFormContainer
 
 handleAction ∷ ∀ i. Action → H.HalogenM State Action i Backend.Error App Unit
 handleAction = case _ of
-  SetUsername str → H.modify_ $ \state →
-    state { username { inputValue = str } }
-  SetPassword str → H.modify_ $ \state →
-    state { password { inputValue = str } }
-  SetEmail str → H.modify_ $ \state →
-    state { email { inputValue = str } }
+  SetUsername str → H.modify_ _ { username { inputValue = str } }
+  SetPassword str → H.modify_ _ { password { inputValue = str } }
+  SetEmail str → H.modify_ _ { email { inputValue = str } }
   ValidateUsername → do
     { username } ← H.get
     case Username.parse username.inputValue of
-      Left errors → H.modify_ $ \state →
-        state { username { result = pure $ Left errors } }
-      Right username' → H.modify_ $ \state →
-        state { username { result = pure $ Right username' } }
+      Left errors → H.modify_ _ { username { result = pure $ Left errors } }
+      Right username' → H.modify_ _
+        { username { result = pure $ Right username' } }
   ValidatePassword → do
     { password } ← H.get
     case Password.parse password.inputValue of
-      Left err → H.modify_ $ \state →
-        state { password { result = pure $ Left $ pure err } }
-      Right password' → H.modify_ $ \state →
-        state { password { result = pure $ Right password' } }
+      Left err → H.modify_ _ { password { result = pure $ Left $ pure err } }
+      Right password' → H.modify_ _
+        { password { result = pure $ Right password' } }
   ValidateEmail → do
     { email } ← H.get
     case Email.parse email.inputValue of
       Left _err → H.modify_ $ \state → do
         let err = "Not a valid email"
         state { email { result = pure $ Left $ pure err } }
-      Right email' → H.modify_ $ \state →
-        state { email { result = pure $ Right email' } }
+      Right email' → H.modify_ _ { email { result = pure $ Right email' } }
   SubmitForm ev → do
     liftEffect $ Event.preventDefault ev
     { email, username, password } ← H.get
@@ -331,12 +324,11 @@ handleAction = case _ of
       email ← wrap email.result
       in
         do
-          notify ← lift (asks _.notifications.listener) <#> \listener →
-            liftEffect <<< HS.notify listener
+          notify ← asks _.notifications.listener <#> \listener →
+            HS.notify listener >>> liftEffect
           H.raiseError (Backend.createAccount username password email) case _ of
             SignedUp → do
-              notify $ useful "Welcome to the chat!"
               goTo Route.SignIn
+              notify $ useful "You successfully created your account!"
             AlreadyRegistered →
               notify $ important "User already registered"
-
