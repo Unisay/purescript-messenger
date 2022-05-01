@@ -8,7 +8,6 @@
   , "bifunctors"
   , "codec-argonaut"
   , "common"
-  , "debug"
   , "effect"
   , "either"
   , "enums"
