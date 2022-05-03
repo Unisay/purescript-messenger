@@ -2,22 +2,35 @@ module Component.Home where
 
 import Preamble
 
+import AppM (App)
+import AppM as App
+import Auth as Auth
 import Data.Route as Route
-import Effect.Aff.Class (class MonadAff)
-import Halogen as H
+import Data.Username (Username)
+import Halogen.Extended as H
 import Halogen.HTML.Extended as HH
 import Halogen.HTML.Properties.Extended as HP
 
-component ∷ ∀ m o q i. MonadAff m ⇒ H.Component q i o m
+type State = { auth ∷ Maybe Username }
+
+data Action = Initialize
+
+component ∷ ∀ q i. H.Component q i App.Error App
 component =
   H.mkComponent
-    { initialState: const unit
+    { initialState
     , render
-    , eval: H.mkEval H.defaultEval
+    , eval: H.mkEval $ H.defaultEval
+        { handleAction = handleAction
+        , initialize = Just Initialize
+        }
     }
 
-render ∷ ∀ m a s. s → H.ComponentHTML a () m
-render _state = HH.div
+initialState ∷ ∀ i. i → State
+initialState _ = { auth: Nothing }
+
+render ∷ ∀ m. State → H.ComponentHTML Action () m
+render { auth } = HH.div
   [ HP.classNames
       [ "flex"
       , "items-center"
@@ -56,17 +69,26 @@ render _state = HH.div
               , "basis-auto"
               ]
           ]
-          $ [ Route.SignIn, Route.SignUp, Route.Debug ]
-          >>= \route → pure $
-            HH.a
-              [ HP.classNames
-                  [ "justify-center"
-                  , "flex"
-                  , "font-medium"
-                  , "w-full"
-                  ]
-              , Route.href route
-              ]
-              [ HH.span_ [ HH.text $ "Go to " <> show route ] ]
+          $
+            ( \route → pure
+                $ HH.a
+                    [ HP.classNames
+                        [ "justify-center"
+                        , "flex"
+                        , "font-medium"
+                        , "w-full"
+                        ]
+                    , Route.href route
+                    ]
+                    [ HH.span_ [ HH.text $ "Go to " <> show route ] ]
+            )
+          =<< case auth of
+            Nothing → [ Route.SignIn, Route.SignUp, Route.Debug ]
+            Just _ → pure Route.ChatWindow
       ]
   ]
+
+handleAction ∷ ∀ s. Action → H.HalogenM State Action s App.Error App Unit
+handleAction Initialize =
+  H.raiseErrors Auth.username App.AuthError \username → do
+    H.modify_ _ { auth = username }

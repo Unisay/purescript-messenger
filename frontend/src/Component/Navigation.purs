@@ -46,21 +46,6 @@ component =
 initialState ∷ Route → State
 initialState route = { route, auth: Nothing }
 
-handleAction ∷ ∀ s. Action → H.HalogenM State Action s App.Error App Unit
-handleAction = case _ of
-  Initialize → H.raiseErrors Auth.username App.AuthError \username → do
-    H.modify_ _ { auth = username }
-  SetRoute newRoute →
-    H.raiseErrors Auth.username App.AuthError \username → do
-      H.modify_ _ { route = newRoute, auth = username }
-  SignedOut reason → do
-    H.raiseErrors_ (deleteSession reason) App.BackendError
-    listener ← asks _.notifications.listener
-    liftEffect $ HS.notify listener $ useful "You successfully signed out!"
-    Auth.remove
-    H.modify_ _ { auth = Nothing }
-    goTo Route.Home
-
 render ∷ ∀ s m. State → H.ComponentHTML Action s m
 render { route, auth } = HH.nav_
   [ HH.ul
@@ -117,3 +102,17 @@ render { route, auth } = HH.nav_
             ]
   ]
 
+handleAction ∷ ∀ s. Action → H.HalogenM State Action s App.Error App Unit
+handleAction = case _ of
+  Initialize → H.raiseErrors Auth.username App.AuthError \username → do
+    H.modify_ _ { auth = username }
+  SetRoute newRoute →
+    H.raiseErrors Auth.username App.AuthError \username → do
+      H.modify_ _ { route = newRoute, auth = username }
+  SignedOut reason → do
+    H.raiseErrors_ (deleteSession reason) App.BackendError
+    listener ← asks _.notifications.listener
+    liftEffect $ HS.notify listener $ useful "You successfully signed out!"
+    H.modify_ _ { auth = Nothing }
+    Auth.remove
+    goTo Route.Home

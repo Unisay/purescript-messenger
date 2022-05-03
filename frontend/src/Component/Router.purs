@@ -42,7 +42,6 @@ data Action = Initialize | RecordAppError App.Error | ErrorAction Error.Output
 
 type ChildSlots =
   ( notifications ∷ H.OpaqueSlot Unit
-  , home ∷ H.OpaqueSlot Unit
   , navigation ∷ ∀ query. H.Slot query App.Error Int
   , signin ∷ ∀ query. H.Slot query Backend.Error Int
   , signup ∷ ∀ query. H.Slot query Backend.Error Int
@@ -50,6 +49,7 @@ type ChildSlots =
   , debug ∷ H.OpaqueSlot Unit
   , chatWindow ∷ ∀ query. H.Slot query Backend.Error Int
   , error ∷ ∀ query. H.Slot query Error.Output Int
+  , home ∷ ∀ query. H.Slot query App.Error Int
   )
 
 component ∷ H.Component Query Config Void Aff
@@ -131,11 +131,9 @@ render { config, route, error } =
       hoistApp ∷ ∀ q i o. H.Component q i o App → H.Component q i o Aff
       hoistApp = HC.hoist (App.run config)
       slotNotifications =
-        HH.slot_ (Proxy ∷ _ "notifications") unit comp unit
-        where
-        comp = hoistApp Notifications.component
-      slotHome =
-        HH.slot_ (Proxy ∷ _ "home") unit Home.component unit
+        HH.slot_ (Proxy ∷ _ "notifications") unit
+          (hoistApp Notifications.component)
+          unit
       slotNavigation =
         HH.slot (Proxy ∷ _ "navigation") 0
           (hoistApp Navigation.component)
@@ -155,6 +153,9 @@ render { config, route, error } =
       slotChatWindow =
         HH.slot (Proxy ∷ _ "chatWindow") 4 (hoistApp ChatWindow.component) unit
           (RecordAppError <<< App.BackendError)
+      slotHome =
+        HH.slot (Proxy ∷ _ "home") 5 (hoistApp Home.component) unit
+          RecordAppError
     Just err →
-      [ HH.slot (Proxy ∷ _ "error") 5 Error.component err ErrorAction ]
+      [ HH.slot (Proxy ∷ _ "error") 6 Error.component err ErrorAction ]
 
