@@ -20,11 +20,13 @@ main = runHalogenAff do
   body ← awaitBody
   storage ← liftEffect $ window >>= localStorage
   notifications ← liftEffect Subscription.create
+  authEvents ← Auth.envents
   let
     config =
       { notifications
       , backendApiUrl: "http://localhost:8081"
       , storage
+      , authEvents
       }
   router ← runUI Router.component config body
   void $ liftEffect $ matchesWith (RD.parse Route.codec) \old new →

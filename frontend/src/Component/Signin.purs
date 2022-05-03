@@ -5,12 +5,13 @@ import Preamble
 import AppM (App)
 import Auth as Auth
 import Backend as Backend
-import Chat.Api.Http (SignInResponse(..))
+import Control.Monad.Error.Class (throwError)
 import Control.Monad.Except.Trans (runExceptT)
 import Control.Monad.Reader (asks)
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NEA
+import Data.Auth.Token (Token)
 import Data.Either (isLeft)
 import Data.EitherR (flipEither)
 import Data.Newtype (wrap)
@@ -28,17 +29,19 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Extended as HH
 import Halogen.HTML.Properties.Extended as HP
 import Halogen.Subscription as HS
+import Network.RemoteData (RemoteData(..), isLoading)
 import Web.Event.Event (Event)
 import Web.Event.Event as Event
 
 type State =
-  { loading ∷ Boolean
-  , username ∷ Validation Username
+  { username ∷ Validation Username
   , password ∷ Validation Password
-  , response ∷ Maybe SignInResponse
+  , response ∷ RemoteData Unit Backend.SignInResponse
   }
 
 type Input = Unit
+
+type Output = Either Backend.Error Token
 
 data Action
   = Initialize
@@ -48,7 +51,7 @@ data Action
   | ValidatePassword
   | SubmitForm Event
 
-component ∷ ∀ q. H.Component q Input Backend.Error App
+component ∷ ∀ q. H.Component q Input Output App
 component =
   H.mkComponent
     { initialState
@@ -61,10 +64,9 @@ component =
 
 initialState ∷ Input → State
 initialState _ =
-  { loading: false
-  , username: { inputValue: "", result: Nothing }
+  { username: { inputValue: "", result: Nothing }
   , password: { inputValue: "", result: Nothing }
-  , response: Nothing
+  , response: NotAsked
   }
 
 render ∷ ∀ m. State → H.ComponentHTML Action () m
@@ -117,9 +119,9 @@ render state = signinFormContainer
       ]
       [ HH.div [ HP.classNames [ "text-red-600" ] ]
           [ HH.text case state.response of
-              Just (SignedIn _) → "You successfully signed in!"
-              Just Forbidden → "Incorrect username or password!"
-              Nothing → ""
+              Success (Backend.SignedIn _) → "You successfully signed in!"
+              Success Backend.Forbidden → "Incorrect username or password!"
+              _ → ""
           ]
       , HH.div_ $ Array.concat
           [ [ HH.label
@@ -202,7 +204,7 @@ render state = signinFormContainer
           ]
       , HH.div_
           [ HH.button
-              [ HP.disabled state.loading
+              [ HP.disabled $ isLoading state.response
               , HP.type_ HP.ButtonSubmit
               , HP.classNames
                   [ "group"
@@ -217,9 +219,9 @@ render state = signinFormContainer
                   , "font-medium"
                   , "rounded-md"
                   , "text-white"
-                  , if state.loading then "bg-gray-500"
+                  , if isLoading state.response then "bg-gray-500"
                     else "bg-indigo-600"
-                  , if state.loading then "hover-bg-gray-600"
+                  , if isLoading state.response then "hover-bg-gray-600"
                     else "hover-bg-indigo-700"
                   , "focus-outline-none"
                   , "focus-ring-2"
@@ -230,7 +232,8 @@ render state = signinFormContainer
               [ HH.span
                   [ HP.classNames [ "left-0", "flex", "items-center", "pl-3" ] ]
                   [ HH.text
-                      if state.loading then "Signing in..." else "Sign In"
+                      if isLoading state.response then "Signing in..."
+                      else "Sign In"
                   ]
               ]
           ]
@@ -252,10 +255,10 @@ render state = signinFormContainer
           [ HP.classNames [ "text-red-800" ] ]
           [ HH.text errorMessage ]
 
-handleAction ∷ ∀ s. Action → H.HalogenM State Action s Backend.Error App Unit
+handleAction ∷ ∀ s. Action → H.HalogenM State Action s Output App Unit
 handleAction = case _ of
   Initialize →
-    whenM (Auth.tryToken <#> isJust) (goTo ChatWindow)
+    whenM (Auth.loadToken <#> isJust) (goTo ChatWindow)
   SetUsername str → H.modify_ $ \state →
     state { username { inputValue = str } }
   SetPassword str → H.modify_ $ \state →
@@ -276,21 +279,21 @@ handleAction = case _ of
         state { password { result = pure $ Right password' } }
   SubmitForm ev → do
     liftEffect $ Event.preventDefault ev
-    H.modify_ _ { loading = true }
     { password, username } ← H.get
-    let pass = pure unit
     maybe pass (either (const pass) identity) $ runExceptT ado
       password ← wrap password.result
       username ← wrap username.result
       in
         do
-          H.raiseError (Backend.createSession username password) case _ of
-            SignedIn token → do
-              notify ← asks _.notifications.listener <#> \listener →
-                HS.notify listener >>> liftEffect
-              Auth.setToken token
-              goTo Route.ChatWindow
-              H.modify_ _ { response = Just (SignedIn token), loading = false }
-              notify $ useful "Welcome to the chat!"
-            Forbidden →
-              H.modify_ _ { response = Just Forbidden, loading = false }
+          H.modify_ _ { response = Loading }
+          H.raiseErrors (Backend.createSession username password) throwError
+            \response → do
+              H.modify_ _ { response = Success response }
+              case response of
+                Backend.Forbidden → pass
+                Backend.SignedIn token → do
+                  notify ← asks _.notifications.listener <#> \listener →
+                    HS.notify listener >>> liftEffect
+                  Auth.saveToken token
+                  goTo Route.ChatWindow
+                  notify $ useful "Welcome to the chat!"

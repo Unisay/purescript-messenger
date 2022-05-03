@@ -70,25 +70,25 @@ render { auth } = HH.div
               ]
           ]
           $
-            ( \route → pure
-                $ HH.a
-                    [ HP.classNames
-                        [ "justify-center"
-                        , "flex"
-                        , "font-medium"
-                        , "w-full"
-                        ]
-                    , Route.href route
+            ( \route → HH.a
+                [ HP.classNames
+                    [ "justify-center"
+                    , "flex"
+                    , "font-medium"
+                    , "w-full"
                     ]
-                    [ HH.span_ [ HH.text $ "Go to " <> show route ] ]
+                , Route.href route
+                ]
+                [ HH.span_ [ HH.text $ "Go to " <> show route ] ]
             )
-          =<< case auth of
+          <$> case auth of
             Nothing → [ Route.SignIn, Route.SignUp, Route.Debug ]
             Just _ → pure Route.ChatWindow
       ]
   ]
 
 handleAction ∷ ∀ s. Action → H.HalogenM State Action s App.Error App Unit
-handleAction Initialize =
-  H.raiseErrors Auth.username App.AuthError \username → do
-    H.modify_ _ { auth = username }
+handleAction Initialize = do
+  log "Initializing home"
+  H.raiseErrors Auth.loadInfo App.AuthError \info → do
+    H.modify_ _ { auth = info <#> _.username }

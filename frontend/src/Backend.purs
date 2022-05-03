@@ -14,10 +14,8 @@ import Affjax.RequestBody (RequestBody(..)) as AX
 import Affjax.RequestHeader (RequestHeader(..)) as AX
 import Affjax.ResponseFormat as ResponseFormat
 import Affjax.StatusCode (StatusCode(..))
-import Auth as Auth
 import Chat.Api.Http
-  ( SignInResponse(..)
-  , SignInResponseBody
+  ( SignInResponseBody
   , SignUpResponse(..)
   , SignUpResponseBody
   , SignoutReason
@@ -50,11 +48,9 @@ type Transport = AX.Request Json → Aff (Either AX.Error (AX.Response Json))
 
 data Error
   = AffjaxError AX.Error
-  | AuthError Auth.Error
   | ResponseDecodeError JsonDecodeError
   | ResponseStatusError { expected ∷ StatusCode, actual ∷ StatusCode }
   | ResponseProblem Problem
-  | DeleteSessionWithoutUsername
 
 instance Show Error where
   show err = "Backend error: " <> case err of
@@ -69,9 +65,15 @@ instance Show Error where
         <> show expected
     ResponseProblem problem →
       "server responded with Problem: " <> show problem
-    AuthError ae → "Authentication error: " <> show ae
-    DeleteSessionWithoutUsername →
-      "deleteSession is invoked but current token has no username"
+
+data SignInResponse
+  = SignedIn Token
+  | Forbidden
+
+instance Show SignInResponse where
+  show = case _ of
+    SignedIn _token → "Signed In"
+    Forbidden → "Sign in is forbidden"
 
 createSession
   ∷ ∀ r m
@@ -193,7 +195,9 @@ deleteSession
   . MonadAff m
   ⇒ MonadThrow Error m
   ⇒ MonadAsk (Record (HasBackendConfig (HasStorage r))) m
-  ⇒ SignoutReason
+  ⇒ Username
+  → Token
+  → SignoutReason
   → m Unit
 deleteSession = deleteSession' AX.request
 
@@ -203,13 +207,12 @@ deleteSession'
   ⇒ MonadThrow Error m
   ⇒ MonadAsk (Record (HasBackendConfig (HasStorage r))) m
   ⇒ Transport
+  → Username
+  → Token
   → SignoutReason
   → m Unit
-deleteSession' transport reason = do
+deleteSession' transport username token reason = do
   backendApiUrl ← asks _.backendApiUrl
-  username ← hoistError AuthError Auth.username >>=
-    maybe (throwError DeleteSessionWithoutUsername) pure
-  token ← hoistError AuthError Auth.token
   response ← liftAff $ transport AX.defaultRequest
     { method = Left DELETE
     , url = String.joinWith "/"

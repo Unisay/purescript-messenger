@@ -12,14 +12,7 @@ import Data.Username (Username)
 import Foreign (fail, readString) as Foreign
 import Foreign.Generic (class Decode, ForeignError(..)) as Foreign
 
-data SignInResponse
-  = SignedIn Token
-  | Forbidden
 
-instance Show SignInResponse where
-  show = case _ of
-    SignedIn _token → "Signed In"
-    Forbidden → "Sign in is forbidden"
 
 data SignUpResponse
   = SignedUp

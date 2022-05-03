@@ -38,14 +38,18 @@ type State =
   , error ∷ Maybe App.Error
   }
 
-data Action = Initialize | RecordAppError App.Error | ErrorAction Error.Output
+data Action
+  = Initialize
+  | RecordAppError App.Error
+  | ErrorAction Error.Output
+  | SigninOutput Signin.Output
 
 type ChildSlots =
   ( notifications ∷ H.OpaqueSlot Unit
   , navigation ∷ ∀ query. H.Slot query App.Error Int
-  , signin ∷ ∀ query. H.Slot query Backend.Error Int
+  , signin ∷ ∀ query. H.Slot query Signin.Output Int
   , signup ∷ ∀ query. H.Slot query Backend.Error Int
-  , profile ∷ ∀ query. H.Slot query Backend.Error Int
+  , profile ∷ ∀ query. H.Slot query Signin.Output Int
   , debug ∷ H.OpaqueSlot Unit
   , chatWindow ∷ ∀ query. H.Slot query Backend.Error Int
   , error ∷ ∀ query. H.Slot query Error.Output Int
@@ -87,15 +91,17 @@ handleAction = case _ of
     log $ "Setting error: " <> show err
     H.modify_ _ { error = Just err }
   ErrorAction action → do
-    logShow action
     case action of
       Error.Retry → do
         H.modify_ _ { error = Nothing }
       Error.SignIn → do
-        log "removing token: "
         H.gets _.config >>= runReaderT Auth.remove
         H.modify_ _ { error = Nothing }
         goTo Route.SignIn
+  SigninOutput (Left backendError) →
+    handleAction $ RecordAppError $ App.BackendError backendError
+  SigninOutput (Right token) →
+    ?handle
 
 handleQuery
   ∷ ∀ a m
@@ -141,13 +147,13 @@ render { config, route, error } =
           RecordAppError
       slotSignin =
         HH.slot (Proxy ∷ _ "signin") 1 (hoistApp Signin.component) unit
-          (RecordAppError <<< App.BackendError)
+          SigninOutput
       slotSignup =
         HH.slot (Proxy ∷ _ "signup") 2 (hoistApp Signup.component) unit
           (RecordAppError <<< App.BackendError)
       slotProfile =
         HH.slot (Proxy ∷ _ "profile") 3 (hoistApp Signin.component) unit
-          (RecordAppError <<< App.BackendError)
+          SigninOutput
       slotDebug =
         HH.slot_ (Proxy ∷ _ "debug") unit (hoistApp Debug.component) unit
       slotChatWindow =

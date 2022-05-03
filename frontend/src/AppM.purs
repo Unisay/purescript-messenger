@@ -21,7 +21,7 @@ instance Show Error where
     BackendError be → "Backend error: " <> show be
     AuthError ae → "Auth error: " <> show ae
 
-newtype AppM c a = AppM ((ReaderT c Aff) a)
+newtype AppM c a = AppM (ReaderT c Aff a)
 
 derive instance Newtype (AppM c a) _
 derive newtype instance Functor (AppM c)

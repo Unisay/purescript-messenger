@@ -2,12 +2,12 @@ module Auth where
 
 import Preamble
 
+import Control.Bind (bindFlipped)
 import Control.Monad.Error.Class (class MonadThrow)
 import Control.Monad.Except (throwError)
 import Control.Monad.Reader (class MonadAsk)
 import Data.Argonaut.Decode (JsonDecodeError, decodeJson)
 import Data.Auth.Token (Token)
-import Data.Auth.Token as Auth
 import Data.Auth.Token as Token
 import Data.Route (Route(..), goTo)
 import Data.Traversable (for)
@@ -35,64 +35,51 @@ instance Show Error where
     TokenIsMissing → "Authentication token is missing"
     TokenNoSub → "Authentication token contains no sub claim"
 
-tokenKey ∷ Storage.Key Auth.Token
+type Info = { username ∷ Username, token ∷ Token }
+
+tokenKey ∷ Storage.Key Token
 tokenKey = Storage.Key "auth.token"
 
-tryToken
+loadToken
+  ∷ ∀ r m. MonadEffect m ⇒ MonadAsk { | HasStorage r } m ⇒ m (Maybe Token)
+loadToken = Storage.readKey tokenKey (Token.parse >>> hush)
+
+saveToken
   ∷ ∀ r m
   . MonadEffect m
   ⇒ MonadAsk { | HasStorage r } m
-  ⇒ m (Maybe Auth.Token)
-tryToken = Storage.readKey tokenKey (Token.parse >>> hush)
+  ⇒ Token
+  → m Unit
+saveToken = Storage.writeKey tokenKey Token.toString
 
-token
+removeToken ∷ ∀ r m. MonadEffect m ⇒ MonadAsk { | HasStorage r } m ⇒ m Unit
+removeToken = Storage.removeKey tokenKey
+
+loadInfo
+  ∷ ∀ r m
+  . MonadEffect m
+  ⇒ MonadThrow Error m
+  ⇒ MonadAsk { | HasStorage r } m
+  ⇒ m (Maybe Info)
+loadInfo = do
+  tok ← loadToken
+  for tok decodeToken
+
+decodeToken ∷ ∀ m. MonadThrow Error m ⇒ Token → m Info
+decodeToken token =
+  case dec of
+    Left err → throwError $ TokenDecoding err
+    Right { sub: Nothing } → throwError TokenNoSub
+    Right { sub: Just username } → pure { username, token }
+  where
+  dec ∷ Either (JwtError JsonDecodeError) { sub ∷ Maybe Username }
+  dec = Jwt.decodeWith decodeJson (Token.toString token)
+
+loadedInfo
   ∷ ∀ m r
   . MonadEffect m
   ⇒ MonadAsk { | HasStorage r } m
   ⇒ MonadThrow Error m
-  ⇒ m Token
-token = tryToken >>= maybe (throwError TokenIsMissing) pure
+  ⇒ m Info
+loadedInfo = loadInfo >>= maybe (throwError TokenIsMissing) pure
 
-setToken
-  ∷ ∀ r m
-  . MonadEffect m
-  ⇒ MonadAsk { | HasStorage r } m
-  ⇒ Auth.Token
-  → m Unit
-setToken = Storage.writeKey tokenKey Token.toString
-
-remove ∷ ∀ r m. MonadEffect m ⇒ MonadAsk { | HasStorage r } m ⇒ m Unit
-remove = Storage.removeKey tokenKey
-
-with
-  ∷ ∀ r m
-  . MonadEffect m
-  ⇒ MonadAsk { | HasStorage r } m
-  ⇒ (Auth.Token → m Unit)
-  → m Unit
-with cb = maybe (goTo SignIn) cb =<< tryToken
-
-username
-  ∷ ∀ r m
-  . MonadEffect m
-  ⇒ MonadThrow Error m
-  ⇒ MonadAsk { | HasStorage r } m
-  ⇒ m (Maybe Username)
-username =
-  jwtToken <#> case _ of
-    Just { sub: Just name } → Just name
-    _ → Nothing
-
-type JwtToken = { sub ∷ Maybe Username }
-
-jwtToken
-  ∷ ∀ r m
-  . MonadEffect m
-  ⇒ MonadThrow Error m
-  ⇒ MonadAsk { | HasStorage r } m
-  ⇒ m (Maybe JwtToken)
-jwtToken = do
-  tok ← tryToken
-  for tok $ Token.toString
-    >>> Jwt.decodeWith decodeJson
-    >>> either (TokenDecoding >>> throwError) pure

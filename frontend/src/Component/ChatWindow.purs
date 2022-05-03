@@ -8,6 +8,7 @@ import Backend as Backend
 import Chat.Api.Http (UserPresence)
 import Chat.Presence (Presence(..))
 import Data.Array as Array
+import Data.Route (Route(..), goTo)
 import Data.Username as Username
 import Halogen.Extended as H
 import Halogen.HTML.Extended as HH
@@ -34,7 +35,7 @@ initialState ∷ ∀ i. i → State
 initialState _input = { users: RD.NotAsked }
 
 handleAction ∷ ∀ s. Action → H.HalogenM State Action s Backend.Error App Unit
-handleAction Initialize = Auth.with \token → do
+handleAction Initialize = Auth.loadToken >>= maybe (goTo SignIn) \token → do
   H.modify_ _ { users = RD.Loading }
   H.raiseError (Backend.listUsers token) \userPresenses →
     H.modify_ _ { users = RD.Success userPresenses }
