@@ -5,17 +5,15 @@ module Component.Navigation
 
 import Preamble
 
-import AppM (App)
+import AppM (App, Error(..))
 import AppM as App
 import Auth as Auth
 import Backend (deleteSession)
 import Chat.Api.Http (SignoutReason(..))
 import Control.Monad.Reader (asks)
-import Data.Auth.Token (Token)
 import Data.Notification (useful)
 import Data.Route (Route(..), goTo)
 import Data.Route as Route
-import Data.Username (Username)
 import Data.Username as Username
 import Halogen (liftEffect)
 import Halogen.Extended as H
@@ -49,10 +47,10 @@ component =
         }
     }
 
-initialState ∷ Route → State
+initialState ∷ Input → State
 initialState route = { route, auth: Nothing }
 
-render ∷ ∀ s m. State → H.ComponentHTML Action s m
+render ∷ ∀ m. State → H.ComponentHTML Action () m
 render { route, auth } = HH.nav_
   [ HH.ul
       [ HP.classNames
@@ -119,21 +117,23 @@ render { route, auth } = HH.nav_
 
 handleQuery ∷ ∀ s o a. Query a → H.HalogenM State Action s o App (Maybe a)
 handleQuery (SetAuth info a) = do
-  H.modify_ _ { auth = Just info }
-  pure $ Just a
+  log "nav is handling query"
+  H.modify_ _ { auth = Just info } $> Just a
 
 handleAction ∷ ∀ s. Action → H.HalogenM State Action s App.Error App Unit
 handleAction = case _ of
-  Initialize → H.raiseErrors Auth.loadInfo App.AuthError \info → do
+  Initialize → H.raiseErrors Auth.loadInfo App.AuthError \info →
     H.modify_ _ { auth = info }
   SetRoute newRoute →
     H.modify_ _ { route = newRoute }
   SignOut reason → do
-    { username, token } ←
-      H.raiseError Auth.loadInfo >>= maybe (?err) pure
-    H.raiseErrors_ (deleteSession username token reason) App.BackendError
-    listener ← asks _.notifications.listener
-    liftEffect $ HS.notify listener $ useful "You successfully signed out!"
-    H.modify_ _ { auth = Nothing }
-    Auth.removeToken
-    goTo Route.Home
+    H.raiseErrors Auth.loadInfo AuthError \v → H.modify_ _ { auth = v }
+    H.gets _.auth >>= case _ of
+      Nothing → H.raise $ App.AuthError Auth.TokenIsMissing
+      Just { username, token } → do
+        H.raiseErrors_ (deleteSession username token reason) App.BackendError
+        listener ← asks _.notifications.listener
+        liftEffect $ HS.notify listener $ useful "You successfully signed out!"
+        H.modify_ _ { auth = Nothing }
+        Auth.removeToken
+        goTo Route.Home

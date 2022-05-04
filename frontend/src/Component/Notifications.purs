@@ -64,7 +64,15 @@ initialState _ =
 render ∷ ∀ m. State → HH.ComponentHTML Action () m
 render { queue } =
   HH.div
-    [ HP.classNames [ "fixed", "flex", "flex-col", "w-full", "items-center" ] ]
+    [ HP.classNames
+        [ "fixed"
+        , "flex"
+        , "flex-col"
+        , "w-full"
+        , "items-center"
+        , "z-10"
+        ]
+    ]
     [ HH.ul [ HP.classNames [ "w-2/3" ] ] $ renderNotification <$> queue ]
   where
   renderNotification

@@ -18,6 +18,7 @@ import Component.Notifications as Notifications
 import Component.Signin as Signin
 import Component.Signup as Signup
 import Config (Config)
+import Control.Monad.Except (runExceptT)
 import Control.Monad.Reader (runReaderT)
 import Data.Route (Route(..), goTo)
 import Data.Route as Route
@@ -46,14 +47,14 @@ data Action
 
 type ChildSlots =
   ( notifications ∷ H.OpaqueSlot Unit
-  , navigation ∷ ∀ query. H.Slot query App.Error Int
+  , navigation ∷ H.Slot Navigation.Query App.Error Int
+  , home ∷ H.Slot Home.Query App.Error Int
   , signin ∷ ∀ query. H.Slot query Signin.Output Int
   , signup ∷ ∀ query. H.Slot query Backend.Error Int
   , profile ∷ ∀ query. H.Slot query Signin.Output Int
   , debug ∷ H.OpaqueSlot Unit
   , chatWindow ∷ ∀ query. H.Slot query Backend.Error Int
   , error ∷ ∀ query. H.Slot query Error.Output Int
-  , home ∷ ∀ query. H.Slot query App.Error Int
   )
 
 component ∷ H.Component Query Config Void Aff
@@ -95,13 +96,22 @@ handleAction = case _ of
       Error.Retry → do
         H.modify_ _ { error = Nothing }
       Error.SignIn → do
-        H.gets _.config >>= runReaderT Auth.remove
+        H.gets _.config >>= runReaderT Auth.removeToken
         H.modify_ _ { error = Nothing }
         goTo Route.SignIn
   SigninOutput (Left backendError) →
     handleAction $ RecordAppError $ App.BackendError backendError
   SigninOutput (Right token) →
-    ?handle
+    runExceptT (Auth.decodeToken token) >>= case _ of
+      Left err → H.modify_ _ { error = Just $ App.AuthError err }
+      Right info → do
+        H.tell _home 5 (Home.SetAuth info)
+        log "sent query to home"
+        H.tell _navigation 0 (Navigation.SetAuth info)
+        log "sent query to nav"
+    where
+    _navigation = Proxy ∷ Proxy "navigation"
+    _home = Proxy ∷ Proxy "home"
 
 handleQuery
   ∷ ∀ a m

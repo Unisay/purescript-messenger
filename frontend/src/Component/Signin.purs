@@ -295,5 +295,6 @@ handleAction = case _ of
                   notify ← asks _.notifications.listener <#> \listener →
                     HS.notify listener >>> liftEffect
                   Auth.saveToken token
+                  H.raise $ Right token
                   goTo Route.ChatWindow
                   notify $ useful "Welcome to the chat!"

@@ -9,7 +9,7 @@ import Affjax.RequestHeader (RequestHeader(..)) as AX
 import Affjax.ResponseFormat (ResponseFormat)
 import Affjax.ResponseFormat as ResponseFormat
 import Affjax.StatusCode (StatusCode(..))
-import Backend (Transport, createAccount', createSession', listUsers')
+import Backend (SignInResponse(..), Transport, createAccount', createSession', listUsers')
 import Backend as Backend
 import Chat.Api.Http (SignUpResponse(..), UserPresence)
 import Chat.Presence (Presence(..))
