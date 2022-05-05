@@ -129,6 +129,7 @@ render state = signinFormContainer
                 [ HH.text "Username" ]
             , HH.input
                 [ HP.id "input-username"
+                , HP.autofocus true
                 , HP.required true
                 , HP.autocomplete true
                 , HP.placeholder "Username"
@@ -203,9 +204,9 @@ render state = signinFormContainer
           , validationErrors state.password.result
           ]
       , HH.div_
-          [ HH.button
+          [ HH.input
               [ HP.disabled $ isLoading state.response
-              , HP.type_ HP.ButtonSubmit
+              , HP.type_ HP.InputSubmit
               , HP.classNames
                   [ "group"
                   , "w-full"
@@ -228,13 +229,9 @@ render state = signinFormContainer
                   , "focus-ring-offset-2"
                   , "focus-ring-indigo-500"
                   ]
-              ]
-              [ HH.span
-                  [ HP.classNames [ "left-0", "flex", "items-center", "pl-3" ] ]
-                  [ HH.text
-                      if isLoading state.response then "Signing in..."
-                      else "Sign In"
-                  ]
+              , HP.value $
+                  if isLoading state.response then "Signing in..."
+                  else "Sign In"
               ]
           ]
 

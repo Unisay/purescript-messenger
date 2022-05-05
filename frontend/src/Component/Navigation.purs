@@ -1,11 +1,11 @@
 module Component.Navigation
   ( component
-  , Query(..)
+  , Output(..)
   ) where
 
 import Preamble
 
-import AppM (App, Error(..))
+import AppM (App)
 import AppM as App
 import Auth as Auth
 import Backend (deleteSession)
@@ -25,33 +25,31 @@ import Svg.Renderer.Halogen (icon)
 
 type State =
   { route ∷ Route
-  , auth ∷ Maybe Auth.Info
+  , authInfo ∷ Maybe Auth.Info
   }
 
-type Input = Route
+type Input = State
 
-data Action = Initialize | SetRoute Route | SignOut SignoutReason
+data Output = OutputError App.Error | SignedOut
 
-data Query a = SetAuth Auth.Info a
+data Action = UpdateState State | SignOut SignoutReason
 
-component ∷ H.Component Query Input App.Error App
+component ∷ ∀ q. H.Component q Input Output App
 component =
   H.mkComponent
     { initialState
     , render
     , eval: H.mkEval $ H.defaultEval
-        { initialize = Just Initialize
-        , handleAction = handleAction
-        , handleQuery = handleQuery
-        , receive = Just <<< SetRoute
+        { handleAction = handleAction
+        , receive = Just <<< UpdateState
         }
     }
 
 initialState ∷ Input → State
-initialState route = { route, auth: Nothing }
+initialState = identity
 
 render ∷ ∀ m. State → H.ComponentHTML Action () m
-render { route, auth } = HH.nav_
+render { route, authInfo } = HH.nav_
   [ HH.ul
       [ HP.classNames
           [ "bg-white"
@@ -79,7 +77,7 @@ render { route, auth } = HH.nav_
             ]
         ]
       <>
-        case auth <#> _.username of
+        case authInfo <#> _.username of
           Nothing → [ SignIn, SignUp ] >>= \route' → pure $
             HH.li
               [ HP.classNames [ "list-none", "mr-16", "mt-8", "text-xl" ] ]
@@ -103,10 +101,13 @@ render { route, auth } = HH.nav_
                 [ HH.a [ Route.href Home, HE.onClick \_ → SignOut UserAction ]
                     [ icon
                         """
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none"
-                             viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <svg xmlns="http://www.w3.org/2000/svg"
+                             class="h-6 w-6" fill="none"
+                             viewBox="0 0 24 24" stroke="currentColor"
+                             stroke-width="2">
                           <path stroke-linecap="round" stroke-linejoin="round"
-                            d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                            d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3
+                            3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                         </svg>
                         """
                         []
@@ -115,25 +116,19 @@ render { route, auth } = HH.nav_
             ]
   ]
 
-handleQuery ∷ ∀ s o a. Query a → H.HalogenM State Action s o App (Maybe a)
-handleQuery (SetAuth info a) = do
-  log "nav is handling query"
-  H.modify_ _ { auth = Just info } $> Just a
-
-handleAction ∷ ∀ s. Action → H.HalogenM State Action s App.Error App Unit
+handleAction ∷ ∀ s. Action → H.HalogenM State Action s Output App Unit
 handleAction = case _ of
-  Initialize → H.raiseErrors Auth.loadInfo App.AuthError \info →
-    H.modify_ _ { auth = info }
-  SetRoute newRoute →
-    H.modify_ _ { route = newRoute }
+  UpdateState newState →
+    H.put newState
   SignOut reason → do
-    H.raiseErrors Auth.loadInfo AuthError \v → H.modify_ _ { auth = v }
-    H.gets _.auth >>= case _ of
-      Nothing → H.raise $ App.AuthError Auth.TokenIsMissing
+    H.gets _.authInfo >>= case _ of
+      Nothing → H.raise $ OutputError $ App.AuthError Auth.TokenIsMissing
       Just { username, token } → do
-        H.raiseErrors_ (deleteSession username token reason) App.BackendError
+        H.raiseErrors_ (deleteSession username token reason)
+          (OutputError <<< App.BackendError)
         listener ← asks _.notifications.listener
         liftEffect $ HS.notify listener $ useful "You successfully signed out!"
-        H.modify_ _ { auth = Nothing }
+        H.modify_ _ { authInfo = Nothing }
         Auth.removeToken
-        goTo Route.Home
+        H.raise SignedOut
+-- goTo Route.Home

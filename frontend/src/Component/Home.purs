@@ -4,36 +4,31 @@ import Preamble
 
 import AppM (App)
 import AppM as App
-import Auth (Info)
 import Auth as Auth
 import Data.Route as Route
 import Halogen.Extended as H
 import Halogen.HTML.Extended as HH
 import Halogen.HTML.Properties.Extended as HP
 
-type State = { auth ∷ Maybe Info }
+type State = { authInfo ∷ Maybe Auth.Info }
 
-data Action = Initialize
+data Action = UpdateState State
 
-data Query a = SetAuth Auth.Info a
+type Input = State
 
-component ∷ ∀ i. H.Component Query i App.Error App
+component ∷ ∀ q. H.Component q Input App.Error App
 component =
   H.mkComponent
-    { initialState
+    { initialState: identity
     , render
     , eval: H.mkEval $ H.defaultEval
         { handleAction = handleAction
-        , handleQuery = handleQuery
-        , initialize = Just Initialize
+        , receive = Just <<< UpdateState
         }
     }
 
-initialState ∷ ∀ i. i → State
-initialState _ = { auth: Nothing }
-
 render ∷ ∀ m. State → H.ComponentHTML Action () m
-render { auth } = HH.div
+render { authInfo } = HH.div
   [ HP.classNames
       [ "flex"
       , "items-center"
@@ -84,19 +79,12 @@ render { auth } = HH.div
                 ]
                 [ HH.span_ [ HH.text $ "Go to " <> show route ] ]
             )
-          <$> case auth of
+          <$> case authInfo of
             Nothing → [ Route.SignIn, Route.SignUp, Route.Debug ]
             Just _ → [ Route.ChatWindow ]
       ]
   ]
 
-handleQuery ∷ ∀ s o a. Query a → H.HalogenM State Action s o App (Maybe a)
-handleQuery (SetAuth info a) = do
-  log "Home got query"
-  H.modify_ _ { auth = Just info } $> Just a
-
 handleAction ∷ ∀ s. Action → H.HalogenM State Action s App.Error App Unit
-handleAction Initialize = do
-  log "Initializing home"
-  H.raiseErrors Auth.loadInfo App.AuthError
-    \info → H.modify_ _ { auth = info }
+handleAction = case _ of
+  UpdateState state → H.put state

@@ -8,7 +8,6 @@ import Backend as Backend
 import Chat.Api.Http (UserPresence)
 import Chat.Presence (Presence(..))
 import Data.Array as Array
-import Data.Route (Route(..), goTo)
 import Data.Username as Username
 import Halogen.Extended as H
 import Halogen.HTML.Extended as HH
@@ -16,11 +15,18 @@ import Halogen.HTML.Properties.Extended as HP
 import Network.RemoteData (RemoteData)
 import Network.RemoteData as RD
 
-type State = { users ∷ RemoteData Unit (Array UserPresence) }
+type State =
+  { users ∷ RemoteData Unit (Array UserPresence)
+  , authInfo ∷ Auth.Info
+  }
 
 data Action = Initialize
 
-component ∷ ∀ q i. H.Component q i Backend.Error App
+type Input = Auth.Info
+
+type Output = Backend.Error
+
+component ∷ ∀ q. H.Component q Input Output App
 component =
   H.mkComponent
     { initialState
@@ -31,12 +37,13 @@ component =
         }
     }
 
-initialState ∷ ∀ i. i → State
-initialState _input = { users: RD.NotAsked }
+initialState ∷ Auth.Info → State
+initialState authInfo = { users: RD.NotAsked, authInfo }
 
 handleAction ∷ ∀ s. Action → H.HalogenM State Action s Backend.Error App Unit
-handleAction Initialize = Auth.loadToken >>= maybe (goTo SignIn) \token → do
+handleAction Initialize = do
   H.modify_ _ { users = RD.Loading }
+  token ← H.gets _.authInfo.token
   H.raiseError (Backend.listUsers token) \userPresenses →
     H.modify_ _ { users = RD.Success userPresenses }
 
