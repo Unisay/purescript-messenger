@@ -12,7 +12,7 @@ import Backend (deleteSession)
 import Chat.Api.Http (SignoutReason(..))
 import Control.Monad.Reader (asks)
 import Data.Notification (useful)
-import Data.Route (Route(..), goTo)
+import Data.Route (Route(..))
 import Data.Route as Route
 import Data.Username as Username
 import Halogen (liftEffect)
@@ -53,11 +53,13 @@ render { route, authInfo } = HH.nav_
   [ HH.ul
       [ HP.classNames
           [ "bg-white"
+          , "fixed"
           , "pt-4"
           , "pr-0"
           , "flex"
           , "justify-end"
           , "align-center"
+          , "w-full"
           ]
       ]
       $
