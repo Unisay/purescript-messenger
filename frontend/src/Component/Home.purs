@@ -2,30 +2,33 @@ module Component.Home where
 
 import Preamble
 
-import Data.Route (Route(..), goTo)
-import Effect.Aff.Class (class MonadAff)
-import Halogen as H
-import Halogen.HTML.Events as HE
+import AppM (App)
+import AppM as App
+import Auth as Auth
+import Data.Route as Route
+import Halogen.Extended as H
 import Halogen.HTML.Extended as HH
 import Halogen.HTML.Properties.Extended as HP
 
-type State = Unit
+type State = { authInfo ∷ Maybe Auth.Info }
 
-data Action = SignInButtonClicked | SignUpButtonClicked | DebugButtonClicked
+data Action = UpdateState State
 
-component ∷ ∀ q i o m. MonadAff m ⇒ H.Component q i o m
+type Input = State
+
+component ∷ ∀ q. H.Component q Input App.Error App
 component =
   H.mkComponent
-    { initialState
+    { initialState: identity
     , render
-    , eval: H.mkEval $ H.defaultEval { handleAction = handleAction }
+    , eval: H.mkEval $ H.defaultEval
+        { handleAction = handleAction
+        , receive = Just <<< UpdateState
+        }
     }
 
-initialState ∷ ∀ i. i → State
-initialState _input = unit
-
 render ∷ ∀ m. State → H.ComponentHTML Action () m
-render _state = HH.div
+render { authInfo } = HH.div
   [ HP.classNames
       [ "flex"
       , "items-center"
@@ -64,53 +67,24 @@ render _state = HH.div
               , "basis-auto"
               ]
           ]
-          [ HH.button
-              [ HP.type_ HP.ButtonButton
-              , HE.onClick \_ → SignInButtonClicked
-              , HP.classNames
-                  [ "justify-center"
-                  , "flex"
-                  , "font-medium"
-                  , "w-full"
-                  ]
-              ]
-              [ HH.span_
-                  [ HH.text "Go to SignIn" ]
-              ]
-          , HH.button
-              [ HP.type_ HP.ButtonButton
-              , HE.onClick \_ → SignUpButtonClicked
-              , HP.classNames
-                  [ "justify-center"
-                  , "flex"
-                  , "font-medium"
-                  , "w-full"
-                  ]
-              ]
-              [ HH.span_
-                  [ HH.text "Go to SignUp" ]
-              ]
-          , HH.button
-              [ HP.type_ HP.ButtonButton
-              , HE.onClick \_ → DebugButtonClicked
-              , HP.classNames
-                  [ "justify-center"
-                  , "flex"
-                  , "font-medium"
-                  , "w-full"
-                  ]
-              ]
-              [ HH.span_
-                  [ HH.text "Go to Debug" ]
-              ]
-          ]
+          $
+            ( \route → HH.a
+                [ HP.classNames
+                    [ "justify-center"
+                    , "flex"
+                    , "font-medium"
+                    , "w-full"
+                    ]
+                , Route.href route
+                ]
+                [ HH.span_ [ HH.text $ "Go to " <> show route ] ]
+            )
+          <$> case authInfo of
+            Nothing → [ Route.SignIn, Route.SignUp, Route.Debug ]
+            Just _ → [ Route.ChatWindow ]
       ]
   ]
 
-handleAction
-  ∷ ∀ i o m. MonadAff m ⇒ Action → H.HalogenM State Action i o m Unit
-handleAction = goTo <<< case _ of
-  SignUpButtonClicked → SignUp
-  SignInButtonClicked → SignIn
-  DebugButtonClicked → Debug
-
+handleAction ∷ ∀ s. Action → H.HalogenM State Action s App.Error App Unit
+handleAction = case _ of
+  UpdateState state → H.put state

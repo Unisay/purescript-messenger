@@ -25,11 +25,15 @@ import Data.List (List(..), (:))
 import Data.List.NonEmpty as NEL
 import Data.Profunctor (dimap)
 import Data.String (null, trim) as String
-import Data.String.CodePoints (codePointFromChar, toCodePointArray) as String
+import Data.String.CodePoints
+  ( codePointFromChar
+  , length
+  , toCodePointArray
+  ) as String
 import Data.String.Gen (genString)
 import Data.Tuple (Tuple(..))
 import Foreign (ForeignError(..))
-import Foreign.Generic.Class (class Encode, class Decode, decode)
+import Foreign.Generic.Class (class Decode, class Encode, decode)
 import Test.QuickCheck.Arbitrary (class Arbitrary)
 import Test.QuickCheck.Gen (Gen, frequency)
 
@@ -51,10 +55,10 @@ instance Show Username where
   show username = "(Username " <> toString username <> ")"
 
 instance Arbitrary Username where
-  arbitrary :: Gen Username
+  arbitrary ∷ Gen Username
   arbitrary = Username <$> genString usernameChar
     where
-    usernameChar :: Gen Char
+    usernameChar ∷ Gen Char
     usernameChar = frequency
       $ NEL.cons' (Tuple 5.0 genAlpha)
       $ Tuple 3.0 genDigitChar
@@ -62,26 +66,28 @@ instance Arbitrary Username where
           : Tuple 1.0 (pure '-')
           : Nil
 
-codec :: JsonCodec Username
+codec ∷ JsonCodec Username
 codec = dimap toString Username CA.string
 
-parse :: String -> Either (NonEmptyArray String) Username
+parse ∷ String → Either (NonEmptyArray String) Username
 parse s = case String.trim s of
-  str | String.null str -> Left (pure "Username can't be empty")
-  str | any (not <<< isValidCodePoint) (String.toCodePointArray str) ->
+  str | String.null str → Left (pure "Username can't be empty")
+  str | any (not <<< isValidCodePoint) (String.toCodePointArray str) →
     Left (pure "Username must contain only alphanumeric characters, _ and -")
-  str -> Right (Username str)
+  str | String.length str > 20 →
+    Left (pure "Username mustn't be longer than 20 characters")
+  str → Right (Username str)
   where
   isValidCodePoint cp =
     Unicode.isAlphaNum cp
       || cp == String.codePointFromChar '_'
       || cp == String.codePointFromChar '-'
 
-isValid :: String -> Boolean
+isValid ∷ String → Boolean
 isValid = isRight <<< parse
 
-toString :: Username -> String
+toString ∷ Username → String
 toString (Username name) = name
 
-unsafe :: String -> Username
+unsafe ∷ String → Username
 unsafe = Username

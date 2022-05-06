@@ -48,7 +48,7 @@ initialState ∷ ∀ i. i → State
 initialState _ = { selectedImportance: Nothing }
 
 render ∷ ∀ m. State → H.ComponentHTML Action () m
-render state = HH.div
+render { selectedImportance } = HH.div
   [ HP.classNames
       [ "flex"
       , "items-center"
@@ -95,25 +95,23 @@ render state = HH.div
       , HH.form
           [ HP.id "form-notification_type"
           , HP.classNames [ "w-fit", "mt-0", "flex", "flex-col" ]
-          ]
-          ( enumFromTo bottom top <#> \importance → do
-              let id_ = String.toLower $ show importance
-              HH.section_
-                [ HH.input
-                    [ HP.name "specify-notification"
-                    , HP.id id_
-                    , HP.type_ InputRadio
-                    , HE.onInput \_ → Ticked importance
-                    , HP.classNames [ "scale-125" ]
-                    ]
-                , HH.label [ HP.for id_, HP.classNames [ "ml-2" ] ]
-                    [ HH.text $ show importance ]
+          ] $ enumFromTo bottom top <#> \importance → do
+          let id_ = String.toLower $ show importance
+          HH.section_
+            [ HH.input
+                [ HP.name "specify-notification"
+                , HP.id id_
+                , HP.type_ InputRadio
+                , HE.onInput \_ → Ticked importance
+                , HP.classNames [ "scale-125" ]
                 ]
-          )
+            , HH.label [ HP.for id_, HP.classNames [ "ml-2" ] ]
+                [ HH.text $ show importance ]
+            ]
       ]
   ]
   where
-  buttonColor = case state.selectedImportance of
+  buttonColor = case selectedImportance of
     Nothing → []
     Just Useful → [ "border-green-600", "bg-green-200" ]
     Just Important → [ "border-orange-600", "bg-orange-200" ]
@@ -131,7 +129,7 @@ handleAction = case _ of
   SendNotification →
     H.gets _.selectedImportance >>= traverse_ \importance → do
       notify ← asks _.notifications.listener <#> \listener →
-        liftEffect <<< HS.notify listener
+        HS.notify listener >>> liftEffect
       case importance of
         Useful → notify $ useful "Useful"
         Important → notify $ important "Important"

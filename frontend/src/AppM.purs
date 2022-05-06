@@ -2,51 +2,42 @@ module AppM where
 
 import Preamble
 
+import Auth as Auth
 import Backend as Backend
 import Config (Config)
-import Control.Monad.Error.Class (class MonadError, class MonadThrow)
-import Control.Monad.Except (ExceptT, runExceptT, throwError, withExceptT)
 import Control.Monad.Reader (class MonadAsk, ReaderT, runReaderT)
 import Control.Monad.Reader.Class (ask)
-import Data.Newtype (class Newtype, over)
-import Effect.Aff (Aff, error)
+import Data.Newtype (class Newtype)
+import Effect.Aff (Aff)
 import Effect.Aff.Class (class MonadAff)
-import Effect.Class (class MonadEffect, liftEffect)
-import Halogen.Subscription as HS
+import Effect.Class (class MonadEffect)
 
-newtype Error = BackendError Backend.Error
+data Error
+  = BackendError Backend.Error
+  | AuthError Auth.Error
 
-derive newtype instance Show Error
+instance Show Error where
+  show = case _ of
+    BackendError be → "Backend error: " <> show be
+    AuthError ae → "Auth error: " <> show ae
 
-newtype AppM e c a = AppM (ExceptT e (ReaderT c Aff) a)
+newtype AppM c a = AppM (ReaderT c Aff a)
 
-derive instance Newtype (AppM e c a) _
-derive newtype instance Functor (AppM e c)
-derive newtype instance Apply (AppM e c)
-derive newtype instance Applicative (AppM e c)
-derive newtype instance Bind (AppM e c)
-derive newtype instance Monad (AppM e c)
-derive newtype instance MonadAsk c (AppM e c)
-derive newtype instance MonadEffect (AppM e c)
-derive newtype instance MonadAff (AppM e c)
-derive newtype instance MonadThrow e (AppM e c)
-derive newtype instance MonadError e (AppM e c)
+derive instance Newtype (AppM c a) _
+derive newtype instance Functor (AppM c)
+derive newtype instance Apply (AppM c)
+derive newtype instance Applicative (AppM c)
+derive newtype instance Bind (AppM c)
+derive newtype instance Monad (AppM c)
+derive newtype instance MonadAsk c (AppM c)
+derive newtype instance MonadEffect (AppM c)
+derive newtype instance MonadAff (AppM c)
 
-type App = AppM Error Config
+type App = AppM Config
 
-type BackM = AppM Backend.Error Config
+run ∷ ∀ c. c → AppM c ~> Aff
+run c (AppM m) = runReaderT m c
 
-run ∷ ∀ e c. Show e ⇒ c → HS.Listener e → AppM e c ~> Aff
-run c errorListener (AppM m) =
-  runReaderT (runExceptT m) c >>= either handleError pure
-  where
-  handleError ∷ ∀ a. e → Aff a
-  handleError appError = liftEffect do
-    HS.notify errorListener appError
-    throwError $ error $ show appError
-
-config ∷ ∀ e c. AppM e c c
+config ∷ ∀ c. AppM c c
 config = ask
 
-hoistAppM ∷ ∀ a c e e'. (e → e') → AppM e c a → AppM e' c a
-hoistAppM = over AppM <<< withExceptT

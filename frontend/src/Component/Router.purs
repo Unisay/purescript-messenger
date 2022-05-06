@@ -7,18 +7,20 @@ import Preamble
 
 import AppM (App)
 import AppM as App
-import Auth (removeAuth)
+import Auth as Auth
+import Backend as Backend
 import Component.ChatWindow as ChatWindow
 import Component.Debug as Debug
 import Component.Error as Error
 import Component.Home as Home
+import Component.Navigation (Output(..))
 import Component.Navigation as Navigation
 import Component.Notifications as Notifications
 import Component.Signin as Signin
 import Component.Signup as Signup
 import Config (Config)
+import Control.Monad.Except (runExceptT)
 import Control.Monad.Reader (runReaderT)
-import Data.Functor.Contravariant ((>$<))
 import Data.Route (Route(..), goTo)
 import Data.Route as Route
 import Effect.Aff (Aff)
@@ -26,35 +28,47 @@ import Effect.Class (class MonadEffect, liftEffect)
 import Halogen.Component as HC
 import Halogen.Extended as H
 import Halogen.HTML as HH
-import Halogen.Query as HQ
-import Halogen.Subscription as HS
 import Routing.Duplex as RD
 import Routing.Hash (getHash, setHash)
 import Type.Proxy (Proxy(..))
-import Unsafe.Coerce (unsafeCoerce)
 
 data Query a = Navigate Route a
 
 type State =
   { config ∷ Config
   , route ∷ Route
+  , authInfo ∷ Maybe Auth.Info
   , error ∷ Maybe App.Error
-  , errorListener ∷ HS.Listener App.Error
   }
 
-data Action = Initialize | SetError App.Error | ErrorAction Error.Output
+data Action
+  = Initialize
+  | RecordAppError App.Error
+  | ErrorAction Error.Output
+  | SigninOutput Signin.Output
+  | NavigationOutput Navigation.Output
 
 type ChildSlots =
   ( notifications ∷ H.OpaqueSlot Unit
-  , home ∷ H.OpaqueSlot Unit
-  , navigation ∷ H.OpaqueSlot Unit
-  , signin ∷ H.OpaqueSlot Unit
-  , signup ∷ H.OpaqueSlot Unit
-  , profile ∷ H.OpaqueSlot Unit
+  , navigation ∷ ∀ query. H.Slot query Navigation.Output Int
+  , home ∷ ∀ query. H.Slot query App.Error Int
+  , signin ∷ ∀ query. H.Slot query Signin.Output Int
+  , signup ∷ ∀ query. H.Slot query Backend.Error Int
+  , profile ∷ ∀ query. H.Slot query Signin.Output Int
   , debug ∷ H.OpaqueSlot Unit
-  , chatWindow ∷ H.OpaqueSlot Unit
+  , chatWindow ∷ ∀ query. H.Slot query Backend.Error Int
   , error ∷ ∀ query. H.Slot query Error.Output Int
   )
+
+_notifications = Proxy ∷ Proxy "notifications"
+_navigation = Proxy ∷ Proxy "navigation"
+_home = Proxy ∷ Proxy "home"
+_signin = Proxy ∷ Proxy "signin"
+_signup = Proxy ∷ Proxy "signup"
+_profile = Proxy ∷ Proxy "profile"
+_debug = Proxy ∷ Proxy "debug"
+_error = Proxy ∷ Proxy "error"
+_chatWindow = Proxy ∷ Proxy "chatWindow"
 
 component ∷ H.Component Query Config Void Aff
 component = H.mkComponent
@@ -71,11 +85,8 @@ initialState ∷ Config → State
 initialState config =
   { config
   , route: Home
+  , authInfo: Nothing
   , error: Nothing
-  , errorListener: unsafeCoerce
-      ( \(_ ∷ App.Error) →
-          log "This should never happen" ∷ Effect Unit
-      )
   }
 
 handleAction
@@ -85,29 +96,38 @@ handleAction
   → H.HalogenM State Action ChildSlots Void m Unit
 handleAction = case _ of
   Initialize → do
-    -- Exception handling:
-    exceptions ← liftEffect HS.create
-    _subId ← HQ.subscribe exceptions.emitter
-    H.modify_ _ { errorListener = SetError >$< exceptions.listener }
     -- Route handling:
     route ← liftEffect getHash >>= \hash → do
       case RD.parse Route.codec hash of
         Left err → log (show err <> ": " <> show hash) $> Home
         Right route → pure route
     navigate route
-  SetError err → do
+  RecordAppError err → do
     log $ "Setting error: " <> show err
     H.modify_ _ { error = Just err }
   ErrorAction action → do
-    logShow action
     case action of
       Error.Retry → do
         H.modify_ _ { error = Nothing }
       Error.SignIn → do
-        log "removing token: "
-        H.gets _.config >>= runReaderT removeAuth
+        H.gets _.config >>= runReaderT Auth.removeToken
         H.modify_ _ { error = Nothing }
         goTo Route.SignIn
+  SigninOutput signinOut → case signinOut of
+    Left err →
+      handleAction $ RecordAppError $ App.BackendError err
+    Right token →
+      runExceptT (Auth.decodeToken token) >>= case _ of
+        Left err →
+          handleAction $ RecordAppError $ App.AuthError err
+        Right info → do
+          H.modify_ _ { authInfo = Just info }
+  NavigationOutput output → case output of
+    OutputError err →
+      handleAction $ RecordAppError err
+    SignedOut → do
+      H.modify_ _ { authInfo = Nothing }
+      goTo Route.Home
 
 handleQuery
   ∷ ∀ a m
@@ -126,7 +146,7 @@ navigate route = do
   H.modify_ _ { route = route }
 
 render ∷ State → H.ComponentHTML Action ChildSlots Aff
-render { config, route, error, errorListener } =
+render { config, route, authInfo, error } =
   HH.div_ case error of
     Nothing →
       [ slotNotifications
@@ -137,33 +157,34 @@ render { config, route, error, errorListener } =
           SignUp → slotSignup
           Profile _username → slotProfile
           Debug → slotDebug
-          ChatWindow → slotChatWindow
+          ChatWindow →
+            case authInfo of
+              Just info → slotChatWindow info
+              Nothing → slotSignin
       ]
       where
       hoistApp ∷ ∀ q i o. H.Component q i o App → H.Component q i o Aff
-      hoistApp = HC.hoist (App.run config errorListener)
+      hoistApp = HC.hoist (App.run config)
       slotNotifications =
-        HH.slot_ (Proxy ∷ _ "notifications") unit comp unit
-        where
-        comp = hoistApp Notifications.component
-      slotHome =
-        HH.slot_ (Proxy ∷ _ "home") unit Home.component unit
+        HH.slot_ _notifications unit (hoistApp Notifications.component) unit
       slotNavigation =
-        HH.slot_ (Proxy ∷ _ "navigation") unit
-          (hoistApp Navigation.component)
-          route
+        HH.slot _navigation 0 (hoistApp Navigation.component)
+          { route, authInfo }
+          NavigationOutput
       slotSignin =
-        HH.slot_ (Proxy ∷ _ "signin") unit (hoistApp Signin.component) unit
+        HH.slot _signin 1 (hoistApp Signin.component) unit SigninOutput
       slotSignup =
-        HH.slot_ (Proxy ∷ _ "signup") unit (hoistApp Signup.component) unit
+        HH.slot _signup 2 (hoistApp Signup.component) unit
+          (RecordAppError <<< App.BackendError)
       slotProfile =
-        HH.slot_ (Proxy ∷ _ "profile") unit (hoistApp Signin.component) unit
+        HH.slot _profile 3 (hoistApp Signin.component) unit SigninOutput
       slotDebug =
-        HH.slot_ (Proxy ∷ _ "debug") unit (hoistApp Debug.component) unit
-      slotChatWindow =
-        HH.slot_ (Proxy ∷ _ "chatWindow") unit
-          (hoistApp ChatWindow.component)
-          unit
+        HH.slot_ _debug unit (hoistApp Debug.component) unit
+      slotChatWindow info =
+        HH.slot _chatWindow 4 (hoistApp ChatWindow.component) info
+          (RecordAppError <<< App.BackendError)
+      slotHome =
+        HH.slot _home 5 (hoistApp Home.component) { authInfo } RecordAppError
     Just err →
-      [ HH.slot (Proxy ∷ _ "error") 0 Error.component err ErrorAction ]
+      [ HH.slot _error 6 Error.component err ErrorAction ]
 

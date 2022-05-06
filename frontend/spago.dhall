@@ -8,7 +8,6 @@
   , "bifunctors"
   , "codec-argonaut"
   , "common"
-  , "contravariant"
   , "effect"
   , "either"
   , "enums"
