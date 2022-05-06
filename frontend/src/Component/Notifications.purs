@@ -68,12 +68,22 @@ render { queue } =
         [ "fixed"
         , "flex"
         , "flex-col"
-        , "w-full"
+        , "w-1/2"
         , "items-center"
         , "z-10"
+        , "m-auto"
+        , "mt-2"
+        , "left-0"
+        , "right-0"
         ]
     ]
-    [ HH.ul [ HP.classNames [ "w-2/3" ] ] $ renderNotification <$> queue ]
+    [ HH.ul
+        [ HP.classNames
+            [ "w-full"
+            , "space-y-2"
+            ]
+        ] $ renderNotification <$> queue
+    ]
   where
   renderNotification
     ∷ ActiveNotification → HH.ComponentHTML Action () m
@@ -81,9 +91,7 @@ render { queue } =
     HH.li
       [ HP.classNames
           [ importanceColor importance
-          , "z-1"
           , "p-2"
-          , "m-2"
           , "rounded"
           , "text-white"
           , "flex"
