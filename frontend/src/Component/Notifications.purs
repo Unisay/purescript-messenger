@@ -6,7 +6,6 @@ import Config (Config)
 import Control.Monad.Reader.Class (class MonadAsk, asks)
 import Control.Monad.State.Class (class MonadState, gets)
 import Control.Monad.Trans.Class (lift)
-import Data.Array ((:))
 import Data.Array as Array
 import Data.Foldable (traverse_)
 import Data.Notification (Importance(..), Notification(..))
@@ -88,26 +87,27 @@ render { queue } =
   renderNotification
     ∷ ActiveNotification → HH.ComponentHTML Action () m
   renderNotification { id, value: Notification importance message } =
-    HH.li
-      [ HP.classNames
-          [ importanceColor importance
-          , "p-2"
-          , "rounded"
-          , "text-white"
-          , "flex"
-          , "flex-row"
-          , "justify-between"
-          ]
-      ]
-      [ HH.span
-          [ HP.classNames
+    HH.li_
+      [ HH.div
+          [ HP.id ("notification" <> show id)
+          , HP.classNames
               [ "flex"
-              , "flex-row"
+              , "p-2"
               , "gap-2"
+              , "w-full"
+              , "rounded"
+              , "text-white"
+              , "justify-between"
+              , importanceColor importance
+              , animate importance
               ]
           ]
-          [ importanceIcon importance [], HH.text message ]
-      , HH.button [ HE.onClick \_ → Close id ] [ iconClose [] ]
+          [ HH.div [ HP.classNames [ "flex" ] ]
+              [ importanceIcon importance []
+              , HH.text message
+              ]
+          , HH.button [ HE.onClick \_ → Close id ] [ iconClose [] ]
+          ]
       ]
 
   importanceColor ∷ Importance → String
@@ -115,6 +115,12 @@ render { queue } =
     Useful → "bg-green-600/75"
     Important → "bg-orange-600/75"
     Critical → "bg-red-600/75"
+
+  animate ∷ Importance → String
+  animate = case _ of
+    Useful → "animate-disappear-useful"
+    Important → "animate-disappear-important"
+    Critical → "animate-disappear-critical"
 
 handleAction
   ∷ ∀ o m c
@@ -132,7 +138,7 @@ handleAction = case _ of
     traverse_ HQ.unsubscribe s
   Notify notification@(Notification importance _) → do
     activeNotification ← makeActive notification
-    H.modify_ \s@{ queue } → s { queue = activeNotification : queue }
+    H.modify_ \s@{ queue } → s { queue = Array.snoc queue activeNotification }
     liftAff $ delay $ importanceTimeout importance
     handleAction (Close activeNotification.id)
   Close notificationId →
