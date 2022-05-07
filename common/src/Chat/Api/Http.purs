@@ -12,8 +12,6 @@ import Data.Username (Username)
 import Foreign (fail, readString) as Foreign
 import Foreign.Generic (class Decode, ForeignError(..)) as Foreign
 
-
-
 data SignUpResponse
   = SignedUp
   | AlreadyRegistered
@@ -26,6 +24,8 @@ instance Show SignUpResponse where
 data SignoutReason
   = Timeout
   | UserAction
+
+derive instance Eq SignoutReason
 
 instance Show SignoutReason where
   show = case _ of

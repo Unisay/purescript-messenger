@@ -205,7 +205,7 @@ deleteSession'
   ∷ ∀ r m
   . MonadAff m
   ⇒ MonadThrow Error m
-  ⇒ MonadAsk (Record (HasBackendConfig (HasStorage r))) m
+  ⇒ MonadAsk (Record (HasBackendConfig r)) m
   ⇒ Transport
   → Username
   → Token

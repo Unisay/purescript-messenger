@@ -106,9 +106,7 @@ handleAction = case _ of
         Left err → log (show err <> ": " <> show hash) $> Home
         Right route → pure route
     navigate route
-  RecordAppError err → do
-    log $ "Setting error: " <> show err
-    H.modify_ _ { error = Just err }
+  RecordAppError err → H.modify_ _ { error = Just err }
   ErrorAction action → do
     case action of
       Error.Retry → do
@@ -126,11 +124,8 @@ handleAction = case _ of
           handleAction $ RecordAppError $ App.AuthError err
         Right info → H.modify_ _ { authInfo = Just info }
   NavigationOutput output → case output of
-    OutputError err →
-      handleAction $ RecordAppError err
-    SignedOut → do
-      H.modify_ _ { authInfo = Nothing }
-      goTo Route.Home
+    OutputError err → handleAction $ RecordAppError err
+    SignedOut → H.modify_ _ { authInfo = Nothing } *> goTo Route.Home
 
 handleQuery
   ∷ ∀ a m
