@@ -50,18 +50,26 @@ handleAction Initialize = do
 render ∷ ∀ m a. State → H.ComponentHTML a () m
 render { users } = HH.div
   [ HP.classNames
-      [ "flex"
-      , "flex-col"
-      , "h-min"
-      , "w-1/5"
-      , "float-right"
-      , "bg-slate-200"
-      , "opacity-90"
+      [ "min-h-screen"
+      , "w-full"
+      , "bg-gray-100"
       ]
   ]
-  [ HH.ul [ HP.classNames [ "w-full", "p-2" ] ]
-      $ renderUsers
-      <$> Array.sortWith _.presence (RD.withDefault [] users)
+  [ HH.div [ HP.classNames [ "mt-20" ] ]
+      [ HH.div
+          [ HP.classNames
+              [ "flex"
+              , "flex-col"
+              , "w-1/5"
+              , "bg-slate-200"
+              , "opacity-90"
+              ]
+          ]
+          [ HH.ul [ HP.classNames [ "w-full", "p-2" ] ]
+              $ renderUsers
+              <$> Array.sortWith _.presence (RD.withDefault [] users)
+          ]
+      ]
   ]
   where
   renderUsers ∷ UserPresence → HH.ComponentHTML a () m

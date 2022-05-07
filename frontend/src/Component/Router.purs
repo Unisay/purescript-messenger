@@ -28,6 +28,7 @@ import Effect.Class (class MonadEffect, liftEffect)
 import Halogen.Component as HC
 import Halogen.Extended as H
 import Halogen.HTML as HH
+import Halogen.HTML.Properties.Extended as HP
 import Routing.Duplex as RD
 import Routing.Hash (getHash, setHash)
 import Type.Proxy (Proxy(..))
@@ -96,6 +97,9 @@ handleAction
   → H.HalogenM State Action ChildSlots Void m Unit
 handleAction = case _ of
   Initialize → do
+    runExceptT (H.gets _.config >>= runReaderT Auth.loadInfo) >>= case _ of
+      Left err → handleAction $ RecordAppError $ App.AuthError err
+      Right info → H.modify_ _ { authInfo = info }
     -- Route handling:
     route ← liftEffect getHash >>= \hash → do
       case RD.parse Route.codec hash of
@@ -120,8 +124,7 @@ handleAction = case _ of
       runExceptT (Auth.decodeToken token) >>= case _ of
         Left err →
           handleAction $ RecordAppError $ App.AuthError err
-        Right info → do
-          H.modify_ _ { authInfo = Just info }
+        Right info → H.modify_ _ { authInfo = Just info }
   NavigationOutput output → case output of
     OutputError err →
       handleAction $ RecordAppError err
@@ -147,44 +150,45 @@ navigate route = do
 
 render ∷ State → H.ComponentHTML Action ChildSlots Aff
 render { config, route, authInfo, error } =
-  HH.div_ case error of
-    Nothing →
-      [ slotNotifications
-      , slotNavigation
-      , case route of
-          Home → slotHome
-          SignIn → slotSignin
-          SignUp → slotSignup
-          Profile _username → slotProfile
-          Debug → slotDebug
-          ChatWindow →
-            case authInfo of
-              Just info → slotChatWindow info
-              Nothing → slotSignin
-      ]
-      where
-      hoistApp ∷ ∀ q i o. H.Component q i o App → H.Component q i o Aff
-      hoistApp = HC.hoist (App.run config)
-      slotNotifications =
-        HH.slot_ _notifications unit (hoistApp Notifications.component) unit
-      slotNavigation =
-        HH.slot _navigation 0 (hoistApp Navigation.component)
-          { route, authInfo }
-          NavigationOutput
-      slotSignin =
-        HH.slot _signin 1 (hoistApp Signin.component) unit SigninOutput
-      slotSignup =
-        HH.slot _signup 2 (hoistApp Signup.component) unit
-          (RecordAppError <<< App.BackendError)
-      slotProfile =
-        HH.slot _profile 3 (hoistApp Signin.component) unit SigninOutput
-      slotDebug =
-        HH.slot_ _debug unit (hoistApp Debug.component) unit
-      slotChatWindow info =
-        HH.slot _chatWindow 4 (hoistApp ChatWindow.component) info
-          (RecordAppError <<< App.BackendError)
-      slotHome =
-        HH.slot _home 5 (hoistApp Home.component) { authInfo } RecordAppError
-    Just err →
-      [ HH.slot _error 6 Error.component err ErrorAction ]
+  HH.div [ HP.classNames [ "flex", "flex-col" ] ]
+    case error of
+      Nothing →
+        [ slotNotifications
+        , slotNavigation
+        , case route of
+            Home → slotHome
+            SignIn → slotSignin
+            SignUp → slotSignup
+            Profile _username → slotProfile
+            Debug → slotDebug
+            ChatWindow →
+              case authInfo of
+                Just info → slotChatWindow info
+                Nothing → slotSignin
+        ]
+        where
+        hoistApp ∷ ∀ q i o. H.Component q i o App → H.Component q i o Aff
+        hoistApp = HC.hoist (App.run config)
+        slotNotifications =
+          HH.slot_ _notifications unit (hoistApp Notifications.component) unit
+        slotNavigation =
+          HH.slot _navigation 0 (hoistApp Navigation.component)
+            { route, authInfo }
+            NavigationOutput
+        slotSignin =
+          HH.slot _signin 1 (hoistApp Signin.component) unit SigninOutput
+        slotSignup =
+          HH.slot _signup 2 (hoistApp Signup.component) unit
+            (RecordAppError <<< App.BackendError)
+        slotProfile =
+          HH.slot _profile 3 (hoistApp Signin.component) unit SigninOutput
+        slotDebug =
+          HH.slot_ _debug unit (hoistApp Debug.component) unit
+        slotChatWindow info =
+          HH.slot _chatWindow 4 (hoistApp ChatWindow.component) info
+            (RecordAppError <<< App.BackendError)
+        slotHome =
+          HH.slot _home 5 (hoistApp Home.component) { authInfo } RecordAppError
+      Just err →
+        [ HH.slot _error 6 Error.component err ErrorAction ]
 

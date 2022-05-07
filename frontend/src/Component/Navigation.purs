@@ -37,7 +37,7 @@ data Action = UpdateState State | SignOut SignoutReason
 component ∷ ∀ q. H.Component q Input Output App
 component =
   H.mkComponent
-    { initialState
+    { initialState: identity
     , render
     , eval: H.mkEval $ H.defaultEval
         { handleAction = handleAction
@@ -45,15 +45,14 @@ component =
         }
     }
 
-initialState ∷ Input → State
-initialState = identity
-
 render ∷ ∀ m. State → H.ComponentHTML Action () m
 render { route, authInfo } = HH.nav_
   [ HH.ul
       [ HP.classNames
           [ "bg-white"
-          , "fixed"
+          , "absolute"
+          , "inset-x-0"
+          , "top-0"
           , "pt-4"
           , "pr-0"
           , "flex"
