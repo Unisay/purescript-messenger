@@ -21,6 +21,9 @@ module.exports = {
           '30%, 50%, 70%': { transform: 'translate3d(-4px, 0, 0)' },
           '40%, 60%': { transform: 'translate3d(4px, 0, 0)' }
         }
+      },
+      scale: {
+        101: '1.01',
       }
     }
   },

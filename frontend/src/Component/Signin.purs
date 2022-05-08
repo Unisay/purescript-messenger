@@ -24,7 +24,9 @@ import Data.Route as Route
 import Data.Username (Username)
 import Data.Username as Username
 import Data.Validation (Validation)
+import Effect.Aff (Milliseconds(..), delay)
 import Effect.Class (liftEffect)
+import Halogen.Extended (liftAff)
 import Halogen.Extended as H
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Extended as HH
@@ -96,6 +98,8 @@ render state = signinFormContainer
               , "bg-white"
               , if state.response == Success Forbidden then "animate-shake"
                 else mempty
+              , if isLoading state.response then "cursor-wait"
+                else "cursor-default"
               ]
           ]
           [ signinFormHeader, signinForm ]
@@ -126,6 +130,7 @@ render state = signinFormContainer
                 [ HH.text "Username" ]
             , HH.input
                 [ HP.id "input-username"
+                , HP.disabled $ isLoading state.response
                 , HP.autofocus true
                 , HP.required true
                 , HP.autocomplete true
@@ -140,22 +145,27 @@ render state = signinFormContainer
                       , "relative"
                       , "block"
                       , "w-full"
-                      , "px-3"
+                      , "px-2"
                       , "py-2"
                       , "border"
-                      , "border-gray-300"
-                      , "placeholder-gray-500"
+                      , "placeholder:gray-500"
+                      , "placeholder:italic"
                       , "text-gray-900"
-                      , "focus-outline-none"
-                      , "focus-ring-indigo-500"
-                      , "focus-border-indigo-500"
-                      , "focus-z-10"
-                      , "sm-text-sm"
+                      , "focus:outline-none"
+                      , "focus:ring-indigo-500"
+                      , "focus:border-indigo-500"
+                      , "focus:z-10"
+                      , "sm:text-sm"
+                      , "transition"
+                      , "duration-100"
+                      , "focus:cursor-text"
+                      , if isLoading state.response then "cursor-wait"
+                        else "cursor-pointer"
                       ]
                     <>
                       if maybe false isLeft state.username.result then
                         errorClasses
-                      else []
+                      else [ "border-gray-300", "hover:border-gray-400" ]
                 ]
             ]
           , validationErrors state.username.result
@@ -166,6 +176,7 @@ render state = signinFormContainer
                 [ HH.text "Password" ]
             , HH.input
                 [ HP.id "input-password"
+                , HP.disabled $ isLoading state.response
                 , HP.placeholder "Password"
                 , HP.required true
                 , HP.autocomplete true
@@ -176,26 +187,31 @@ render state = signinFormContainer
                 , HP.classNames
                     $
                       [ "appearance-none"
+                      , "placeholder:italic"
+                      , "placeholder:gray-500"
                       , "rounded"
                       , "relative"
                       , "block"
                       , "w-full"
-                      , "px-3"
+                      , "px-2"
                       , "py-2"
                       , "border"
-                      , "border-gray-300"
-                      , "placeholder-gray-500"
                       , "text-gray-900"
-                      , "focus-outline-none"
-                      , "focus-ring-indigo-500"
-                      , "focus-border-indigo-500"
-                      , "focus-z-10"
+                      , "focus:outline-none"
+                      , "focus:ring-indigo-500"
+                      , "focus:border-indigo-500"
+                      , "focus:z-10"
                       , "sm-text-sm"
+                      , "focus:cursor-text"
+                      , "transition"
+                      , "duration-100"
+                      , if isLoading state.response then "cursor-wait"
+                        else "cursor-pointer"
                       ]
                     <>
                       if maybe false isLeft state.password.result then
                         errorClasses
-                      else []
+                      else [ "border-gray-300", "hover:border-gray-400" ]
                 ]
             ]
           , validationErrors state.password.result
@@ -218,21 +234,24 @@ render state = signinFormContainer
                     , "font-medium"
                     , "rounded-md"
                     , "text-white"
-                    , "focus-outline-none"
-                    , "focus-ring-2"
-                    , "focus-ring-offset-2"
-                    , "focus-ring-indigo-500"
+                    , "focus:outline-none"
+                    , "focus:ring-2"
+                    , "focus:ring-offset-2"
+                    , "focus:ring-indigo-500"
                     ]
                   <>
                     if isLoading state.response then
                       [ "bg-gray-500"
-                      , "hover-bg-gray-600"
                       , "cursor-wait"
                       ]
                     else
                       [ "bg-indigo-600"
-                      , "hover-bg-indigo-700"
+                      , "hover:bg-indigo-700"
+                      , "active:bg-indigo-800"
+                      , "transition"
+                      , "duration-200"
                       , "cursor-pointer"
+                      , "hover:scale-101"
                       ]
               , HP.value $
                   if isLoading state.response then "Signing in..."
@@ -261,24 +280,20 @@ handleAction ∷ ∀ s. Action → H.HalogenM State Action s Output App Unit
 handleAction = case _ of
   Initialize →
     whenM (Auth.loadToken <#> isJust) (goTo ChatWindow)
-  SetUsername str → H.modify_ $ \state →
-    state { username { inputValue = str } }
-  SetPassword str → H.modify_ $ \state →
-    state { password { inputValue = str } }
+  SetUsername str → H.modify_ _ { username { inputValue = str } }
+  SetPassword str → H.modify_ _ { password { inputValue = str } }
   ValidateUsername → do
     { username } ← H.get
     case Username.parse username.inputValue of
-      Left errors → H.modify_ $ \state →
-        state { username { result = pure $ Left errors } }
-      Right username' → H.modify_ $ \state →
-        state { username { result = pure $ Right username' } }
+      Left errors → H.modify_ _ { username { result = pure $ Left errors } }
+      Right username' →
+        H.modify_ _ { username { result = pure $ Right username' } }
   ValidatePassword → do
     { password } ← H.get
     case Password.parse password.inputValue of
-      Left err → H.modify_ $ \state →
-        state { password { result = pure $ Left $ pure err } }
-      Right password' → H.modify_ $ \state →
-        state { password { result = pure $ Right password' } }
+      Left err → H.modify_ _ { password { result = pure $ Left $ pure err } }
+      Right password' →
+        H.modify_ _ { password { result = pure $ Right password' } }
   SubmitForm ev → do
     liftEffect $ Event.preventDefault ev
     { password, username } ← H.get
@@ -288,6 +303,7 @@ handleAction = case _ of
       in
         do
           H.modify_ _ { response = Loading }
+          liftAff $ delay $ Milliseconds 500.0
           H.raiseErrors (Backend.createSession username password) throwError
             \response → do
               H.modify_ _ { response = Success response }

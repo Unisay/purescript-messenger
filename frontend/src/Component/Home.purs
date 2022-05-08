@@ -58,7 +58,7 @@ render { authInfo } = HH.div
               , "font-extrabold"
               ]
           ]
-          [ HH.text "Pure Mess" ]
+          [ HH.text "PureMess" ]
       , HH.div
           [ HP.classNames
               [ "flex"
