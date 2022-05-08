@@ -75,6 +75,8 @@ instance Show SignInResponse where
     SignedIn _token → "Signed In"
     Forbidden → "Sign in is forbidden"
 
+derive instance Eq SignInResponse
+
 createSession
   ∷ ∀ r m
   . MonadAff m

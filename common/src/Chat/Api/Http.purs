@@ -21,6 +21,8 @@ instance Show SignUpResponse where
     SignedUp → "Signed Up"
     AlreadyRegistered → "Already Registered"
 
+derive instance Eq SignUpResponse
+
 data SignoutReason
   = Timeout
   | UserAction

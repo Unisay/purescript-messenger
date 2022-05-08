@@ -4,6 +4,7 @@ import Preamble
 
 import AppM (App)
 import Auth as Auth
+import Backend (SignInResponse(..))
 import Backend as Backend
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.Except.Trans (runExceptT)
@@ -15,7 +16,7 @@ import Data.Auth.Token (Token)
 import Data.Either (isLeft)
 import Data.EitherR (flipEither)
 import Data.Newtype (wrap)
-import Data.Notification (useful)
+import Data.Notification (important, useful)
 import Data.Password (Password)
 import Data.Password as Password
 import Data.Route (Route(..), goTo)
@@ -83,7 +84,7 @@ render state = signinFormContainer
           ]
       ]
       [ HH.div
-          [ HP.classNames
+          [ HP.classNames $
               [ "max-w-md"
               , "w-full"
               , "space-y-8"
@@ -93,6 +94,8 @@ render state = signinFormContainer
               , "p-5"
               , "shadow-xl"
               , "bg-white"
+              , if state.response == Success Forbidden then "animate-shake"
+                else mempty
               ]
           ]
           [ signinFormHeader, signinForm ]
@@ -117,13 +120,7 @@ render state = signinFormContainer
       , HE.onSubmit SubmitForm
       , HP.classNames [ "mt-8", "space-y-6" ]
       ]
-      [ HH.div [ HP.classNames [ "text-red-600" ] ]
-          [ HH.text case state.response of
-              Success (Backend.SignedIn _) → "You successfully signed in!"
-              Success Backend.Forbidden → "Incorrect username or password!"
-              _ → ""
-          ]
-      , HH.div_ $ Array.concat
+      [ HH.div_ $ Array.concat
           [ [ HH.label
                 [ HP.for "input-username", HP.classNames [ "font-bold" ] ]
                 [ HH.text "Username" ]
@@ -208,27 +205,35 @@ render state = signinFormContainer
               [ HP.disabled $ isLoading state.response
               , HP.type_ HP.InputSubmit
               , HP.classNames
-                  [ "group"
-                  , "w-full"
-                  , "flex"
-                  , "justify-center"
-                  , "py-2"
-                  , "px-4"
-                  , "border"
-                  , "border-transparent"
-                  , "text-sm"
-                  , "font-medium"
-                  , "rounded-md"
-                  , "text-white"
-                  , if isLoading state.response then "bg-gray-500"
-                    else "bg-indigo-600"
-                  , if isLoading state.response then "hover-bg-gray-600"
-                    else "hover-bg-indigo-700"
-                  , "focus-outline-none"
-                  , "focus-ring-2"
-                  , "focus-ring-offset-2"
-                  , "focus-ring-indigo-500"
-                  ]
+                  $
+                    [ "group"
+                    , "w-full"
+                    , "flex"
+                    , "justify-center"
+                    , "py-2"
+                    , "px-4"
+                    , "border"
+                    , "border-transparent"
+                    , "text-sm"
+                    , "font-medium"
+                    , "rounded-md"
+                    , "text-white"
+                    , "focus-outline-none"
+                    , "focus-ring-2"
+                    , "focus-ring-offset-2"
+                    , "focus-ring-indigo-500"
+                    ]
+                  <>
+                    if isLoading state.response then
+                      [ "bg-gray-500"
+                      , "hover-bg-gray-600"
+                      , "cursor-wait"
+                      ]
+                    else
+                      [ "bg-indigo-600"
+                      , "hover-bg-indigo-700"
+                      , "cursor-pointer"
+                      ]
               , HP.value $
                   if isLoading state.response then "Signing in..."
                   else "Sign In"
@@ -286,11 +291,12 @@ handleAction = case _ of
           H.raiseErrors (Backend.createSession username password) throwError
             \response → do
               H.modify_ _ { response = Success response }
+              notify ← asks _.notifications.listener <#> \listener →
+                HS.notify listener >>> liftEffect
               case response of
-                Backend.Forbidden → pass
+                Backend.Forbidden → notify
+                  $ important "Incorrect username or password!"
                 Backend.SignedIn token → do
-                  notify ← asks _.notifications.listener <#> \listener →
-                    HS.notify listener >>> liftEffect
                   Auth.saveToken token
                   H.raise $ Right token
                   goTo Route.ChatWindow

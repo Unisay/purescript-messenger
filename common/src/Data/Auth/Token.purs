@@ -15,17 +15,18 @@ import Data.String.NonEmpty as NES
 
 newtype Token = Token String
 
+derive newtype instance Eq Token
 derive newtype instance EncodeJson Token
 instance DecodeJson Token where
   decodeJson = decodeJson >>> map (NES.toString >>> Token)
 
-parse :: String -> Either String Token
+parse ∷ String → Either String Token
 parse str = case String.trim str of
-  "" -> Left "Token is empty"
-  _ -> Right (Token str)
+  "" → Left "Token is empty"
+  _ → Right (Token str)
 
-toString :: Token -> String
+toString ∷ Token → String
 toString (Token str) = str
 
-unsafe :: String -> Token
+unsafe ∷ String → Token
 unsafe = Token
