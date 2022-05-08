@@ -31,38 +31,39 @@ component = H.mkComponent
   }
 
 render ∷ ∀ m s. State → H.ComponentHTML Action s m
-render error = HH.div
-  [ HP.classNames
-      [ "flex"
-      , "items-center"
-      , "justify-center"
-      , "min-h-screen"
-      , "bg-gray-100"
-      ]
-  ]
-  [ HH.div
-      [ HP.classNames
-          [ "max-w-md"
-          , "w-full"
-          , "flex"
-          , "flex-col"
-          , "justify-center"
-          , "items-center"
-          , "space-y-3"
-          , "rounded"
-          , "border"
-          , "border-slate-300"
-          , "p-5"
-          , "shadow-xl"
-          , "bg-white"
-          ]
-      ]
-      [ HH.span [ HP.classNames [ "text-8xl", "font-semibold" ] ]
-          [ HH.text "Ouch," ]
-      , HH.span [ HP.classNames [ "font-medium", "text-center" ] ]
-          [ HH.text $ renderError error ]
-      , errorAction error # \{ action, caption } →
-          HH.button
+render error = errorAction error # \{ action, caption } →
+  HH.div
+    [ HP.classNames
+        [ "flex"
+        , "items-center"
+        , "justify-center"
+        , "min-h-screen"
+        , "bg-gray-100"
+        ]
+    ]
+    [ HH.form
+        [ HP.classNames
+            [ "max-w-md"
+            , "w-full"
+            , "flex"
+            , "flex-col"
+            , "justify-center"
+            , "items-center"
+            , "space-y-3"
+            , "rounded"
+            , "border"
+            , "border-slate-300"
+            , "p-5"
+            , "shadow-xl"
+            , "bg-white"
+            ]
+        , HE.onSubmit \_ → Notify action
+        ]
+        [ HH.span [ HP.classNames [ "text-8xl", "font-semibold" ] ]
+            [ HH.text "Ouch," ]
+        , HH.span [ HP.classNames [ "font-medium", "text-center" ] ]
+            [ HH.text $ renderError error ]
+        , HH.input
             [ HP.classNames
                 [ "group"
                 , "w-full"
@@ -82,12 +83,14 @@ render error = HH.div
                 , "focus-ring-2"
                 , "focus-ring-offset-2"
                 , "focus-ring-indigo-500"
+                , "cursor-pointer"
                 ]
-            , HE.onClick \_ → Notify action
+            , HP.type_ HP.InputSubmit
+            , HP.value caption
+            , HP.autofocus true
             ]
-            [ HH.text caption ]
-      ]
-  ]
+        ]
+    ]
 
 handleAction ∷ ∀ m. Action → H.HalogenM State Action () Output m Unit
 handleAction (Notify action) = H.raise action
