@@ -61,6 +61,8 @@ render { users } = HH.div
               [ "flex"
               , "flex-col"
               , "w-1/5"
+              , "min-w-fit"
+              , "min-h-fit"
               , "bg-slate-200"
               , "opacity-90"
               ]

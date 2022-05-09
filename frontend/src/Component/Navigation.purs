@@ -99,18 +99,22 @@ render { route, authInfo } = HH.nav_
                 [ HH.text $ Username.toString username ]
             , HH.li
                 [ HP.classNames [ "list-none", "mr-16", "mt-8", "text-xl" ] ]
-                [ HH.a [ Route.href Home, HE.onClick \_ → SignOut UserAction ]
+                [ HH.a
+                    [ Route.href Home
+                    , HE.onClick \_ → SignOut UserAction
+                    , HP.classNames [ "block" ]
+                    ]
                     [ icon
                         """
-                        <svg xmlns="http://www.w3.org/2000/svg"
-                             class="h-6 w-6" fill="none"
-                             viewBox="0 0 24 24" stroke="currentColor"
-                             stroke-width="2">
-                          <path stroke-linecap="round" stroke-linejoin="round"
-                            d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3
-                            3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                        </svg>
-                        """
+    <svg xmlns="http://www.w3.org/2000/svg"
+         class="h-7 w-7 transition duration-100 
+         hover:scale-110 active:scale-125 stroke-current
+         hover:stroke-gray-800 stroke-2 fill-transparent"  
+         viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round"
+        d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3
+        3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+    </svg> """
                         []
                     ]
                 ]
@@ -132,4 +136,3 @@ handleAction = case _ of
         H.modify_ _ { authInfo = Nothing }
         Auth.removeToken
         H.raise SignedOut
--- goTo Route.Home
