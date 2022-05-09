@@ -56,6 +56,7 @@ render { authInfo } = HH.div
               , "text-black"
               , "text-3xl"
               , "font-extrabold"
+              , "cursor-default"
               ]
           ]
           [ HH.text "PureMess" ]

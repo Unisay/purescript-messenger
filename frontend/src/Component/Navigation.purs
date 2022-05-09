@@ -71,6 +71,11 @@ render { route, authInfo } = HH.nav_
                       else "text-black"
                     , "font-bold"
                     , "text-2xl"
+                    , "transition"
+                    , "duration-50"
+                    , "hover:text-blue-800"
+                    , "focus:text-blue-800"
+                    , "active:text-blue-700"
                     ]
                 , Route.href Home
                 ]
@@ -85,9 +90,14 @@ render { route, authInfo } = HH.nav_
               [ HH.a
                   [ HP.classNames
                       [ if route == route' then "overline"
-                        else "no-underline"
+                        else "decoration-transparent"
                       , if route == route' then "text-blue-800"
                         else "text-black"
+                      , "transition"
+                      , "duration-50"
+                      , "hover:text-blue-800"
+                      , "focus:text-blue-800"
+                      , "active:text-blue-600"
                       ]
                   , Route.href route'
                   ]
@@ -109,7 +119,7 @@ render { route, authInfo } = HH.nav_
     <svg xmlns="http://www.w3.org/2000/svg"
          class="h-7 w-7 transition duration-100 
          hover:scale-110 active:scale-125 stroke-current
-         hover:stroke-gray-800 stroke-2 fill-transparent"  
+         hover:stroke-blue-800 stroke-2 fill-transparent"  
          viewBox="0 0 24 24">
       <path stroke-linecap="round" stroke-linejoin="round"
         d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3
@@ -130,9 +140,8 @@ handleAction = case _ of
       Nothing → H.raise $ OutputError $ App.AuthError Auth.TokenIsMissing
       Just { username, token } → do
         H.raiseErrors_ (deleteSession username token reason)
-          (OutputError <<< App.BackendError)
+          (App.BackendError >>> OutputError)
         listener ← asks _.notifications.listener
         liftEffect $ HS.notify listener $ useful "You successfully signed out!"
         H.modify_ _ { authInfo = Nothing }
-        Auth.removeToken
-        H.raise SignedOut
+        Auth.removeToken *> H.raise SignedOut
