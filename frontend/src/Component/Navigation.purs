@@ -114,18 +114,21 @@ render { route, authInfo } = HH.nav_
                     , HE.onClick \_ → SignOut UserAction
                     , HP.classNames [ "block" ]
                     ]
-                    [ icon
-                        """
-    <svg xmlns="http://www.w3.org/2000/svg"
-         class="h-7 w-7 transition duration-100 
-         hover:scale-110 active:scale-125 stroke-current
-         hover:stroke-blue-800 stroke-2 fill-transparent"  
-         viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round"
-        d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3
-        3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-    </svg> """
-                        []
+                    [ HH.img
+                        [ HP.src "images/signout.svg"
+                        , HP.classNames
+                            [ "h-6"
+                            , "w-6"
+                            , "transition"
+                            , "duration-100"
+                            , "hover:scale-110"
+                            , "active:scale-125"
+                            , "stroke-current"
+                            , "hover:stroke-blue-800"
+                            , "stroke-2"
+                            , "fill-transparent"
+                            ]
+                        ]
                     ]
                 ]
             ]

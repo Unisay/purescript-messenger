@@ -76,12 +76,9 @@ render { queue } =
         , "right-0"
         ]
     ]
-    [ HH.ul
-        [ HP.classNames
-            [ "w-full"
-            , "space-y-2"
-            ]
-        ] $ renderNotification <$> queue
+    [ HH.ul [ HP.classNames [ "w-full", "space-y-2" ] ]
+        $ renderNotification
+        <$> queue
     ]
   where
   renderNotification
