@@ -52,8 +52,9 @@ render { route, authInfo } = HH.nav_
           , "absolute"
           , "inset-x-0"
           , "top-0"
-          , "pt-4"
+          , "min-h-header"
           , "pr-0"
+          , "pt-2"
           , "flex"
           , "justify-end"
           , "align-center"
@@ -106,7 +107,7 @@ render { route, authInfo } = HH.nav_
                 [ HP.classNames [ "list-none", "mr-16", "mt-8", "text-xl" ] ]
                 [ HH.text $ Username.toString username ]
             , HH.li
-                [ HP.classNames [ "list-none", "mr-16", "mt-8", "text-xl" ] ]
+                [ HP.classNames [ "list-none", "mr-16", "mt-9", "text-xl" ] ]
                 [ HH.a
                     [ Route.href Home
                     , HE.onClick \_ → SignOut UserAction

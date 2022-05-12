@@ -6,6 +6,7 @@ import AppM (App)
 import Auth as Auth
 import Backend as Backend
 import Chat.Api.Http (UserPresence)
+import Component.ChatWindow as ChatWindow
 import Component.Userlist as Userlist
 import Halogen.Extended (OpaqueSlot)
 import Halogen.Extended as H
@@ -54,19 +55,23 @@ handleAction Initialize = do
     H.modify_ _ { users = RD.Success userPresenses }
 
 render ∷ ∀ m. State → H.ComponentHTML Action ChildSlots m
-render { users } = HH.div
-  [ HP.classNames
-      [ "min-h-screen"
-      , "w-full"
-      , "bg-gray-100"
-      ]
-  ]
-  [ HH.div [ HP.classNames [ "mt-20" ] ]
-      [ slotUserlist ]
-  ]
+render { users, authInfo } =
+  HH.div
+    [ HP.classNames
+        [ "m-header"
+        , "block"
+        , "flex"
+        , "gap-x-2"
+        , "w-full"
+        , "min-h-chatwindow"
+        ]
+    ]
+    [ slotUserlist, slotChatWindow ]
+
   where
   slotUserlist = HH.slot_ _userlist unit Userlist.component $ RD.withDefault []
     users
+  slotChatWindow = HH.slot_ _chatWindow unit ChatWindow.component authInfo
 
 _userlist = Proxy ∷ Proxy "userlist"
 _chatWindow = Proxy ∷ Proxy "chatWindow"

@@ -10,6 +10,12 @@ import Halogen.Extended as H
 import Halogen.HTML.Extended as HH
 import Halogen.HTML.Properties.Extended as HP
 
+data Action = UsersUpdate (Array UserPresence)
+
+type Input = Array UserPresence
+
+type State = Array UserPresence
+
 component ∷ ∀ q o m. H.Component q Input o m
 component =
   H.mkComponent
@@ -21,23 +27,23 @@ component =
         }
     }
 
-data Action = UsersUpdate (Array UserPresence)
-
-type Input = Array UserPresence
-
-type State = Array UserPresence
-
 render ∷ ∀ m. State → H.ComponentHTML Action () m
 render users =
   HH.div
     [ HP.classNames
         [ "flex"
+        , "block"
         , "flex-col"
-        , "w-1/5"
-        , "min-w-fit"
-        , "min-h-fit"
         , "bg-slate-200"
         , "opacity-90"
+        , "rounded-br-md"
+        , "border-r"
+        , "border-b"
+        , "border-slate-300"
+        , "pr-2"
+        , "max-w-fit"
+        , "min-w-fit"
+        , "overflow-scroll"
         ]
     ]
     [ HH.ul [ HP.classNames [ "w-full", "p-2" ] ]
@@ -50,7 +56,7 @@ render users =
   renderUsers st =
     HH.li
       [ HP.classNames [ "flex", "flex-row" ] ]
-      [ HH.section
+      [ HH.div
           [ HP.classNames
               [ "flex"
               , "flex-row"
