@@ -21,7 +21,6 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Extended as HH
 import Halogen.HTML.Properties.Extended as HP
 import Halogen.Subscription as HS
-import Svg.Renderer.Halogen (icon)
 
 type State =
   { route ∷ Route

@@ -6,14 +6,14 @@ import AppM (App)
 import Auth as Auth
 import Backend as Backend
 import Chat.Api.Http (UserPresence)
-import Chat.Presence (Presence(..))
-import Data.Array as Array
-import Data.Username as Username
+import Component.Userlist as Userlist
+import Halogen.Extended (OpaqueSlot)
 import Halogen.Extended as H
 import Halogen.HTML.Extended as HH
 import Halogen.HTML.Properties.Extended as HP
 import Network.RemoteData (RemoteData)
 import Network.RemoteData as RD
+import Type.Proxy (Proxy(..))
 
 type State =
   { users ∷ RemoteData Unit (Array UserPresence)
@@ -25,6 +25,8 @@ data Action = Initialize
 type Input = Auth.Info
 
 type Output = Backend.Error
+
+type ChildSlots = (userlist ∷ OpaqueSlot Unit)
 
 component ∷ ∀ q. H.Component q Input Output App
 component =
@@ -40,14 +42,15 @@ component =
 initialState ∷ Auth.Info → State
 initialState authInfo = { users: RD.NotAsked, authInfo }
 
-handleAction ∷ ∀ s. Action → H.HalogenM State Action s Backend.Error App Unit
+handleAction
+  ∷ Action → H.HalogenM State Action ChildSlots Backend.Error App Unit
 handleAction Initialize = do
   H.modify_ _ { users = RD.Loading }
   token ← H.gets _.authInfo.token
   H.raiseError (Backend.listUsers token) \userPresenses →
     H.modify_ _ { users = RD.Success userPresenses }
 
-render ∷ ∀ m a. State → H.ComponentHTML a () m
+render ∷ ∀ m. State → H.ComponentHTML Action ChildSlots m
 render { users } = HH.div
   [ HP.classNames
       [ "min-h-screen"
@@ -56,61 +59,10 @@ render { users } = HH.div
       ]
   ]
   [ HH.div [ HP.classNames [ "mt-20" ] ]
-      [ HH.div
-          [ HP.classNames
-              [ "flex"
-              , "flex-col"
-              , "w-1/5"
-              , "min-w-fit"
-              , "min-h-fit"
-              , "bg-slate-200"
-              , "opacity-90"
-              ]
-          ]
-          [ HH.ul [ HP.classNames [ "w-full", "p-2" ] ]
-              $ renderUsers
-              <$> Array.sortWith _.presence (RD.withDefault [] users)
-          ]
-      ]
+      [ slotUserlist ]
   ]
   where
-  renderUsers ∷ UserPresence → HH.ComponentHTML a () m
-  renderUsers st =
-    HH.li
-      [ HP.classNames [ "flex", "flex-row" ] ]
-      [ HH.section
-          [ HP.classNames
-              [ "flex"
-              , "flex-row"
-              , "h-fit"
-              , "items-center"
-              ]
-          ]
-          $
-            ( if st.presence == Online then
-                [ HH.div
-                    [ HP.classNames
-                        [ "rounded-full"
-                        , "bg-green-700"
-                        , "h-2"
-                        , "w-2"
-                        , "mr-2"
-                        ]
-                    ]
-                    []
-                ]
-              else []
-            )
-          <>
-            [ HH.span
-                [ HP.classNames
-                    [ if st.presence == Online then "text-green-700"
-                      else "text-slate-600"
-                    , "text-lg"
-                    , "font-medium"
-                    ]
-                ]
-                [ HH.text $ Username.toString st.username ]
-            ]
-      ]
+  slotUserlist = HH.slot_ _userlist unit Userlist.component $ RD.withDefault []
+    users
 
+_userlist = Proxy ∷ Proxy "userlist"
