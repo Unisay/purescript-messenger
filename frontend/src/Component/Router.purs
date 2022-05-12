@@ -9,7 +9,7 @@ import AppM (App)
 import AppM as App
 import Auth as Auth
 import Backend as Backend
-import Component.ChatWindow as ChatWindow
+import Component.Chat as Chat
 import Component.Debug as Debug
 import Component.Error as Error
 import Component.Home as Home
@@ -57,7 +57,7 @@ type ChildSlots =
   , signup ∷ ∀ query. H.Slot query Backend.Error Int
   , profile ∷ ∀ query. H.Slot query Signin.Output Int
   , debug ∷ H.OpaqueSlot Unit
-  , chatWindow ∷ ∀ query. H.Slot query Backend.Error Int
+  , chat ∷ ∀ query. H.Slot query Backend.Error Int
   , error ∷ ∀ query. H.Slot query Error.Output Int
   )
 
@@ -69,7 +69,7 @@ _signup = Proxy ∷ Proxy "signup"
 _profile = Proxy ∷ Proxy "profile"
 _debug = Proxy ∷ Proxy "debug"
 _error = Proxy ∷ Proxy "error"
-_chatWindow = Proxy ∷ Proxy "chatWindow"
+_chat = Proxy ∷ Proxy "chat"
 
 component ∷ H.Component Query Config Void Aff
 component = H.mkComponent
@@ -156,9 +156,9 @@ render { config, route, authInfo, error } =
             SignUp → slotSignup
             Profile _username → slotProfile
             Debug → slotDebug
-            ChatWindow →
+            Chat →
               case authInfo of
-                Just info → slotChatWindow info
+                Just info → slotChat info
                 Nothing → slotSignin
         ]
         where
@@ -179,8 +179,8 @@ render { config, route, authInfo, error } =
           HH.slot _profile 3 (hoistApp Signin.component) unit SigninOutput
         slotDebug =
           HH.slot_ _debug unit (hoistApp Debug.component) unit
-        slotChatWindow info =
-          HH.slot _chatWindow 4 (hoistApp ChatWindow.component) info
+        slotChat info =
+          HH.slot _chat 4 (hoistApp Chat.component) info
             (RecordAppError <<< App.BackendError)
         slotHome =
           HH.slot _home 5 (hoistApp Home.component) { authInfo } RecordAppError

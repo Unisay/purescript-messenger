@@ -1,4 +1,4 @@
-module Component.ChatWindow where
+module Component.Chat where
 
 import Preamble
 
@@ -26,7 +26,10 @@ type Input = Auth.Info
 
 type Output = Backend.Error
 
-type ChildSlots = (userlist ∷ OpaqueSlot Unit)
+type ChildSlots =
+  ( userlist ∷ OpaqueSlot Unit
+  , chatWindow ∷ OpaqueSlot Unit
+  )
 
 component ∷ ∀ q. H.Component q Input Output App
 component =
@@ -66,3 +69,4 @@ render { users } = HH.div
     users
 
 _userlist = Proxy ∷ Proxy "userlist"
+_chatWindow = Proxy ∷ Proxy "chatWindow"

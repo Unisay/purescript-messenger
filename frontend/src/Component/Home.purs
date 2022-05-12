@@ -82,7 +82,7 @@ render { authInfo } = HH.div
             )
           <$> case authInfo of
             Nothing → [ Route.SignIn, Route.SignUp, Route.Debug ]
-            Just _ → [ Route.ChatWindow ]
+            Just _ → [ Route.Chat ]
       ]
   ]
 

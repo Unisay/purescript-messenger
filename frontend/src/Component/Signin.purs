@@ -279,7 +279,7 @@ render state = signinFormContainer
 handleAction ∷ ∀ s. Action → H.HalogenM State Action s Output App Unit
 handleAction = case _ of
   Initialize →
-    whenM (Auth.loadToken <#> isJust) (goTo ChatWindow)
+    whenM (Auth.loadToken <#> isJust) (goTo Chat)
   SetUsername str → H.modify_ _ { username { inputValue = str } }
   SetPassword str → H.modify_ _ { password { inputValue = str } }
   ValidateUsername → do
@@ -315,5 +315,5 @@ handleAction = case _ of
                 Backend.SignedIn token → do
                   Auth.saveToken token
                   H.raise $ Right token
-                  goTo Route.ChatWindow
+                  goTo Route.Chat
                   notify $ useful "Welcome to the chat!"

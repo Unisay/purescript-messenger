@@ -95,7 +95,6 @@ render { route, authInfo } = HH.nav_
                       , "transition"
                       , "duration-50"
                       , "hover:text-blue-800"
-                      , "focus:text-blue-800"
                       , "active:text-blue-600"
                       ]
                   , Route.href route'
