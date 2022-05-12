@@ -8,6 +8,7 @@ import Backend as Backend
 import Chat.Api.Http (UserPresence)
 import Component.ChatWindow as ChatWindow
 import Component.Userlist as Userlist
+import Effect.Class (class MonadEffect)
 import Halogen.Extended (OpaqueSlot)
 import Halogen.Extended as H
 import Halogen.HTML.Extended as HH
@@ -54,7 +55,7 @@ handleAction Initialize = do
   H.raiseError (Backend.listUsers token) \userPresenses →
     H.modify_ _ { users = RD.Success userPresenses }
 
-render ∷ ∀ m. State → H.ComponentHTML Action ChildSlots m
+render ∷ ∀ m. MonadEffect m ⇒ State → H.ComponentHTML Action ChildSlots m
 render { users, authInfo } =
   HH.div
     [ HP.classNames

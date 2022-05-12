@@ -3,11 +3,16 @@ module Component.ChatWindow where
 import Preamble
 
 import Auth as Auth
+import Data.Message (Message)
+import Data.Validation (Validation)
+import Effect.Class (class MonadEffect)
+import Halogen.Extended (liftEffect)
 import Halogen.Extended as H
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Extended as HH
 import Halogen.HTML.Properties.Extended (InputType(..))
 import Halogen.HTML.Properties.Extended as HP
+import Web.Event.Event as Event
 import Web.Event.Internal.Types (Event)
 
 data Action = SetMessage String | UpdateInfo Auth.Info | SendMessage Event
@@ -16,10 +21,10 @@ type Input = Auth.Info
 
 type State =
   { info ∷ Auth.Info
-  , message ∷ String
+  , message ∷ Validation Message
   }
 
-component ∷ ∀ m o q. H.Component q Input o m
+component ∷ ∀ m o q. MonadEffect m ⇒ H.Component q Input o m
 component = H.mkComponent
   { initialState
   , render
@@ -30,7 +35,7 @@ component = H.mkComponent
   }
 
 initialState ∷ Input → State
-initialState info = { info, message: "" }
+initialState info = { info, message: { inputValue: "", result: Nothing } }
 
 render ∷ ∀ m. State → H.ComponentHTML Action () m
 render _state = HH.div
@@ -59,14 +64,15 @@ render _state = HH.div
           , "flex"
           , "rounded-full"
           , "bg-white"
-          , "border"
-          , "border-slate-400"
-          , "hover:drop-shadow"
+          , "shadow-up"
+          , "transition"
+          , "duration-200"
           ]
       ]
       [ HH.input
           [ HE.onValueInput SetMessage
           , HP.placeholder "Enter your message here!"
+          , HP.autofocus true
           , HP.classNames
               [ "w-full"
               , "h-8"
@@ -75,9 +81,14 @@ render _state = HH.div
               , "cursor-pointer"
               , "rounded-full"
               , "pl-2"
+              , "pr-9"
               , "overflow-scroll"
               , "placeholder:gray-500"
               , "placeholder:italic"
+              , "border"
+              , "border-slate-400"
+              , "focus:border-slate-500"
+              , "hover:border-slate-500"
               ]
           ]
       , HH.input
@@ -93,6 +104,8 @@ render _state = HH.div
               , "hover:cursor-pointer"
               , "focus:outline-none"
               , "transition"
+              , "absolute"
+              , "right-0"
               ]
           , HP.value "↑"
           , HP.type_ InputSubmit
@@ -100,8 +113,10 @@ render _state = HH.div
       ]
   ]
 
-handleAction ∷ ∀ o m. Action → H.HalogenM State Action () o m Unit
+handleAction
+  ∷ ∀ o m. MonadEffect m ⇒ Action → H.HalogenM State Action () o m Unit
 handleAction = case _ of
   UpdateInfo info → H.modify_ _ { info = info }
-  SetMessage _str → pure unit
-  SendMessage _ → pure unit
+  SetMessage str → H.modify_ _ { message { inputValue = str } }
+  SendMessage ev → do
+    liftEffect $ Event.preventDefault ev
