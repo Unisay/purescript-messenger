@@ -25,9 +25,6 @@ module.exports = {
       scale: {
         101: '1.01',
       },
-      gridTemplateColumns: {
-        chat: '1fr 5fr'
-      },
       minHeight: {
         chatwindow: '90vh',
         chat: '80vh',
@@ -39,9 +36,6 @@ module.exports = {
       borderRadius: {
         '20px': '20px'
       },
-      dropShadow: {
-        up: '2px -9px 48px 33px rgba(0,0,0,0.82)'
-      }
     }
   },
   plugins: [],
