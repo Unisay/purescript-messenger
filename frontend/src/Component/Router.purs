@@ -106,14 +106,15 @@ handleAction = case _ of
         Left err → log (show err <> ": " <> show hash) $> Home
         Right route → pure route
     navigate route
-  RecordAppError err → H.modify_ _ { error = Just err }
+  RecordAppError err →
+    H.modify_ _ { error = Just err }
   ErrorAction action → do
     case action of
       Error.Retry → do
         H.modify_ _ { error = Nothing }
       Error.SignIn → do
         H.gets _.config >>= runReaderT Auth.removeToken
-        H.modify_ _ { error = Nothing }
+        H.modify_ _ { error = Nothing, authInfo = Nothing }
         goTo Route.SignIn
   SigninOutput signinOut → case signinOut of
     Left err →

@@ -1,7 +1,10 @@
-module Component.Userlist where
+module Component.Chat.Users where
 
 import Preamble
 
+import AppM (App)
+import Auth as Auth
+import Backend as Backend
 import Chat.Api.Http (UserPresence)
 import Chat.Presence (Presence(..))
 import Data.Array as Array
@@ -9,26 +12,34 @@ import Data.Username as Username
 import Halogen.Extended as H
 import Halogen.HTML.Extended as HH
 import Halogen.HTML.Properties.Extended as HP
+import Network.RemoteData (RemoteData)
+import Network.RemoteData as RD
 
-data Action = UsersUpdate (Array UserPresence)
+data Action = Initialize | ReceiveAuth Auth.Info
 
-type Input = Array UserPresence
+type Input = Auth.Info
 
-type State = Array UserPresence
+type Output = Backend.Error
 
-component ∷ ∀ q o m. H.Component q Input o m
+type State =
+  { authInfo ∷ Auth.Info
+  , users ∷ RemoteData Unit (Array UserPresence)
+  }
+
+component ∷ ∀ q. H.Component q Input Output App
 component =
   H.mkComponent
-    { initialState: identity
+    { initialState: \authInfo → { authInfo, users: RD.NotAsked }
     , render
     , eval: H.mkEval $ H.defaultEval
         { handleAction = handleAction
-        , receive = UsersUpdate >>> Just
+        , receive = ReceiveAuth >>> Just
+        , initialize = Just Initialize
         }
     }
 
 render ∷ ∀ m. State → H.ComponentHTML Action () m
-render users =
+render { users } =
   HH.div
     [ HP.classNames
         [ "flex"
@@ -46,9 +57,16 @@ render users =
         , "overflow-scroll"
         ]
     ]
-    [ HH.ul [ HP.classNames [ "w-full", "p-2" ] ]
-        $ renderUsers
-        <$> Array.sortWith _.presence users
+    [ case users of
+        RD.Success loadedUsers →
+          HH.ul [ HP.classNames [ "w-full", "p-2" ] ]
+            $ map renderUsers (Array.sortWith _.presence loadedUsers)
+        RD.NotAsked →
+          HH.text "To be loaded."
+        RD.Loading →
+          HH.text "Loading..."
+        RD.Failure _ →
+          HH.text "Not Loaded. Please refresh."
     ]
 
   where
@@ -92,6 +110,13 @@ render users =
             ]
       ]
 
-handleAction ∷ ∀ o m s. Action → H.HalogenM State Action s o m Unit
-handleAction (UsersUpdate users) = H.modify_ $ const users
+handleAction ∷ ∀ s. Action → H.HalogenM State Action s Output App Unit
+handleAction = case _ of
+  Initialize → do
+    H.modify_ _ { users = RD.Loading }
+    token ← H.gets _.authInfo.token
+    H.raiseError (Backend.listUsers token) \userPresenses →
+      H.modify_ _ { users = RD.Success userPresenses }
+  ReceiveAuth authInfo →
+    H.modify_ _ { authInfo = authInfo }
 

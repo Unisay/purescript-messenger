@@ -5,74 +5,56 @@ import Preamble
 import AppM (App)
 import Auth as Auth
 import Backend as Backend
-import Chat.Api.Http (UserPresence)
-import Component.ChatWindow as ChatWindow
-import Component.Userlist as Userlist
-import Effect.Class (class MonadEffect)
-import Halogen.Extended (OpaqueSlot)
+import Component.Chat.Controls as Controls
+import Component.Chat.Messages as Messages
+import Component.Chat.Users as Users
 import Halogen.Extended as H
 import Halogen.HTML.Extended as HH
 import Halogen.HTML.Properties.Extended as HP
-import Network.RemoteData (RemoteData)
-import Network.RemoteData as RD
 import Type.Proxy (Proxy(..))
 
-type State =
-  { users ∷ RemoteData Unit (Array UserPresence)
-  , authInfo ∷ Auth.Info
-  }
+type State = Auth.Info
 
-data Action = Initialize
+data Action = HandleBackendError Backend.Error
 
 type Input = Auth.Info
 
 type Output = Backend.Error
 
-type ChildSlots =
-  ( userlist ∷ OpaqueSlot Unit
-  , chatWindow ∷ OpaqueSlot Unit
-  )
-
 component ∷ ∀ q. H.Component q Input Output App
 component =
   H.mkComponent
-    { initialState
+    { initialState: identity
     , render
-    , eval: H.mkEval $ H.defaultEval
-        { initialize = Just Initialize
-        , handleAction = handleAction
-        }
+    , eval: H.mkEval H.defaultEval { handleAction = handleAction }
     }
-
-initialState ∷ Auth.Info → State
-initialState authInfo = { users: RD.NotAsked, authInfo }
-
-handleAction
-  ∷ Action → H.HalogenM State Action ChildSlots Backend.Error App Unit
-handleAction Initialize = do
-  H.modify_ _ { users = RD.Loading }
-  token ← H.gets _.authInfo.token
-  H.raiseError (Backend.listUsers token) \userPresenses →
-    H.modify_ _ { users = RD.Success userPresenses }
-
-render ∷ ∀ m. MonadEffect m ⇒ State → H.ComponentHTML Action ChildSlots m
-render { users, authInfo } =
-  HH.div
-    [ HP.classNames
-        [ "m-header"
-        , "block"
-        , "flex"
-        , "gap-x-2"
-        , "w-full"
-        , "min-h-chatwindow"
-        ]
-    ]
-    [ slotUserlist, slotChatWindow ]
-
   where
-  slotUserlist = HH.slot_ _userlist unit Userlist.component $ RD.withDefault []
-    users
-  slotChatWindow = HH.slot_ _chatWindow unit ChatWindow.component authInfo
+  render authInfo =
+    HH.div
+      [ HP.classNames
+          [ "m-header"
+          , "block"
+          , "flex"
+          , "gap-x-2"
+          , "w-full"
+          , "min-h-chatwindow"
+          ]
+      ]
+      [ slotUsers, slotMessages, slotControls ]
+    where
+    slotUsers =
+      HH.slot _users unit Users.component authInfo HandleBackendError
+    slotMessages =
+      HH.slot _messages unit Messages.component unit HandleBackendError
+    slotControls =
+      HH.slot _controls unit Controls.component authInfo HandleBackendError
+    _users =
+      Proxy ∷ Proxy "users"
+    _messages =
+      Proxy ∷ Proxy "messages"
+    _controls =
+      Proxy ∷ Proxy "controls"
 
-_userlist = Proxy ∷ Proxy "userlist"
-_chatWindow = Proxy ∷ Proxy "chatWindow"
+handleAction ∷ ∀ s slots m. Action → H.HalogenM s Action slots Output m Unit
+handleAction = case _ of
+  HandleBackendError backendError → H.raise backendError

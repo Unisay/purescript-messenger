@@ -2,25 +2,12 @@ module Backend where
 
 import Preamble
 
-import Affjax
-  ( Error
-  , Request
-  , Response
-  , defaultRequest
-  , printError
-  , request
-  ) as AX
+import Affjax (Error, Request, Response, defaultRequest, printError, request) as AX
 import Affjax.RequestBody (RequestBody(..)) as AX
 import Affjax.RequestHeader (RequestHeader(..)) as AX
 import Affjax.ResponseFormat as ResponseFormat
 import Affjax.StatusCode (StatusCode(..))
-import Chat.Api.Http
-  ( SignInResponseBody
-  , SignUpResponse(..)
-  , SignUpResponseBody
-  , SignoutReason
-  , UserPresence
-  )
+import Chat.Api.Http (SignInResponseBody, SignUpResponse(..), SignUpResponseBody, SignoutReason, UserPresence)
 import Chat.Api.Http.Problem (Problem)
 import Chat.Api.Http.Problem as Problem
 import Control.Monad.Error.Class (class MonadThrow)
@@ -37,6 +24,7 @@ import Data.HTTP.Method (Method(..))
 import Data.Newtype (unwrap, wrap)
 import Data.Password (Password)
 import Data.String as String
+import Data.Time.Duration (Milliseconds(..))
 import Data.Username (Username)
 import Data.Username as Username
 import Effect.Aff (Aff, throwError)
@@ -98,7 +86,7 @@ createSession'
   → m SignInResponse
 createSession' transport username password = do
   backendApiUrl ← asks _.backendApiUrl
-  response ← liftAff $ transport AX.defaultRequest
+  response ← liftAff $ transport defaultBackendRequest
     { method = Left PUT
     , url = String.joinWith "/"
         [ backendApiUrl, "users", Username.toString username, "session" ]
@@ -139,7 +127,7 @@ createAccount'
 createAccount' transport username password email = do
   backendApiUrl ← asks _.backendApiUrl
   response ← liftAff $
-    transport AX.defaultRequest
+    transport defaultBackendRequest
       { method = Left PUT
       , url = String.joinWith "/"
           [ backendApiUrl, "users", Username.toString username ]
@@ -177,7 +165,7 @@ listUsers'
   → m (Array UserPresence)
 listUsers' transport token = do
   backendApiUrl ← asks _.backendApiUrl
-  response ← liftAff $ transport AX.defaultRequest
+  response ← liftAff $ transport defaultBackendRequest
     { method = Left GET
     , url = String.joinWith "/" [ backendApiUrl, "chat", "users" ]
     , responseFormat = ResponseFormat.json
@@ -215,7 +203,7 @@ deleteSession'
   → m Unit
 deleteSession' transport username token reason = do
   backendApiUrl ← asks _.backendApiUrl
-  response ← liftAff $ transport AX.defaultRequest
+  response ← liftAff $ transport defaultBackendRequest
     { method = Left DELETE
     , url = String.joinWith "/"
         [ backendApiUrl, "chat", "users", Username.toString username ]
@@ -235,3 +223,7 @@ hoistError f ma = runExceptT ma >>= either (throwError <<< f) pure
 authorization ∷ Token → AX.RequestHeader
 authorization token =
   AX.RequestHeader "Authorization" ("Bearer " <> Token.toString token)
+
+defaultBackendRequest ∷ AX.Request Unit
+defaultBackendRequest = AX.defaultRequest
+  { timeout = Just (Milliseconds 5000.0) }
