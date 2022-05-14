@@ -8,6 +8,8 @@
   , "bifunctors"
   , "codec-argonaut"
   , "common"
+  , "datetime"
+  , "dom-indexed"
   , "effect"
   , "either"
   , "enums"

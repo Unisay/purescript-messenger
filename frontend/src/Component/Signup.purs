@@ -69,7 +69,7 @@ render state = signupFormContainer
   signupFormContainer =
     HH.div
       [ HP.classNames
-          [ "min-h-screen"
+          [ "grow"
           , "flex"
           , "items-center"
           , "justify-center"

@@ -25,19 +25,11 @@ module.exports = {
       scale: {
         101: '1.01',
       },
+      gridTemplateColumns: {
+        chat: '13rem 1fr'
+      },
       minHeight: {
-        chatwindow: '90vh',
-        chat: '80vh',
-        header: '10vh'
-      },
-      margin: {
-        header: '10vh 0 0 0',
-      },
-      borderRadius: {
-        '20px': '20px'
-      },
-      boxShadow: {
-        up: '4px -9px 50px -18px #000000'
+        8: '3rem'
       }
     }
   },

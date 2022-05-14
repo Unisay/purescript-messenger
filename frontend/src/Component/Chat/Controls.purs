@@ -3,12 +3,14 @@ module Component.Chat.Controls where
 import Preamble
 
 import Auth as Auth
+import DOM.HTML.Indexed.WrapValue (WrapValue(..))
 import Data.Message (Message)
 import Data.Validation (Validation)
 import Effect.Class (class MonadEffect)
-import Halogen.Extended (liftEffect)
+import Halogen.Extended (PropName(..), liftEffect)
 import Halogen.Extended as H
 import Halogen.HTML.Events as HE
+import Halogen.HTML.Extended (prop)
 import Halogen.HTML.Extended as HH
 import Halogen.HTML.Properties.Extended (InputType(..))
 import Halogen.HTML.Properties.Extended as HP
@@ -41,30 +43,29 @@ render ∷ ∀ m. State → H.ComponentHTML Action () m
 render _state = HH.form
   [ HE.onSubmit SendMessage
   , HP.classNames
-      [ "absolute"
-      , "bottom-0"
-      , "w-full"
+      [ "w-full"
       , "flex"
-      , "rounded-full"
+      , "relative"
       , "bg-white"
-      , "shadow-up"
       , "transition"
       , "duration-200"
+      , "shadow-xl"
+      , "rounded-b-lg"
       ]
   ]
-  [ HH.input
+  [ HH.textarea
       [ HE.onValueInput SetMessage
       , HP.placeholder "Enter your message here!"
       , HP.autofocus true
+      , prop (PropName "wrap") Soft
       , HP.classNames
           [ "w-full"
-          , "h-8"
           , "focus:outline-none"
           , "focus:cursor-text"
           , "cursor-pointer"
-          , "rounded-full"
+          , "rounded-b-lg"
           , "pl-2"
-          , "pr-9"
+          , "pr-10"
           , "overflow-scroll"
           , "placeholder:gray-500"
           , "placeholder:italic"
@@ -72,23 +73,34 @@ render _state = HH.form
           , "border-slate-400"
           , "focus:border-slate-500"
           , "hover:border-slate-500"
+          , "transition"
+          , "duration-100"
+          , "pt-1"
+          , "resize-none"
+          , "overflow-hidden"
           ]
       ]
   , HH.input
       [ HP.classNames
-          [ "w-8"
-          , "h-8"
-          , "rounded-full"
+          [ "w-9"
+          , "h-9"
           , "bg-blue-500"
           , "text-center"
           , "text-white"
           , "duration-200"
           , "hover:bg-blue-600"
+          , "active:bg-blue-700"
           , "hover:cursor-pointer"
           , "focus:outline-none"
           , "transition"
           , "absolute"
           , "right-0"
+          , "bottom-0"
+          , "rounded-br-lg"
+          , "rounded-tl-lg"
+          , "active:border"
+          , "active:border-blue-700"
+          , "active:scale-101"
           ]
       , HP.value "↑"
       , HP.type_ InputSubmit

@@ -146,7 +146,7 @@ navigate route = do
 
 render ∷ State → H.ComponentHTML Action ChildSlots Aff
 render { config, route, authInfo, error } =
-  HH.div [ HP.classNames [ "flex", "flex-col" ] ]
+  HH.div [ HP.classNames [ "flex", "flex-col", "min-h-screen" ] ]
     case error of
       Nothing →
         [ slotNotifications

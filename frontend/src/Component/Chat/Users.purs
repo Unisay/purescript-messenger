@@ -49,12 +49,16 @@ render { users } =
         , "opacity-90"
         , "rounded-br-md"
         , "border-r"
-        , "border-b"
+        , "border-y"
         , "border-slate-300"
         , "pr-2"
-        , "max-w-fit"
+        , "w-40"
+        , "h-fit"
         , "min-w-fit"
-        , "overflow-scroll"
+        , "row-span-full"
+        , "shadow-md"
+        , "cursor-default"
+        , "rounded-tr-sm"
         ]
     ]
     [ case users of
@@ -80,34 +84,22 @@ render { users } =
               , "flex-row"
               , "h-fit"
               , "items-center"
+              , "cursor-pointer"
               ]
           ]
-          $
-            ( if st.presence == Online then
-                [ HH.div
-                    [ HP.classNames
-                        [ "rounded-full"
-                        , "bg-green-700"
-                        , "h-2"
-                        , "w-2"
-                        , "mr-2"
-                        ]
-                    ]
-                    []
-                ]
-              else []
-            )
-          <>
-            [ HH.span
-                [ HP.classNames
-                    [ if st.presence == Online then "text-green-700"
-                      else "text-slate-600"
-                    , "text-lg"
+          [ HH.span
+              [ HP.classNames
+                  $
+                    [ "text-lg"
                     , "font-medium"
                     ]
-                ]
-                [ HH.text $ Username.toString st.username ]
-            ]
+                  <>
+                    if st.presence == Online then
+                      [ "text-green-700", "hover:text-green-800" ]
+                    else [ "text-slate-600", "hover:text-slate-700" ]
+              ]
+              [ HH.text $ Username.toString st.username ]
+          ]
       ]
 
 handleAction ∷ ∀ s. Action → H.HalogenM State Action s Output App Unit

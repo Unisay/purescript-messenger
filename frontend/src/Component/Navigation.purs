@@ -49,16 +49,15 @@ render { route, authInfo } = HH.nav_
   [ HH.ul
       [ HP.classNames
           [ "bg-white"
-          , "absolute"
-          , "inset-x-0"
           , "top-0"
-          , "min-h-header"
           , "pr-0"
           , "pt-2"
           , "flex"
           , "justify-end"
           , "align-center"
           , "w-full"
+          , "sticky"
+          , "h-20"
           ]
       ]
       $

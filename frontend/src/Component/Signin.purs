@@ -78,7 +78,7 @@ render state = signinFormContainer
   signinFormContainer =
     HH.div
       [ HP.classNames
-          [ "min-h-screen"
+          [ "grow"
           , "flex"
           , "items-center"
           , "justify-center"

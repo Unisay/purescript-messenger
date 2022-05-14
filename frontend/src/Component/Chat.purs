@@ -32,15 +32,26 @@ component =
   render authInfo =
     HH.div
       [ HP.classNames
-          [ "m-header"
+          [ "grow"
           , "block"
-          , "flex"
-          , "gap-x-2"
+          , "grid"
+          , "grid-cols-chat"
           , "w-full"
-          , "min-h-chatwindow"
+          , "gap-x-1"
+          , "grid-flow-col"
           ]
       ]
-      [ slotUsers, slotMessages, slotControls ]
+      [ slotUsers
+      , HH.div
+          [ HP.classNames
+              [ "h-full"
+              , "flex"
+              , "flex-col"
+              , "pr-2"
+              ]
+          ]
+          [ slotMessages, slotControls ]
+      ]
     where
     slotUsers =
       HH.slot _users unit Users.component authInfo HandleBackendError

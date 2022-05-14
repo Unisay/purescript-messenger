@@ -26,19 +26,13 @@ initialState _ = {}
 render ∷ ∀ m. State → H.ComponentHTML Action () m
 render {} = HH.div
   [ HP.classNames
-      [ "border-2"
+      [ "border-x-2"
+      , "border-t-2"
       , "border-slate-400"
       , "w-full"
-      , "h-max"
-      , "min-h-chat"
-      , "rounded-b-md"
-      , "flex"
-      , "flex-col"
-      , "align-between"
-      , "relative"
-      , "rounded-b-20px"
       , "bg-slate-200"
+      , "h-4/5"
+      , "rounded-t-sm"
       ]
   ]
-  [ HH.div [ HP.classNames [ "h-4/5", "w-full", "block" ] ] []
-  ]
+  []
