@@ -9,23 +9,31 @@ import Affjax.RequestHeader (RequestHeader(..)) as AX
 import Affjax.ResponseFormat (ResponseFormat)
 import Affjax.ResponseFormat as ResponseFormat
 import Affjax.StatusCode (StatusCode(..))
-import Backend (SignInResponse(..), Transport, createAccount', createSession', listUsers')
+import Backend
+  ( HasBackendConfig
+  , SignInResponse(..)
+  , createAccount'
+  , createSession'
+  , deleteSession'
+  , listUsers'
+  )
 import Backend as Backend
-import Chat.Api.Http (SignUpResponse(..), UserPresence)
+import Chat.Api.Http (SignUpResponse(..), SignoutReason(..))
 import Chat.Presence (Presence(..))
+import Component.Notifications (HasNotifications)
 import Control.Monad.Error.Class (class MonadThrow, throwError)
-import Control.Monad.Except (runExceptT)
-import Control.Monad.Reader (runReaderT)
+import Control.Monad.Except (ExceptT, runExceptT)
+import Control.Monad.Reader (ReaderT, runReaderT)
 import Data.Argonaut.Core (Json, jsonEmptyArray, jsonNull, jsonSingletonObject)
 import Data.Argonaut.Decode (decodeJson)
 import Data.Argonaut.Encode (encodeJson)
 import Data.Array as Array
-import Data.Auth.Token as Auth
 import Data.Auth.Token as Token
 import Data.Email (Email)
 import Data.Email as Email
 import Data.Function (on)
 import Data.HTTP.Method (Method(..))
+import Data.Notification (Notification)
 import Data.Password (Password)
 import Data.Password as Password
 import Data.Username (Username)
@@ -34,6 +42,7 @@ import Effect.Aff (Aff)
 import Effect.Class (liftEffect)
 import Effect.Exception (Error, error)
 import Foreign.Object (Object, fromHomogeneous)
+import Halogen.Subscription (SubscribeIO)
 import Halogen.Subscription as H
 import Test.Spec (Spec, describe, it)
 import Test.Spec.Assertions (fail, shouldEqual)
@@ -46,6 +55,7 @@ spec = describe "Backend" do
     email = Email.unsafe "john.doe@example.com"
     token = Token.unsafe "1234567890"
     presence = Online
+    reason = UserAction
 
   describe "Create account" do
     it "sends proper user data to the backend" do
@@ -67,13 +77,13 @@ spec = describe "Backend" do
               actual.email `shouldEqual` email
             _ → fail "NonJson body"
           respond ok200
-      createAccountWithConfig server username password email >>= case _ of
+      withConfig (createAccount' server username password email) >>= case _ of
         Right SignedUp → pure unit
         result → fail $ "SignedUp expected, but got: " <> show result
 
     it "handles already created accounts" do
       let server _ = respond conflict409
-      createAccountWithConfig server username password email >>= case _ of
+      withConfig (createAccount' server username password email) >>= case _ of
         Left backendError → fail (show backendError)
         Right SignedUp → fail
           "Received SignedUp where AlreadyRegistered expected"
@@ -81,20 +91,20 @@ spec = describe "Backend" do
 
     it "handles bad requests" do
       let server _request = respond badRequest400
-      createAccountWithConfig server username password email >>= case _ of
+      withConfig (createAccount' server username password email) >>= case _ of
         Left (Backend.ResponseProblem problem) →
           problem.type `shouldEqual` "urn:puremess:be:bad-request-error"
         result → fail $ "Expected ResponseProblem but got " <> show result
 
     it "handles request error" do
       let server _request = pure $ Left AX.RequestFailedError
-      createAccountWithConfig server username password email >>= case _ of
+      withConfig (createAccount' server username password email) >>= case _ of
         Left (Backend.AffjaxError AX.RequestFailedError) → pure unit
         result → fail $ "Expected RequestFailedError but got " <> show result
 
     it "handles timeout error" do
       let server _request = pure $ Left AX.TimeoutError
-      createAccountWithConfig server username password email >>= case _ of
+      withConfig (createAccount' server username password email) >>= case _ of
         Left (Backend.AffjaxError AX.TimeoutError) → pure unit
         result → fail $ "Expected TimeoutError but got " <> show result
 
@@ -116,25 +126,25 @@ spec = describe "Backend" do
             { body = jsonSingletonObject "token" $
                 encodeJson (Token.toString token)
             }
-      createSessionWithConfig server username password >>= case _ of
+      withConfig (createSession' server username password) >>= case _ of
         Left backendError → fail (show backendError)
         Right response → assertSignedIn response
 
     it "handles request error" do
       let server _request = pure $ Left AX.RequestFailedError
-      createSessionWithConfig server username password >>= case _ of
+      withConfig (createSession' server username password) >>= case _ of
         Left (Backend.AffjaxError AX.RequestFailedError) → pure unit
         result → fail $ "Expected RequestFailedError but got " <> show result
 
     it "handles timeout error" do
       let server _request = pure $ Left AX.TimeoutError
-      createSessionWithConfig server username password >>= case _ of
+      withConfig (createSession' server username password) >>= case _ of
         Left (Backend.AffjaxError AX.TimeoutError) → pure unit
         result → fail $ "Expected TimeoutError but got " <> show result
 
     it "handles forbidden" do
       let server _request = respond forbidden403
-      createSessionWithConfig server username password >>= case _ of
+      withConfig (createSession' server username password) >>= case _ of
         Right Forbidden → pure unit
         result → fail $ "Forbidden expected, got: " <> show result
 
@@ -150,7 +160,7 @@ spec = describe "Backend" do
                 ("Bearer " <> Token.toString token)
             ]
           respond ok200 { body = encodeJson mockUserList }
-      listUsersWithConfig server token >>= case _ of
+      withConfig (listUsers' server token) >>= case _ of
         Left err → fail $ show err
         Right srb →
           Array.head srb # maybe (fail "Response body is empty") \user → do
@@ -160,45 +170,60 @@ spec = describe "Backend" do
 
     it "handles request error" do
       let server _request = pure $ Left AX.RequestFailedError
-      listUsersWithConfig server token >>= case _ of
+      withConfig (listUsers' server token) >>= case _ of
         Left (Backend.AffjaxError AX.RequestFailedError) → pure unit
         result → fail $ "Expected RequestFailedError but got " <> show result
 
     it "handles timeout error" do
       let server _request = pure $ Left AX.TimeoutError
-      listUsersWithConfig server token >>= case _ of
+      withConfig (listUsers' server token) >>= case _ of
         Left (Backend.AffjaxError AX.TimeoutError) → pure unit
         result → fail $ "Expected TimeoutError but got " <> show result
 
-createSessionWithConfig
-  ∷ Transport
-  → Username
-  → Password
-  → Aff (Either Backend.Error SignInResponse)
-createSessionWithConfig server username password = do
-  notifications ← liftEffect H.create
-  runExceptT $ runReaderT (createSession' server username password)
-    { notifications, backendApiUrl: "http://localhost/mock" }
+  describe "Delete session" do
+    it "sends proper data to the backend" do
+      let
+        server ∷ Backend.Transport
+        server { method, responseFormat, content, headers } = do
+          method `shouldEqual` Left DELETE
+          responseFormat `assertResponseFormat` ResponseFormat.json
+          headers `shouldEqual`
+            [ AX.RequestHeader "Authorization"
+                ("Bearer " <> Token.toString token)
+            ]
+          content # maybe (fail "Body is absent") case _ of
+            RequestBody.Json j → do
+              (actual ∷ { reason ∷ SignoutReason }) ← fromRight $ decodeJson j
+              actual.reason `shouldEqual` reason
+            _ → fail "NonJson body"
+          respond ok200
+      withConfig (deleteSession' server username token reason) >>= case _ of
+        Left err → fail $ show err
+        Right _ → pass
 
-createAccountWithConfig
-  ∷ Transport
-  → Username
-  → Password
-  → Email
-  → Aff (Either Backend.Error SignUpResponse)
-createAccountWithConfig server username password email = do
-  notifications ← liftEffect H.create
-  runExceptT $ runReaderT (createAccount' server username password email)
-    { notifications, backendApiUrl: "http://localhost/mock" }
+    it "handles request error" do
+      let server _request = pure $ Left AX.RequestFailedError
+      withConfig (deleteSession' server username token reason) >>= case _ of
+        Left (Backend.AffjaxError AX.RequestFailedError) → pure unit
+        result → fail $ "Expected RequestFailedError but got " <> show result
 
-listUsersWithConfig
-  ∷ Transport
-  → Auth.Token
-  → Aff (Either Backend.Error (Array UserPresence))
-listUsersWithConfig server token = do
-  notifications ← liftEffect H.create
-  runExceptT $ runReaderT (listUsers' server token)
-    { notifications, backendApiUrl: "http://localhost/mock" }
+    it "handles timeout error" do
+      let server _request = pure $ Left AX.TimeoutError
+      withConfig (deleteSession' server username token reason) >>= case _ of
+        Left (Backend.AffjaxError AX.TimeoutError) → pure unit
+        result → fail $ "Expected TimeoutError but got " <> show result
+
+withConfig
+  ∷ ∀ e a
+  . ReaderT
+      (Record (HasNotifications (HasBackendConfig ())))
+      (ExceptT e Aff)
+      a
+  → Aff (Either e a)
+withConfig action = do
+  notifications ∷ SubscribeIO Notification ← liftEffect H.create
+  runExceptT $ runReaderT action
+    { backendApiUrl: "http://localhost/mock", notifications: notifications }
 
 -- Assertions:
 
@@ -276,5 +301,5 @@ forbidden403 =
   }
 
 fromRight ∷ ∀ a m e. Show e ⇒ MonadThrow Error m ⇒ Either e a → m a
-fromRight = either (throwError <<< error <<< show) pure
+fromRight = either (throwError <<< error <<< append " fromRight " <<< show) pure
 

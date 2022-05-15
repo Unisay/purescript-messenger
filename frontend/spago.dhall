@@ -8,6 +8,8 @@
   , "bifunctors"
   , "codec-argonaut"
   , "common"
+  , "datetime"
+  , "dom-indexed"
   , "effect"
   , "either"
   , "enums"
@@ -32,7 +34,6 @@
   , "routing-duplex"
   , "spec"
   , "strings"
-  , "svg-parser-halogen"
   , "test-unit"
   , "transformers"
   , "tuples"
@@ -41,6 +42,7 @@
   , "web-events"
   , "web-html"
   , "web-storage"
+  , "web-uievents"
   ]
 , packages = ./packages.dhall
 , sources = [ "src/**/*.purs", "test/**/*.purs" ]

@@ -33,7 +33,7 @@ render { authInfo } = HH.div
       [ "flex"
       , "items-center"
       , "justify-center"
-      , "min-h-screen"
+      , "grow"
       , "bg-gray-100"
       ]
   ]
@@ -56,9 +56,10 @@ render { authInfo } = HH.div
               , "text-black"
               , "text-3xl"
               , "font-extrabold"
+              , "cursor-default"
               ]
           ]
-          [ HH.text "Pure Mess" ]
+          [ HH.text "PureMess" ]
       , HH.div
           [ HP.classNames
               [ "flex"
@@ -81,7 +82,7 @@ render { authInfo } = HH.div
             )
           <$> case authInfo of
             Nothing → [ Route.SignIn, Route.SignUp, Route.Debug ]
-            Just _ → [ Route.ChatWindow ]
+            Just _ → [ Route.Chat ]
       ]
   ]
 

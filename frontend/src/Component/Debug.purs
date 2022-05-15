@@ -53,7 +53,7 @@ render { selectedImportance } = HH.div
       [ "flex"
       , "items-center"
       , "justify-center"
-      , "min-h-screen"
+      , "grow"
       , "bg-gray-100"
       ]
   ]

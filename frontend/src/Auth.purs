@@ -2,14 +2,12 @@ module Auth where
 
 import Preamble
 
-import Control.Bind (bindFlipped)
 import Control.Monad.Error.Class (class MonadThrow)
 import Control.Monad.Except (throwError)
 import Control.Monad.Reader (class MonadAsk)
 import Data.Argonaut.Decode (JsonDecodeError, decodeJson)
 import Data.Auth.Token (Token)
 import Data.Auth.Token as Token
-import Data.Route (Route(..), goTo)
 import Data.Traversable (for)
 import Data.Username (Username)
 import Effect.Class (class MonadEffect)

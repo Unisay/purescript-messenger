@@ -12,7 +12,7 @@ import Backend (deleteSession)
 import Chat.Api.Http (SignoutReason(..))
 import Control.Monad.Reader (asks)
 import Data.Notification (useful)
-import Data.Route (Route(..), goTo)
+import Data.Route (Route(..))
 import Data.Route as Route
 import Data.Username as Username
 import Halogen (liftEffect)
@@ -21,7 +21,6 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Extended as HH
 import Halogen.HTML.Properties.Extended as HP
 import Halogen.Subscription as HS
-import Svg.Renderer.Halogen (icon)
 
 type State =
   { route ∷ Route
@@ -37,7 +36,7 @@ data Action = UpdateState State | SignOut SignoutReason
 component ∷ ∀ q. H.Component q Input Output App
 component =
   H.mkComponent
-    { initialState
+    { initialState: identity
     , render
     , eval: H.mkEval $ H.defaultEval
         { handleAction = handleAction
@@ -45,19 +44,20 @@ component =
         }
     }
 
-initialState ∷ Input → State
-initialState = identity
-
 render ∷ ∀ m. State → H.ComponentHTML Action () m
 render { route, authInfo } = HH.nav_
   [ HH.ul
       [ HP.classNames
           [ "bg-white"
-          , "pt-4"
+          , "top-0"
           , "pr-0"
+          , "pt-2"
           , "flex"
           , "justify-end"
           , "align-center"
+          , "w-full"
+          , "sticky"
+          , "h-20"
           ]
       ]
       $
@@ -70,6 +70,11 @@ render { route, authInfo } = HH.nav_
                       else "text-black"
                     , "font-bold"
                     , "text-2xl"
+                    , "transition"
+                    , "duration-50"
+                    , "hover:text-blue-800"
+                    , "focus:text-blue-800"
+                    , "active:text-blue-700"
                     ]
                 , Route.href Home
                 ]
@@ -84,9 +89,13 @@ render { route, authInfo } = HH.nav_
               [ HH.a
                   [ HP.classNames
                       [ if route == route' then "overline"
-                        else "no-underline"
+                        else "decoration-transparent"
                       , if route == route' then "text-blue-800"
                         else "text-black"
+                      , "transition"
+                      , "duration-50"
+                      , "hover:text-blue-800"
+                      , "active:text-blue-600"
                       ]
                   , Route.href route'
                   ]
@@ -97,20 +106,27 @@ render { route, authInfo } = HH.nav_
                 [ HP.classNames [ "list-none", "mr-16", "mt-8", "text-xl" ] ]
                 [ HH.text $ Username.toString username ]
             , HH.li
-                [ HP.classNames [ "list-none", "mr-16", "mt-8", "text-xl" ] ]
-                [ HH.a [ Route.href Home, HE.onClick \_ → SignOut UserAction ]
-                    [ icon
-                        """
-                        <svg xmlns="http://www.w3.org/2000/svg"
-                             class="h-6 w-6" fill="none"
-                             viewBox="0 0 24 24" stroke="currentColor"
-                             stroke-width="2">
-                          <path stroke-linecap="round" stroke-linejoin="round"
-                            d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3
-                            3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                        </svg>
-                        """
-                        []
+                [ HP.classNames [ "list-none", "mr-16", "mt-9", "text-xl" ] ]
+                [ HH.a
+                    [ Route.href Home
+                    , HE.onClick \_ → SignOut UserAction
+                    , HP.classNames [ "block" ]
+                    ]
+                    [ HH.img
+                        [ HP.src "images/signout.svg"
+                        , HP.classNames
+                            [ "h-6"
+                            , "w-6"
+                            , "transition"
+                            , "duration-100"
+                            , "hover:scale-110"
+                            , "active:scale-125"
+                            , "stroke-current"
+                            , "hover:stroke-blue-800"
+                            , "stroke-2"
+                            , "fill-transparent"
+                            ]
+                        ]
                     ]
                 ]
             ]
@@ -125,10 +141,8 @@ handleAction = case _ of
       Nothing → H.raise $ OutputError $ App.AuthError Auth.TokenIsMissing
       Just { username, token } → do
         H.raiseErrors_ (deleteSession username token reason)
-          (OutputError <<< App.BackendError)
+          (App.BackendError >>> OutputError)
         listener ← asks _.notifications.listener
         liftEffect $ HS.notify listener $ useful "You successfully signed out!"
         H.modify_ _ { authInfo = Nothing }
-        Auth.removeToken
-        H.raise SignedOut
--- goTo Route.Home
+        Auth.removeToken *> H.raise SignedOut

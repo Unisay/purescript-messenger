@@ -2,6 +2,7 @@ module Component.Error where
 
 import Preamble
 
+import Affjax as Affjax
 import Affjax.StatusCode (StatusCode(..))
 import AppM as App
 import Backend (Error(..))
@@ -31,38 +32,39 @@ component = H.mkComponent
   }
 
 render ∷ ∀ m s. State → H.ComponentHTML Action s m
-render error = HH.div
-  [ HP.classNames
-      [ "flex"
-      , "items-center"
-      , "justify-center"
-      , "min-h-screen"
-      , "bg-gray-100"
-      ]
-  ]
-  [ HH.div
-      [ HP.classNames
-          [ "max-w-md"
-          , "w-full"
-          , "flex"
-          , "flex-col"
-          , "justify-center"
-          , "items-center"
-          , "space-y-3"
-          , "rounded"
-          , "border"
-          , "border-slate-300"
-          , "p-5"
-          , "shadow-xl"
-          , "bg-white"
-          ]
-      ]
-      [ HH.span [ HP.classNames [ "text-8xl", "font-semibold" ] ]
-          [ HH.text "Ouch," ]
-      , HH.span [ HP.classNames [ "font-medium", "text-center" ] ]
-          [ HH.text $ renderError error ]
-      , errorAction error # \{ action, caption } →
-          HH.button
+render error = errorAction error # \{ action, caption } →
+  HH.div
+    [ HP.classNames
+        [ "flex"
+        , "items-center"
+        , "justify-center"
+        , "min-h-screen"
+        , "bg-gray-100"
+        ]
+    ]
+    [ HH.form
+        [ HP.classNames
+            [ "max-w-md"
+            , "w-full"
+            , "flex"
+            , "flex-col"
+            , "justify-center"
+            , "items-center"
+            , "space-y-3"
+            , "rounded"
+            , "border"
+            , "border-slate-300"
+            , "p-5"
+            , "shadow-xl"
+            , "bg-white"
+            ]
+        , HE.onSubmit \_ → Notify action
+        ]
+        [ HH.span [ HP.classNames [ "text-8xl", "font-semibold" ] ]
+            [ HH.text "Ouch," ]
+        , HH.span [ HP.classNames [ "font-medium", "text-center" ] ]
+            [ renderError error ]
+        , HH.input
             [ HP.classNames
                 [ "group"
                 , "w-full"
@@ -82,12 +84,14 @@ render error = HH.div
                 , "focus-ring-2"
                 , "focus-ring-offset-2"
                 , "focus-ring-indigo-500"
+                , "cursor-pointer"
                 ]
-            , HE.onClick \_ → Notify action
+            , HP.type_ HP.InputSubmit
+            , HP.value caption
+            , HP.autofocus true
             ]
-            [ HH.text caption ]
-      ]
-  ]
+        ]
+    ]
 
 handleAction ∷ ∀ m. Action → H.HalogenM State Action () Output m Unit
 handleAction (Notify action) = H.raise action
@@ -95,17 +99,36 @@ handleAction (Notify action) = H.raise action
 errorAction ∷ App.Error → { action ∷ Output, caption ∷ String }
 errorAction = case _ of
   App.BackendError (ResponseStatusError { actual: StatusCode 403 }) → signin
-  App.AuthError _ → signin
   _ → retry
   where
   signin = { action: SignIn, caption: "Okay" }
   retry = { action: Retry, caption: "Retry" }
 
-renderError ∷ App.Error → String
+renderError ∷ ∀ i w. App.Error → HH.HTML w i
 renderError = case _ of
   App.BackendError (ResponseStatusError { actual: StatusCode 403 }) →
-    "Your session has expired! Please sign in to your account again."
-  _ →
+    HH.div_
+      [ HH.p_
+          [ HH.text """ Your session has expired!  """
+          ]
+      , HH.p
+          [ HP.classNames [ "mt-3", "mb-3" ] ]
+          [ HH.text "Please sign in to your account again." ]
+      ]
+  App.BackendError (AffjaxError Affjax.TimeoutError) →
+    HH.div_
+      [ HH.p_
+          [ HH.text
+              """
+              We tried sooo hard but couldn't reach the backend
+              in the given time anyway.
+              """
+          ]
+      , HH.p
+          [ HP.classNames [ "mt-3", "mb-3" ] ]
+          [ HH.text "Please check your network connection and retry later." ]
+      ]
+  _ → HH.text
     """
     We are really sorry, but application is unable to serve your
     request at this time because of an unexpected critical error.

@@ -25,7 +25,7 @@ data Route
   | SignUp -- /signup
   | Profile Username -- /profile/:username
   | Debug -- /debug 
-  | ChatWindow -- /chat
+  | Chat -- /chat
 
 derive instance Generic Route _
 derive instance Eq Route
@@ -40,7 +40,7 @@ instance Arbitrary Route where
       , pure SignUp
       , Profile <$> arbitrary
       , pure Debug
-      , pure ChatWindow
+      , pure Chat
       ]
 
 codec ∷ RouteDuplex' Route
@@ -50,7 +50,7 @@ codec = root $ G.sum
   , "SignUp": path "signup" G.noArgs
   , "Profile": path "profile" (username segment)
   , "Debug": path "debug" G.noArgs
-  , "ChatWindow": path "chat" G.noArgs
+  , "Chat": path "chat" G.noArgs
   }
   where
   username =

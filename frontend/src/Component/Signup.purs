@@ -20,21 +20,22 @@ import Data.Route (goTo)
 import Data.Route as Route
 import Data.Username as Username
 import Data.Validation (Validation)
-import Halogen (liftEffect)
+import Effect.Aff (Milliseconds(..), delay)
+import Halogen (liftAff, liftEffect)
 import Halogen.Extended as H
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Extended as HH
 import Halogen.HTML.Properties.Extended as HP
 import Halogen.Subscription as HS
+import Network.RemoteData (RemoteData(..), isLoading)
 import Web.Event.Event (Event)
 import Web.Event.Event as Event
 
 type State =
-  { loading ∷ Boolean
-  , username ∷ Validation Username.Username
+  { username ∷ Validation Username.Username
   , password ∷ Validation Password.Password
   , email ∷ Validation Email.Email
-  , response ∷ Maybe SignUpResponse
+  , response ∷ RemoteData Unit SignUpResponse
   }
 
 data Action
@@ -48,11 +49,10 @@ data Action
 
 initialState ∷ ∀ i. i → State
 initialState _input =
-  { loading: false
-  , username: { inputValue: "", result: Nothing }
+  { username: { inputValue: "", result: Nothing }
   , password: { inputValue: "", result: Nothing }
   , email: { inputValue: "", result: Nothing }
-  , response: Nothing
+  , response: NotAsked
   }
 
 component ∷ ∀ q i. H.Component q i Backend.Error App
@@ -69,7 +69,7 @@ render state = signupFormContainer
   signupFormContainer =
     HH.div
       [ HP.classNames
-          [ "min-h-screen"
+          [ "grow"
           , "flex"
           , "items-center"
           , "justify-center"
@@ -87,6 +87,11 @@ render state = signupFormContainer
               , "p-5"
               , "shadow-xl"
               , "bg-white"
+              , if state.response == Success AlreadyRegistered then
+                  "animate-shake"
+                else mempty
+              , if isLoading state.response then "cursor-wait"
+                else "cursor-default"
               ]
           ]
           [ signupFormHeader, signupForm ]
@@ -109,23 +114,22 @@ render state = signupFormContainer
     HH.form
       [ HP.id "form-username"
       , HE.onSubmit SubmitForm
-      , HP.classNames [ "mt-8", "space-y-6" ]
-      ]
-      [ HH.div [ HP.classNames [ "text-red-600" ] ]
-          [ HH.text case state.response of
-              Just SignedUp → "You successfully signed up!"
-              Just AlreadyRegistered → "This user has already been registered!"
-              Nothing → ""
+      , HP.classNames
+          [ "mt-8"
+          , "space-y-6"
           ]
-      , HH.div_ $ Array.concat
+      ]
+      [ HH.div_ $ Array.concat
           [ [ HH.label
                 [ HP.for "i-email", HP.classNames [ "font-bold" ] ]
                 [ HH.text "Email" ]
             , HH.input
                 [ HP.id "i-email"
+                , HP.disabled $ isLoading state.response
                 , HP.placeholder "Email"
                 , HP.required true
                 , HP.autocomplete true
+                , HP.autofocus true
                 , HP.type_ HP.InputEmail
                 , HP.value state.email.inputValue
                 , HE.onValueInput SetEmail
@@ -135,24 +139,29 @@ render state = signupFormContainer
                       [ "appearance-none"
                       , "rounded"
                       , "relative"
+                      , "placeholder:italic"
+                      , "placeholder:gray-500"
                       , "block"
                       , "w-full"
-                      , "px-3"
+                      , "px-2"
                       , "py-2"
                       , "border"
-                      , "border-gray-300"
-                      , "placeholder-gray-500"
                       , "text-gray-900"
-                      , "focus-outline-none"
-                      , "focus-ring-indigo-500"
-                      , "focus-border-indigo-500"
-                      , "focus-z-10"
-                      , "sm-text-sm"
+                      , "focus:outline-none"
+                      , "focus:ring-indigo-500"
+                      , "focus:border-indigo-500"
+                      , "focus:z-10"
+                      , "sm:text-sm"
+                      , "focus:cursor-text"
+                      , "transition"
+                      , "duration-100"
+                      , if isLoading state.response then "cursor-wait"
+                        else "cursor-pointer"
                       ]
                     <>
                       if maybe false isLeft state.email.result then
                         errorClasses
-                      else []
+                      else [ "border-gray-300", "hover:border-gray-400" ]
                 ]
             ]
 
@@ -164,6 +173,7 @@ render state = signupFormContainer
                 [ HH.text "Username" ]
             , HH.input
                 [ HP.id "input-username"
+                , HP.disabled $ isLoading state.response
                 , HP.required true
                 , HP.autocomplete true
                 , HP.placeholder "Username"
@@ -176,23 +186,28 @@ render state = signupFormContainer
                       , "rounded"
                       , "relative"
                       , "block"
+                      , "placeholder:italic"
+                      , "placeholder:gray-500"
                       , "w-full"
-                      , "px-3"
+                      , "px-2"
                       , "py-2"
                       , "border"
-                      , "border-gray-300"
-                      , "placeholder-gray-500"
                       , "text-gray-900"
-                      , "focus-outline-none"
-                      , "focus-ring-indigo-500"
-                      , "focus-border-indigo-500"
-                      , "focus-z-10"
-                      , "sm-text-sm"
+                      , "focus:outline-none"
+                      , "focus:ring-indigo-500"
+                      , "focus:border-indigo-500"
+                      , "focus:z-10"
+                      , "sm:text-sm"
+                      , "focus:cursor-text"
+                      , "transition"
+                      , "duration-100"
+                      , if isLoading state.response then "cursor-wait"
+                        else "cursor-pointer"
                       ]
                     <>
                       if maybe false isLeft state.username.result then
                         errorClasses
-                      else []
+                      else [ "border-gray-300", "hover:border-gray-400" ]
                 ]
             ]
           , validationErrors state.username.result
@@ -203,6 +218,7 @@ render state = signupFormContainer
                 [ HH.text "Password" ]
             , HH.input
                 [ HP.id "input-password"
+                , HP.disabled $ isLoading state.response
                 , HP.placeholder "Password"
                 , HP.required true
                 , HP.autocomplete true
@@ -216,66 +232,79 @@ render state = signupFormContainer
                       , "rounded"
                       , "relative"
                       , "block"
+                      , "placeholder:italic"
+                      , "placeholder:gray-500"
                       , "w-full"
-                      , "px-3"
+                      , "px-2"
                       , "py-2"
                       , "border"
-                      , "border-gray-300"
-                      , "placeholder-gray-500"
                       , "text-gray-900"
-                      , "focus-outline-none"
-                      , "focus-ring-indigo-500"
-                      , "focus-border-indigo-500"
-                      , "focus-z-10"
-                      , "sm-text-sm"
+                      , "focus:outline-none"
+                      , "focus:ring-indigo-500"
+                      , "focus:border-indigo-500"
+                      , "focus:z-10"
+                      , "sm:text-sm"
+                      , "focus:cursor-text"
+                      , "transition"
+                      , "duration-100"
+                      , if isLoading state.response then "cursor-wait"
+                        else "cursor-pointer"
                       ]
                     <>
                       if maybe false isLeft state.password.result then
                         errorClasses
-                      else []
+                      else
+                        [ "border-gray-300", "hover:border-gray-400" ]
                 ]
             ]
           , validationErrors state.password.result
           ]
       , HH.div_
-          [ HH.button
-              [ HP.disabled state.loading
-              , HP.type_ HP.ButtonSubmit
+          [ HH.input
+              [ HP.disabled $ isLoading state.response
+              , HP.type_ HP.InputSubmit
               , HP.classNames
-                  [ "group"
-                  , "w-full"
-                  , "flex"
-                  , "justify-center"
-                  , "py-2"
-                  , "px-4"
-                  , "border"
-                  , "border-transparent"
-                  , "text-sm"
-                  , "font-medium"
-                  , "rounded-md"
-                  , "text-white"
-                  , if state.loading then "bg-gray-500"
-                    else "bg-indigo-600"
-                  , if state.loading then "hover-bg-gray-600"
-                    else "hover-bg-indigo-700"
-                  , "focus-outline-none"
-                  , "focus-ring-2"
-                  , "focus-ring-offset-2"
-                  , "focus-ring-indigo-500"
-                  ]
-              ]
-              [ HH.span
-                  [ HP.classNames
-                      [ "left-0", "flex", "items-center", "pl-3" ]
-                  ]
-                  [ HH.text
-                      if state.loading then "signupg up..." else "Sign Up"
-                  ]
+                  $
+                    [ "group"
+                    , "w-full"
+                    , "flex"
+                    , "justify-center"
+                    , "py-2"
+                    , "px-4"
+                    , "border"
+                    , "border-transparent"
+                    , "text-sm"
+                    , "font-medium"
+                    , "rounded-md"
+                    , "text-white"
+                    , "focus:outline-none"
+                    , "focus:ring-2"
+                    , "focus:ring-offset-2"
+                    , "focus:ring-indigo-500"
+                    ]
+                  <>
+                    if isLoading state.response then
+                      [ "bg-gray-500"
+                      , "hover-bg-gray-600"
+                      , "cursor-wait"
+                      ]
+                    else
+                      [ "bg-indigo-600"
+                      , "hover:bg-indigo-700"
+                      , "active:bg-indigo-800"
+                      , "transition"
+                      , "duration-200"
+                      , "cursor-pointer"
+                      , "hover:scale-101"
+                      ]
+              , HP.value $
+                  if isLoading state.response then "Signing up..."
+                  else "Sign Up"
               ]
           ]
       ]
 
-  errorClasses = [ "border-red-200", "border-2" ]
+  errorClasses = [ "border-red-200", "border-2", "hover:border-red-300" ]
 
   validationErrors
     ∷ ∀ a
@@ -324,11 +353,16 @@ handleAction = case _ of
       email ← wrap email.result
       in
         do
+          H.modify_ _ { response = Loading }
+          liftAff $ delay $ Milliseconds 500.0
           notify ← asks _.notifications.listener <#> \listener →
             HS.notify listener >>> liftEffect
-          H.raiseError (Backend.createAccount username password email) case _ of
-            SignedUp → do
-              goTo Route.SignIn
-              notify $ useful "You successfully created your account!"
-            AlreadyRegistered →
-              notify $ important "User already registered"
+          H.raiseError (Backend.createAccount username password email)
+            \response → do
+              H.modify_ _ { response = Success response }
+              case response of
+                SignedUp → do
+                  goTo Route.SignIn
+                  notify $ useful "You successfully created your account!"
+                AlreadyRegistered →
+                  notify $ important "User already registered"
