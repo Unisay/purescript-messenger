@@ -16,8 +16,13 @@ import Halogen.HTML.Properties.Extended (InputType(..))
 import Halogen.HTML.Properties.Extended as HP
 import Web.Event.Event as Event
 import Web.Event.Internal.Types (Event)
+import Web.UIEvent.KeyboardEvent (KeyboardEvent, key, shiftKey)
 
-data Action = SetMessage String | UpdateInfo Auth.Info | SendMessage Event
+data Action
+  = SetMessage String
+  | UpdateInfo Auth.Info
+  | SendMessage Event
+  | KeyPressed KeyboardEvent
 
 type Input = Auth.Info
 
@@ -40,8 +45,9 @@ initialState ∷ Input → State
 initialState info = { info, message: { inputValue: "", result: Nothing } }
 
 render ∷ ∀ m. State → H.ComponentHTML Action () m
-render _state = HH.form
+render state = HH.form
   [ HE.onSubmit SendMessage
+  , HP.id "controls"
   , HP.classNames
       [ "w-full"
       , "flex"
@@ -57,7 +63,10 @@ render _state = HH.form
       [ HE.onValueInput SetMessage
       , HP.placeholder "Enter your message here!"
       , HP.autofocus true
+      , HP.id "controls"
+      , HE.onKeyDown KeyPressed
       , prop (PropName "wrap") Soft
+      , HP.value state.message.inputValue
       , HP.classNames
           [ "w-full"
           , "focus:outline-none"
@@ -104,6 +113,7 @@ render _state = HH.form
           ]
       , HP.value "↑"
       , HP.type_ InputSubmit
+      , HP.id "controls"
       ]
   ]
 
@@ -112,4 +122,11 @@ handleAction
 handleAction = case _ of
   UpdateInfo info → H.modify_ _ { info = info }
   SetMessage str → H.modify_ _ { message { inputValue = str } }
-  SendMessage ev → liftEffect $ Event.preventDefault ev
+  SendMessage ev → do
+    liftEffect $ Event.preventDefault ev
+    H.modify_ _ { message { inputValue = "" } }
+  KeyPressed k →
+    if shiftKey k then pass
+    else case key k of
+      "Return" → pure unit -- needs last version of `web-events`
+      _ → pass

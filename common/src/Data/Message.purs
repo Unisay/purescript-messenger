@@ -16,8 +16,8 @@ toString ∷ Message → String
 toString (Message str) = str
 
 parse ∷ String → Either (NonEmptyArray String) Message
-parse = case _ of
-  s | String.length s > 200 → Left $ pure
+parse str = case String.trim str of
+  s | String.length s > 300 → Left $ pure
     "Message can not be longer than 200 characters"
   s → Right $ Message s
 

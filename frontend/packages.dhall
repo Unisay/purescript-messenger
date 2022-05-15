@@ -4,33 +4,7 @@ let upstream =
 
 let overrides = {=}
 
-let additions =
-      { svg-parser =
-        { repo = "https://github.com/rnons/purescript-svg-parser.git"
-        , version = "v2.0.0"
-        , dependencies = [ "prelude", "string-parsers" ]
-        }
-      , svg-parser-halogen =
-        { repo = "https://github.com/rnons/purescript-svg-parser-halogen.git"
-        , version = "v2.0.0"
-        , dependencies = [ "prelude", "halogen", "svg-parser" ]
-        }
-      , node-jwt =
-        { dependencies =
-          [ "effect"
-          , "console"
-          , "options"
-          , "prelude"
-          , "newtype"
-          , "foreign-generic"
-          , "aff"
-          , "aff-promise"
-          , "psci-support"
-          ]
-        , repo = "https://github.com/gaku-sei/purescript-node-jwt.git"
-        , version = "master"
-        }
-      }
+let additions = {=}
 
 in  (overrides // upstream // additions)
   with common = ../common/spago.dhall as Location
