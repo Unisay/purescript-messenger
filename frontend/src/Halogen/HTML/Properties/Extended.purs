@@ -7,7 +7,8 @@ import Preamble
 
 import Halogen (ClassName(..))
 import Halogen.HTML.Properties
-  ( ButtonType(..)
+  ( AutocompleteType(..)
+  , ButtonType(..)
   , CSSPixel
   , FormMethod(..)
   , IProp(..)
@@ -15,7 +16,6 @@ import Halogen.HTML.Properties
   , InputType(..)
   , MenuType(..)
   , MenuitemType(..)
-  , OnOff(..)
   , OrderedListType(..)
   , PreloadValue(..)
   , ScopeValue(..)
@@ -45,7 +45,6 @@ import Halogen.HTML.Properties
   , height
   , href
   , id
-  , id_
   , list
   , loop
   , max
@@ -71,6 +70,7 @@ import Halogen.HTML.Properties
   , selectedIndex
   , spellcheck
   , src
+  , srcDoc
   , step
   , style
   , tabIndex

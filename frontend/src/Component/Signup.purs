@@ -9,9 +9,7 @@ import Control.Monad.Except (runExceptT)
 import Control.Monad.Reader (asks)
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
-import Data.Array.NonEmpty as NEA
 import Data.Either (isLeft)
-import Data.EitherR (flipEither)
 import Data.Email as Email
 import Data.Newtype (wrap)
 import Data.Notification (important, useful)
@@ -128,8 +126,8 @@ render state = signupFormContainer
                 , HP.disabled $ isLoading state.response
                 , HP.placeholder "Email"
                 , HP.required true
-                , HP.autocomplete true
                 , HP.autofocus true
+                , HP.autocomplete HP.AutocompleteEmail
                 , HP.type_ HP.InputEmail
                 , HP.value state.email.inputValue
                 , HE.onValueInput SetEmail
@@ -175,7 +173,7 @@ render state = signupFormContainer
                 [ HP.id "input-username"
                 , HP.disabled $ isLoading state.response
                 , HP.required true
-                , HP.autocomplete true
+                , HP.autocomplete HP.AutocompleteUsername
                 , HP.placeholder "Username"
                 , HP.value state.username.inputValue
                 , HE.onValueInput SetUsername
@@ -221,7 +219,7 @@ render state = signupFormContainer
                 , HP.disabled $ isLoading state.response
                 , HP.placeholder "Password"
                 , HP.required true
-                , HP.autocomplete true
+                , HP.autocomplete HP.AutocompleteNewPassword
                 , HP.type_ HP.InputPassword
                 , HP.value state.password.inputValue
                 , HE.onValueInput SetPassword
@@ -311,13 +309,9 @@ render state = signupFormContainer
     . Maybe (Either (NonEmptyArray String) a)
     → Array (H.ComponentHTML Action () m)
   validationErrors = case _ of
-    Nothing → []
-    Just response →
-      (flipEither >>> hush >>> Array.fromFoldable >>> flip bind NEA.toArray)
-        response
-        <#> \errorMessage → HH.div
-          [ HP.classNames [ "text-red-800" ] ]
-          [ HH.text errorMessage ]
+    Just (Left errs) → Array.fromFoldable errs <#> \errorMessage →
+      HH.div [ HP.classNames [ "text-red-800" ] ] [ HH.text errorMessage ]
+    _ → []
 
 handleAction ∷ ∀ i. Action → H.HalogenM State Action i Backend.Error App Unit
 handleAction = case _ of

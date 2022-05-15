@@ -2,6 +2,7 @@
 , dependencies =
   [ "aff"
   , "affjax"
+  , "affjax-web"
   , "argonaut-codecs"
   , "argonaut-core"
   , "arrays"
@@ -13,7 +14,6 @@
   , "effect"
   , "either"
   , "enums"
-  , "errors"
   , "exceptions"
   , "foldable-traversable"
   , "foreign-object"

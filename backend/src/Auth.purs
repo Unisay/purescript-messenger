@@ -32,19 +32,19 @@ import ServerM (ServerM, liftDbM)
 
 data SigninResult = SigninSuccess Token | SigninFailure
 data SignupResult = SignedUp | UserInfoUpdated | NotSignedUpInvalidCredentials
-type SignoutRequest = { reason :: SignoutReason }
+type SignoutRequest = { reason ∷ SignoutReason }
 data SignoutResult = SignoutSuccess SignoutReason
 
 type UserInfo =
-  { email :: Email
-  , username :: Username
-  , password :: Password
+  { email ∷ Email
+  , username ∷ Username
+  , password ∷ Password
   }
 
-genSalt :: Effect Salt
+genSalt ∷ Effect Salt
 genSalt = Salt <<< String.fromCharArray <$> replicateA 32 genChar
   where
-  genChar :: Effect Char
+  genChar ∷ Effect Char
   genChar = do
     let
       alphabet = enumFromTo 'A' 'Z'
@@ -53,20 +53,20 @@ genSalt = Salt <<< String.fromCharArray <$> replicateA 32 genChar
     fromMaybe '?' <<< Array.index alphabet
       <$> randomInt 0 (Array.length alphabet - 1)
 
-signup :: UserInfo -> ServerM SignupResult
+signup ∷ UserInfo → ServerM SignupResult
 signup user = do
-  hashedData <- usernameHashedData user.username
+  hashedData ← usernameHashedData user.username
   case hashedData of
-    Nothing -> insertRecord $> SignedUp
-    Just { password_hash, salt } -> do
-      password_hash' <- hashPassword user.password salt
+    Nothing → insertRecord $> SignedUp
+    Just { password_hash, salt } → do
+      password_hash' ← hashPassword user.password salt
       if password_hash' == password_hash then updateRecord $> UserInfoUpdated
       else pure NotSignedUpInvalidCredentials
   where
-  insertRecord :: ServerM Unit
+  insertRecord ∷ ServerM Unit
   insertRecord = do
-    salt <- liftEffect genSalt
-    hash <- hashPassword user.password salt
+    salt ← liftEffect genSalt
+    hash ← hashPassword user.password salt
     liftDbM
       ( Db.execute
           """
@@ -80,17 +80,17 @@ signup user = do
           ]
       )
 
-  updateRecord :: ServerM Unit
+  updateRecord ∷ ServerM Unit
   updateRecord = liftDbM $ Db.execute "UPDATE users SET email = ?"
     [ Foreign.encode user.email ]
 
-signin :: Jwt.Secret -> Username -> Password -> ServerM SigninResult
+signin ∷ Jwt.Secret → Username → Password → ServerM SigninResult
 signin secret username password =
   usernameHashedData username >>= case _ of
-    Just { password_hash, salt } ->
-      hashPassword password salt >>= \hash -> do
-        now <- liftEffect nowDateTime
-        token <- liftAff $ Jwt.sign
+    Just { password_hash, salt } →
+      hashPassword password salt >>= \hash → do
+        now ← liftEffect nowDateTime
+        token ← liftAff $ Jwt.sign
           secret
           Jwt.defaultHeaders
           Jwt.defaultClaims
@@ -100,11 +100,11 @@ signin secret username password =
         pure
           if hash == password_hash then SigninSuccess (Token.unsafe token)
           else SigninFailure
-    Nothing -> pure SigninFailure
+    Nothing → pure SigninFailure
 
 usernameHashedData
-  :: Username
-  -> ServerM (Maybe { password_hash :: Hash, salt :: Salt })
+  ∷ Username
+  → ServerM (Maybe { password_hash ∷ Hash, salt ∷ Salt })
 usernameHashedData username =
   Array.head <$> liftDbM
     ( Db.query
@@ -112,13 +112,13 @@ usernameHashedData username =
         [ Foreign.encode username ]
     )
 
-signout :: SignoutRequest -> ServerM SignoutResult
+signout ∷ SignoutRequest → ServerM SignoutResult
 signout { reason } = pure $ SignoutSuccess reason
 
 type TokenErrors = NonEmptyList String
 
-tokenInfo :: Token -> Jwt.Secret -> Either TokenErrors Username
+tokenInfo ∷ Token → Jwt.Secret → Either TokenErrors Username
 tokenInfo token secret = do
-  tok :: Jwt.Token () _ <- Jwt.verify secret (Token.toString token)
-  strUsername <- note (pure "sub claim not found") tok.claims.sub
+  tok ∷ Jwt.Token () "token" ← Jwt.verify secret (Token.toString token)
+  strUsername ← note (pure "sub claim not found") tok.claims.sub
   note (pure "sub claim is invalid") $ hush (Username.parse strUsername)

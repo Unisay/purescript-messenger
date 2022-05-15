@@ -95,5 +95,6 @@ runComponent state runM { initialize, finalize, handleAction } callback =
       Raise _output a → pure a
       Par (HalogenAp ap) → runHalogenM st $ retractFreeAp ap
       Fork h k → runHalogenM st h $> k (ForkId 0)
+      Join _forkId a → pure a
       Kill _forkId a → pure a
       GetRef _refLabel k → pure $ k Nothing

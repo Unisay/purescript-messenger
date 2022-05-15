@@ -29,5 +29,9 @@ main = runHalogenAff do
   router ← runUI Router.component config body
   void $ liftEffect $ matchesWith (RD.parse Route.codec) \old new →
     when (old /= Just new) do
-      launchAff_ $ router.query $ H.mkTell $ Router.Navigate new
+      launchAff_
+        $ map (fromMaybe unit)
+        $ router.query
+        $ H.mkTell
+        $ Router.Navigate new
 

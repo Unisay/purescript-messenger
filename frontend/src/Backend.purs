@@ -2,12 +2,20 @@ module Backend where
 
 import Preamble
 
-import Affjax (Error, Request, Response, defaultRequest, printError, request) as AX
-import Affjax.RequestBody (RequestBody(..)) as AX
+import Affjax (Request, defaultRequest) as AX
+import Affjax.RequestBody as RB
 import Affjax.RequestHeader (RequestHeader(..)) as AX
+import Affjax.RequestHeader (RequestHeader)
 import Affjax.ResponseFormat as ResponseFormat
 import Affjax.StatusCode (StatusCode(..))
-import Chat.Api.Http (SignInResponseBody, SignUpResponse(..), SignUpResponseBody, SignoutReason, UserPresence)
+import Affjax.Web as AW
+import Chat.Api.Http
+  ( SignInResponseBody
+  , SignUpResponse(..)
+  , SignUpResponseBody
+  , SignoutReason
+  , UserPresence
+  )
 import Chat.Api.Http.Problem (Problem)
 import Chat.Api.Http.Problem as Problem
 import Control.Monad.Error.Class (class MonadThrow)
@@ -32,10 +40,10 @@ import Effect.Aff.Class (class MonadAff, liftAff)
 import LocalStorage (HasStorage)
 
 type HasBackendConfig r = (backendApiUrl ∷ String | r)
-type Transport = AX.Request Json → Aff (Either AX.Error (AX.Response Json))
+type Transport = AW.Request Json → Aff (Either AW.Error (AW.Response Json))
 
 data Error
-  = AffjaxError AX.Error
+  = AffjaxError AW.Error
   | ResponseDecodeError JsonDecodeError
   | ResponseStatusError { expected ∷ StatusCode, actual ∷ StatusCode }
   | ResponseProblem Problem
@@ -43,7 +51,7 @@ data Error
 instance Show Error where
   show err = "Backend error: " <> case err of
     AffjaxError e →
-      "AJAX request failed: " <> AX.printError e
+      "AJAX request failed: " <> AW.printError e
     ResponseDecodeError e →
       "decoding response JSON failed: " <> show e
     ResponseStatusError { expected, actual } →
@@ -73,7 +81,7 @@ createSession
   ⇒ Username
   → Password
   → m SignInResponse
-createSession = createSession' AX.request
+createSession = createSession' AW.request
 
 createSession'
   ∷ ∀ r m
@@ -90,7 +98,7 @@ createSession' transport username password = do
     { method = Left PUT
     , url = String.joinWith "/"
         [ backendApiUrl, "users", Username.toString username, "session" ]
-    , content = Just $ AX.Json $ Json.encodeJson { username, password }
+    , content = Just $ RB.Json $ Json.encodeJson { username, password }
     , responseFormat = ResponseFormat.json
     }
   case response of
@@ -112,7 +120,7 @@ createAccount
   → Password
   → Email
   → m SignUpResponse
-createAccount = createAccount' AX.request
+createAccount = createAccount' AW.request
 
 createAccount'
   ∷ ∀ r m
@@ -131,7 +139,7 @@ createAccount' transport username password email = do
       { method = Left PUT
       , url = String.joinWith "/"
           [ backendApiUrl, "users", Username.toString username ]
-      , content = Just $ AX.Json $ Json.encodeJson { username, password, email }
+      , content = Just $ RB.Json $ Json.encodeJson { username, password, email }
       , responseFormat = ResponseFormat.json
       }
   case response of
@@ -153,7 +161,7 @@ listUsers
   ⇒ MonadThrow Error m
   ⇒ Token
   → m (Array UserPresence)
-listUsers = listUsers' AX.request
+listUsers = listUsers' AW.request
 
 listUsers'
   ∷ ∀ r m
@@ -189,7 +197,7 @@ deleteSession
   → Token
   → SignoutReason
   → m Unit
-deleteSession = deleteSession' AX.request
+deleteSession = deleteSession' AW.request
 
 deleteSession'
   ∷ ∀ r m
@@ -208,7 +216,7 @@ deleteSession' transport username token reason = do
     , url = String.joinWith "/"
         [ backendApiUrl, "chat", "users", Username.toString username ]
     , responseFormat = ResponseFormat.json
-    , content = Just $ AX.Json $ Json.encodeJson { reason }
+    , content = Just $ RB.Json $ Json.encodeJson { reason }
     , headers = [ authorization token ]
     }
   case response of
@@ -220,7 +228,7 @@ deleteSession' transport username token reason = do
 hoistError ∷ ∀ m e e'. MonadThrow e' m ⇒ (e → e') → ExceptT e m ~> m
 hoistError f ma = runExceptT ma >>= either (throwError <<< f) pure
 
-authorization ∷ Token → AX.RequestHeader
+authorization ∷ Token → RequestHeader
 authorization token =
   AX.RequestHeader "Authorization" ("Bearer " <> Token.toString token)
 

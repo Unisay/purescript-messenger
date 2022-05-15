@@ -1,9 +1,7 @@
-"use strict";
+import { argon2i } from "argon2-ffi";
 
-const { argon2i } = require("argon2-ffi");
-
-exports._hashPassword = function (password) {
-  return async function (salt) {
-    return await argon2i.hash(password, Buffer.from(salt));
-  };
+export function _hashPassword(password) {
+    return async function (salt) {
+        return await argon2i.hash(password, Buffer.from(salt));
+    };
 };

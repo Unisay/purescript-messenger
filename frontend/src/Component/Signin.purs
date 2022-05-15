@@ -11,10 +11,8 @@ import Control.Monad.Except.Trans (runExceptT)
 import Control.Monad.Reader (asks)
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
-import Data.Array.NonEmpty as NEA
 import Data.Auth.Token (Token)
 import Data.Either (isLeft)
-import Data.EitherR (flipEither)
 import Data.Newtype (wrap)
 import Data.Notification (important, useful)
 import Data.Password (Password)
@@ -133,7 +131,7 @@ render state = signinFormContainer
                 , HP.disabled $ isLoading state.response
                 , HP.autofocus true
                 , HP.required true
-                , HP.autocomplete true
+                , HP.autocomplete HP.AutocompleteUsername
                 , HP.placeholder "Username"
                 , HP.value state.username.inputValue
                 , HE.onValueInput SetUsername
@@ -179,7 +177,7 @@ render state = signinFormContainer
                 , HP.disabled $ isLoading state.response
                 , HP.placeholder "Password"
                 , HP.required true
-                , HP.autocomplete true
+                , HP.autocomplete HP.AutocompleteCurrentPassword
                 , HP.type_ HP.InputPassword
                 , HP.value state.password.inputValue
                 , HE.onValueInput SetPassword
@@ -268,13 +266,9 @@ render state = signinFormContainer
     . Maybe (Either (NonEmptyArray String) a)
     → Array (H.ComponentHTML Action () m)
   validationErrors = case _ of
-    Nothing → []
-    Just response →
-      (flipEither >>> hush >>> Array.fromFoldable >>> flip bind NEA.toArray)
-        response
-        <#> \errorMessage → HH.div
-          [ HP.classNames [ "text-red-800" ] ]
-          [ HH.text errorMessage ]
+    Just (Left errs) → Array.fromFoldable errs <#> \errorMessage →
+      HH.div [ HP.classNames [ "text-red-800" ] ] [ HH.text errorMessage ]
+    _ → []
 
 handleAction ∷ ∀ s. Action → H.HalogenM State Action s Output App Unit
 handleAction = case _ of
