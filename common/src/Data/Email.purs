@@ -18,7 +18,6 @@ import Data.Profunctor (dimap)
 import Foreign.Generic (class Decode, class Encode)
 import Text.Email.Parser as EP
 import Text.Email.Validate as EV
-import Text.Parsing.StringParser (ParseError)
 
 newtype Email = Email String
 
@@ -32,17 +31,16 @@ derive newtype instance Encode Email
 instance Show Email where
   show (Email s) = show s
 
-codec :: JsonCodec Email
+codec ∷ JsonCodec Email
 codec = dimap toString Email CA.string
 
-toString :: Email -> String
+toString ∷ Email → String
 toString (Email s) = s
 
 parse ∷ String → Either String Email
 parse = bimap showEmailParsingErr (Email <<< EP.toString) <<< EV.runEmailParser
   where
-  showEmailParsingErr :: ParseError -> String
   showEmailParsingErr { error, pos } = error <> " at position " <> show pos
 
-unsafe :: String -> Email
+unsafe ∷ String → Email
 unsafe = Email

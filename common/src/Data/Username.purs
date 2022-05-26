@@ -12,7 +12,7 @@ import Prelude
 import Control.Monad.Except.Trans (except)
 import Data.Argonaut.Decode (class DecodeJson)
 import Data.Argonaut.Encode (class EncodeJson)
-import Data.Array (any)
+import Data.Array (any, (:))
 import Data.Array.NonEmpty as NEA
 import Data.Array.NonEmpty.Internal (NonEmptyArray)
 import Data.Bifunctor (lmap)
@@ -21,8 +21,6 @@ import Data.CodePoint.Unicode as Unicode
 import Data.Codec.Argonaut (JsonCodec)
 import Data.Codec.Argonaut as CA
 import Data.Either (Either(..), isRight)
-import Data.List (List(..), (:))
-import Data.List.NonEmpty as NEL
 import Data.Profunctor (dimap)
 import Data.String (null, trim) as String
 import Data.String.CodePoints
@@ -60,11 +58,11 @@ instance Arbitrary Username where
     where
     usernameChar ∷ Gen Char
     usernameChar = frequency
-      $ NEL.cons' (Tuple 5.0 genAlpha)
+      $ NEA.cons' (Tuple 5.0 genAlpha)
       $ Tuple 3.0 genDigitChar
           : Tuple 1.0 (pure '_')
           : Tuple 1.0 (pure '-')
-          : Nil
+          : mempty
 
 codec ∷ JsonCodec Username
 codec = dimap toString Username CA.string
