@@ -26,7 +26,7 @@
               pkgs.nixfmt
               pkgs.nodejs-16_x
               pkgs.sqlite
-              epkgs.purescript
+              pkgs.purescript
               epkgs.purs-tidy
               epkgs.spago
               epkgs.zephyr
