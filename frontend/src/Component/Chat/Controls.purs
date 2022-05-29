@@ -14,9 +14,11 @@ import Halogen.HTML.Extended (prop)
 import Halogen.HTML.Extended as HH
 import Halogen.HTML.Properties.Extended (InputType(..))
 import Halogen.HTML.Properties.Extended as HP
+import Web.Event.CustomEvent as CustomEvent
 import Web.Event.Event as Event
 import Web.Event.Internal.Types (Event)
-import Web.UIEvent.KeyboardEvent (KeyboardEvent, key, shiftKey)
+import Web.HTML.Event.EventTypes (submit)
+import Web.UIEvent.KeyboardEvent (KeyboardEvent, key, shiftKey, toEvent)
 
 data Action
   = SetMessage String
@@ -69,6 +71,7 @@ render state = HH.form
       , HP.value state.message.inputValue
       , HP.classNames
           [ "w-full"
+          , "h-21"
           , "focus:outline-none"
           , "focus:cursor-text"
           , "cursor-pointer"
@@ -125,8 +128,13 @@ handleAction = case _ of
   SendMessage ev → do
     liftEffect $ Event.preventDefault ev
     H.modify_ _ { message { inputValue = "" } }
-  KeyPressed k →
-    if shiftKey k then pass
-    else case key k of
-      "Return" → pure unit -- needs last version of `web-events`
+  KeyPressed keyEv → do
+    if shiftKey keyEv then pass
+    else case key keyEv of
+      "Enter" → do
+        liftEffect $ Event.preventDefault $ toEvent keyEv
+        liftEffect (CustomEvent.new submit)
+          >>= CustomEvent.toEvent
+          >>> SendMessage
+          >>> handleAction
       _ → pass
