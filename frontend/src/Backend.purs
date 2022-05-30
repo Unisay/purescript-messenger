@@ -259,7 +259,7 @@ sendMessage' transport username message token = do
         [ backendApiUrl, "chat", Username.toString username ]
     , responseFormat = ResponseFormat.json
     , content = Just $ RB.Json $ Json.encodeJson
-        { username, message, dateTime: DateTime date time }
+        { message, dateTime: DateTime date time }
     , headers = [ authorization token ]
     }
   case response of
