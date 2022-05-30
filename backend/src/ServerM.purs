@@ -48,82 +48,82 @@ newtype ServerM a = ServerM
       a
   )
 
-derive instance newtypeServerM :: Newtype (ServerM a) _
-derive newtype instance functorServerM :: Functor ServerM
-derive newtype instance applyServerM :: Apply ServerM
-derive newtype instance applicativeServerM :: Applicative ServerM
-derive newtype instance bindServerM :: Bind ServerM
-derive newtype instance monadServerM :: Monad ServerM
-derive newtype instance monadEffectServerM :: MonadEffect ServerM
-derive newtype instance monadAffServerM :: MonadAff ServerM
-derive newtype instance monadThrowServerM :: MonadThrow Error ServerM
+derive instance newtypeServerM ∷ Newtype (ServerM a) _
+derive newtype instance functorServerM ∷ Functor ServerM
+derive newtype instance applyServerM ∷ Apply ServerM
+derive newtype instance applicativeServerM ∷ Applicative ServerM
+derive newtype instance bindServerM ∷ Bind ServerM
+derive newtype instance monadServerM ∷ Monad ServerM
+derive newtype instance monadEffectServerM ∷ MonadEffect ServerM
+derive newtype instance monadAffServerM ∷ MonadAff ServerM
+derive newtype instance monadThrowServerM ∷ MonadThrow Error ServerM
 
-runServerM :: SQLite.DBConnection -> Server -> Handler
+runServerM ∷ SQLite.DBConnection → Server → Handler
 runServerM dbconn (ServerM s) = runExceptT (runReaderT s dbconn) >>= case _ of
-  Left (DatabaseErr (Database.Decoding foreignErrors)) -> do
+  Left (DatabaseErr (Database.Decoding foreignErrors)) → do
     Console.logShow foreignErrors
     Response.setStatus 400
     Response.sendJson { error: [ Problem.internalServerError Nothing ] }
-  Left (DatabaseErr (Database.ConstraintViolation column)) ->
+  Left (DatabaseErr (Database.ConstraintViolation column)) →
     case column of
-      Database.Username -> do
+      Database.Username → do
         Response.setStatus 409
         Response.sendJson { errors: [ Problem.usernameExists ] }
-      Database.Email -> do
+      Database.Email → do
         Response.setStatus 409
         Response.sendJson { errors: [ Problem.emailExists ] }
-  Left (DatabaseErr (Database.Other message)) -> do
+  Left (DatabaseErr (Database.Other message)) → do
     Response.setStatus 500
     Console.log $ "Database Error: " <> message
     Response.sendJson { errors: [ Problem.internalServerError Nothing ] }
-  Left (BodyDecodingErr decodingErrs) -> do
+  Left (BodyDecodingErr decodingErrs) → do
     Response.setStatus 400
     Response.sendJson
       { errors: Problem.badRequest <<< map renderForeignError $
           Array.fromFoldable decodingErrs
       }
-  Left RouteParamIsMissing -> do
+  Left RouteParamIsMissing → do
     Response.setStatus 404
     Response.send ""
-  Right _ -> pure unit
+  Right _ → pure unit
 
 -- Lifted functions
 
-liftHandler :: forall a. HandlerM a -> ServerM a
+liftHandler ∷ ∀ a. HandlerM a → ServerM a
 liftHandler = wrap <<< lift <<< lift
 
-liftDbM :: forall a. DbM HandlerM a -> ServerM a
+liftDbM ∷ ∀ a. DbM HandlerM a → ServerM a
 liftDbM = ServerM <<< mapReaderT (withExceptT DatabaseErr)
 
-readBody :: forall b. Decode b => ServerM b
+readBody ∷ ∀ b. Decode b ⇒ ServerM b
 readBody = do
-  body <- liftHandler (Request.getBody)
+  body ← liftHandler (Request.getBody)
   ServerM (lift (except (lmap BodyDecodingErr (runExcept body))))
 
 type ParamName = String
 
-readPathParam :: ParamName -> ServerM String
+readPathParam ∷ ParamName → ServerM String
 readPathParam name =
   liftHandler (Request.getRouteParam name) >>=
     maybe (throwError RouteParamIsMissing) pure
 
 type HeaderName = String
 
-readHeader :: HeaderName -> ServerM (Maybe String)
+readHeader ∷ HeaderName → ServerM (Maybe String)
 readHeader = liftHandler <<< Request.getRequestHeader
 
-readToken :: ServerM (Maybe Token)
-readToken = readHeader "Authorization" <#> \header -> header >>=
+readToken ∷ ServerM (Maybe Token)
+readToken = readHeader "Authorization" <#> \header → header >>=
   Str.trim >>> Str.drop 7 >>> Str.trim >>> Token.parse >>> hush
 
-setStatus :: Int -> Server
+setStatus ∷ Int → Server
 setStatus = liftHandler <<< Response.setStatus
 
-replyStatus :: Int -> Server
+replyStatus ∷ Int → Server
 replyStatus status = setStatus status *> reply ""
 
-reply :: String -> Server
+reply ∷ String → Server
 reply = liftHandler <<< Response.send
 
-replyJson :: forall a. EncodeJson a => a -> Server
+replyJson ∷ ∀ a. EncodeJson a ⇒ a → Server
 replyJson = liftHandler <<< Response.sendJson <<< encodeJson

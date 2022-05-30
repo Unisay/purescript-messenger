@@ -8,7 +8,6 @@ import Data.Generic.Rep (class Generic)
 import Data.Show.Generic (genericShow)
 import Data.Username (Username)
 import Data.Username as Username
-import Effect.Class (class MonadEffect, liftEffect)
 import Halogen.HTML (IProp)
 import Halogen.HTML.Properties as HP
 import Routing.Duplex (RouteDuplex', as, path, print, root, segment)

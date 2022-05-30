@@ -6,8 +6,7 @@ import Auth as Auth
 import DOM.HTML.Indexed.WrapValue (WrapValue(..))
 import Data.Message (Message)
 import Data.Validation (Validation)
-import Effect.Class (class MonadEffect)
-import Halogen.Extended (PropName(..), liftEffect)
+import Halogen.Extended (PropName(..))
 import Halogen.Extended as H
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Extended (prop)

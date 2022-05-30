@@ -10,7 +10,6 @@ import Data.Auth.Token (Token)
 import Data.Auth.Token as Token
 import Data.Traversable (for)
 import Data.Username (Username)
-import Effect.Class (class MonadEffect)
 import Jwt (JwtError(..))
 import Jwt as Jwt
 import LocalStorage (HasStorage)
