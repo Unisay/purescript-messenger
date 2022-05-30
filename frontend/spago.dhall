@@ -24,6 +24,7 @@
   , "http-methods"
   , "jwt"
   , "newtype"
+  , "now"
   , "ordered-collections"
   , "prelude"
   , "profunctor"
