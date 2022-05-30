@@ -14,10 +14,16 @@ data EncodeDateTime = DateTime Date Time
 
 instance EncodeJson EncodeDateTime where
   encodeJson (DateTime date time) = encodeJson
-    { date: (show (fromEnum $ year date)) <> showMonth (month date) <>
-        show (fromEnum $ day date)
-    , time: show $ fromEnum (second time) + (fromEnum (minute time) * 60)
-        + (fromEnum (hour time) * 3600)
+    { date: (show (fromEnum $ year date))
+        <> "/"
+        <> showMonth (month date)
+        <> "/"
+        <> show (fromEnum $ day date)
+    , time: (show $ fromEnum $ second time)
+        <> ":"
+        <> (show $ fromEnum $ minute time)
+        <> ":"
+        <> (show $ fromEnum $ hour time)
     }
 
 showMonth ∷ Month → String
