@@ -9,13 +9,7 @@ import Affjax.RequestHeader (RequestHeader)
 import Affjax.ResponseFormat as ResponseFormat
 import Affjax.StatusCode (StatusCode(..))
 import Affjax.Web as AW
-import Chat.Api.Http
-  ( SignInResponseBody
-  , SignUpResponse(..)
-  , SignUpResponseBody
-  , SignoutReason
-  , UserPresence
-  )
+import Chat.Api.Http (SignInResponseBody, SignUpResponse(..), SignUpResponseBody, SignoutReason, UserPresence)
 import Chat.Api.Http.Problem (Problem)
 import Chat.Api.Http.Problem as Problem
 import Control.Monad.Error.Class (class MonadThrow)
@@ -106,8 +100,11 @@ createSession' transport username password = do
     Left err → throwError $ AffjaxError err
     Right { status, body } →
       case unwrap status, decodeJson body of
-        200, Right (srb ∷ SignInResponseBody) → pure $ SignedIn srb.token
-        200, Left err → throwError $ ResponseDecodeError err
+        200, Right (token ∷ SignInResponseBody) → pure
+          $ SignedIn token
+        200, Left err → do
+          logShow err
+          throwError $ ResponseDecodeError err
         403, _ → pure Forbidden
         _, _ → throwError $ ResponseStatusError
           { expected: wrap 200, actual: status }

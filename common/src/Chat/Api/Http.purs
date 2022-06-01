@@ -51,7 +51,7 @@ instance DecodeJson SignoutReason where
     "UserAction" → Right UserAction
     s → Left $ TypeMismatch $ "Expected SignoutReason, got: " <> s
 
-type SignInResponseBody = { token ∷ Token }
+type SignInResponseBody = Token
 
 type SignUpResponseBody = { errors ∷ Array String }
 
