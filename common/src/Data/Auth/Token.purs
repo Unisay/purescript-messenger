@@ -9,6 +9,7 @@ module Data.Auth.Token
 import Prelude
 
 import Data.Argonaut.Decode (class DecodeJson, decodeJson)
+import Data.Argonaut.Encode (class EncodeJson)
 import Data.Either (Either(..))
 import Data.String as String
 
@@ -21,6 +22,7 @@ type JsonToken =
   }
 
 derive newtype instance Eq Token
+derive newtype instance EncodeJson Token
 
 instance DecodeJson Token where
   decodeJson = decodeJson >>> map fromJsonToken
