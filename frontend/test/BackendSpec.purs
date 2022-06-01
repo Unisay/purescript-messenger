@@ -52,9 +52,14 @@ spec = describe "Backend" do
     username = Username.unsafe "testuser"
     password = Password.unsafe "testpass"
     email = Email.unsafe "john.doe@example.com"
-    token = Token.unsafe "1234567890"
     presence = Online
     reason = UserAction
+    token = Token.unsafe "1234567890"
+    jsonToken =
+      { payload: "123"
+      , signature: "456"
+      , protected: "789"
+      }
 
   describe "Create account" do
     it "sends proper user data to the backend" do
@@ -121,10 +126,7 @@ spec = describe "Backend" do
               actual.username `shouldEqual` username
               (shouldEqual `on` Password.toString) actual.password password
             _ → fail "NonJson body"
-          respond ok200
-            { body = jsonSingletonObject "token" $
-                encodeJson (Token.toString token)
-            }
+          respond ok200 { body = encodeJson jsonToken }
       withConfig (createSession' server username password) >>= case _ of
         Left backendError → fail (show backendError)
         Right response → assertSignedIn response
