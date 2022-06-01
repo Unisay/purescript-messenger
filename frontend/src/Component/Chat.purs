@@ -21,6 +21,12 @@ type Input = Auth.Info
 
 type Output = Backend.Error
 
+type ChildSlots =
+  ( "users" ∷ ∀ query. H.Slot query Backend.Error Unit
+  , "messages" ∷ ∀ query. H.Slot query Backend.Error Unit
+  , "controls" ∷ ∀ query. H.Slot query Backend.Error Unit
+  )
+
 component ∷ ∀ q. H.Component q Input Output App
 component =
   H.mkComponent
@@ -66,6 +72,6 @@ component =
     _controls =
       Proxy ∷ Proxy "controls"
 
-handleAction ∷ ∀ s slots m. Action → H.HalogenM s Action slots Output m Unit
+handleAction ∷ ∀ m. Action → H.HalogenM State Action ChildSlots Output m Unit
 handleAction = case _ of
   HandleBackendError backendError → H.raise backendError
