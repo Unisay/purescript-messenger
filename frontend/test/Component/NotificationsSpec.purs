@@ -8,7 +8,6 @@ import Control.Monad.State.Class (gets)
 import Data.Notification (critical, important, useful)
 import Data.Traversable (traverse_)
 import Effect.Aff.Class (class MonadAff, liftAff)
-import Effect.Class (liftEffect)
 import Halogen.Driver (runComponent)
 import Halogen.Subscription as Subscription
 import Test.Unit (TestSuite, test)
