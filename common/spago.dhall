@@ -11,6 +11,7 @@
   , "foreign"
   , "foreign-generic"
   , "maybe"
+  , "now"
   , "prelude"
   , "profunctor"
   , "quickcheck"

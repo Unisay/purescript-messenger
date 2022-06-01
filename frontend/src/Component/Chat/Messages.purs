@@ -3,7 +3,6 @@ module Component.Chat.Messages where
 import Preamble
 
 import Backend as Backend
-import Effect.Class (class MonadEffect)
 import Halogen.Extended as H
 import Halogen.HTML.Extended as HH
 import Halogen.HTML.Properties.Extended as HP

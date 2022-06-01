@@ -29,7 +29,6 @@ import Data.Auth.Token (Token)
 import Data.Auth.Token as Token
 import Data.Email (Email)
 import Data.HTTP.Method (Method(..))
-import Data.JsonTime (EncodeDateTime(..))
 import Data.Message (Message)
 import Data.Newtype (unwrap, wrap)
 import Data.Password (Password)
@@ -39,7 +38,6 @@ import Data.Username (Username)
 import Data.Username as Username
 import Effect.Aff (Aff, throwError)
 import Effect.Aff.Class (class MonadAff, liftAff)
-import Effect.Now (nowDate, nowTime)
 import LocalStorage (HasStorage)
 
 type HasBackendConfig r = (backendApiUrl ∷ String | r)
@@ -251,15 +249,12 @@ sendMessage'
   → m Unit
 sendMessage' transport username message token = do
   backendApiUrl ← asks _.backendApiUrl
-  date ← liftEffect nowDate
-  time ← liftEffect nowTime
   response ← liftAff $ transport defaultBackendRequest
     { method = Left PUT
     , url = String.joinWith "/"
         [ backendApiUrl, "chat", Username.toString username ]
     , responseFormat = ResponseFormat.json
-    , content = Just $ RB.Json $ Json.encodeJson
-        { message, dateTime: DateTime date time }
+    , content = Just $ RB.Json $ Json.encodeJson message
     , headers = [ authorization token ]
     }
   case response of

@@ -39,7 +39,6 @@ import Data.Password as Password
 import Data.Username (Username)
 import Data.Username as Username
 import Effect.Aff (Aff)
-import Effect.Class (liftEffect)
 import Effect.Exception (Error, error)
 import Foreign.Object (Object, fromHomogeneous)
 import Halogen.Subscription (SubscribeIO)

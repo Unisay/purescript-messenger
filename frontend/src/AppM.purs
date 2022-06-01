@@ -10,7 +10,6 @@ import Control.Monad.Reader.Class (ask)
 import Data.Newtype (class Newtype)
 import Effect.Aff (Aff)
 import Effect.Aff.Class (class MonadAff)
-import Effect.Class (class MonadEffect)
 
 data Error
   = BackendError Backend.Error

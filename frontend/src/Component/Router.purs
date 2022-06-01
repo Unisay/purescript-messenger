@@ -24,7 +24,6 @@ import Control.Monad.Reader (runReaderT)
 import Data.Route (Route(..), goTo)
 import Data.Route as Route
 import Effect.Aff (Aff)
-import Effect.Class (class MonadEffect, liftEffect)
 import Halogen.Component as HC
 import Halogen.Extended as H
 import Halogen.HTML as HH

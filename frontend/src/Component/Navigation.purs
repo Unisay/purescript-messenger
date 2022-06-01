@@ -15,7 +15,6 @@ import Data.Notification (useful)
 import Data.Route (Route(..))
 import Data.Route as Route
 import Data.Username as Username
-import Halogen (liftEffect)
 import Halogen.Extended as H
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Extended as HH

@@ -5,7 +5,6 @@ import Preamble
 import Component.Router as Router
 import Data.Route as Route
 import Effect.Aff (launchAff_)
-import Effect.Class (liftEffect)
 import Halogen as H
 import Halogen.Aff (awaitBody, runHalogenAff)
 import Halogen.Subscription as Subscription
