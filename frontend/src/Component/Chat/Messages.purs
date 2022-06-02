@@ -3,11 +3,10 @@ module Component.Chat.Messages where
 import Preamble
 
 import AppM (App)
-import Auth as Auth
+import Auth (Info) as Auth
 import Backend as Backend
 import Control.Monad.Rec.Class (forever)
-import Data.Auth.Token as Auth
-import Data.Formatter.DateTime (FormatterCommand, format)
+import Data.Formatter.DateTime (format)
 import Data.Formatter.DateTime as F
 import Data.List (List(..), (:))
 import Data.Message (Message(..))

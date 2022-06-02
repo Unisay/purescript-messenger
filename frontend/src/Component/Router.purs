@@ -7,8 +7,10 @@ import Preamble
 
 import AppM (App)
 import AppM as App
-import Auth as Auth
+import Auth (Info, decodeToken, loadInfo, removeToken) as Auth
+import Backend (deleteSession) as Auth
 import Backend as Backend
+import Chat.Api.Http (SignoutReason(..))
 import Component.Chat as Chat
 import Component.Debug as Debug
 import Component.Error as Error
@@ -23,7 +25,9 @@ import Control.Monad.Except (runExceptT)
 import Control.Monad.Reader (runReaderT)
 import Data.Route (Route(..), goTo)
 import Data.Route as Route
+import Data.Traversable (for_)
 import Effect.Aff (Aff)
+import Effect.Aff.Class (class MonadAff)
 import Halogen.Component as HC
 import Halogen.Extended as H
 import Halogen.HTML as HH
@@ -43,6 +47,7 @@ type State =
 
 data Action
   = Initialize
+  | Finalize
   | RecordAppError App.Error
   | ErrorAction Error.Output
   | SigninOutput Signin.Output
@@ -78,6 +83,7 @@ component = H.mkComponent
       { handleAction = handleAction
       , handleQuery = handleQuery
       , initialize = Just Initialize
+      , finalize = Just Finalize
       }
   }
 
@@ -91,7 +97,7 @@ initialState config =
 
 handleAction
   ∷ ∀ m
-  . MonadEffect m
+  . MonadAff m
   ⇒ Action
   → H.HalogenM State Action ChildSlots Void m Unit
 handleAction = case _ of
@@ -105,6 +111,13 @@ handleAction = case _ of
         Left err → log (show err <> ": " <> show hash) $> Home
         Right route → pure route
     navigate route
+  Finalize → do
+    info ← H.gets _.authInfo
+    for_ info \{ token, username } →
+      runExceptT
+        ( runReaderT (Auth.deleteSession username token UserAction)
+            =<< H.gets _.config
+        ) >>= case _ of _ → pass
   RecordAppError err → do
     logShow err
     H.modify_ _ { error = Just err }

@@ -36,6 +36,7 @@
   , "routing-duplex"
   , "spec"
   , "strings"
+  , "tailrec"
   , "test-unit"
   , "transformers"
   , "tuples"
