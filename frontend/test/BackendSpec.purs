@@ -22,11 +22,10 @@ import Data.Argonaut.Decode (decodeJson)
 import Data.Argonaut.Encode (encodeJson)
 import Data.Array as Array
 import Data.Auth.Token as Token
-import Data.DateTime (DateTime(..))
+import Data.DateTime (DateTime)
 import Data.DateTime.Instant (instant, toDateTime)
 import Data.Email (Email)
 import Data.Email as Email
-import Data.Enum (toEnum)
 import Data.Function (on)
 import Data.HTTP.Method (Method(..))
 import Data.Message (Message(..))
