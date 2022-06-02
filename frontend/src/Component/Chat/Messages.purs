@@ -15,7 +15,6 @@ import Data.String.NonEmpty as NES
 import Data.Username as Username
 import Effect.Aff (Milliseconds(..))
 import Effect.Aff as Aff
-import Effect.Aff.Class (class MonadAff)
 import Halogen.Extended as H
 import Halogen.HTML.Extended as HH
 import Halogen.HTML.Properties.Extended as HP
@@ -52,14 +51,16 @@ render state = HH.div
       [ "border-x-2"
       , "border-t-2"
       , "border-slate-400"
-      , "w-full"
       , "bg-slate-200"
-      , "h-4/5"
       , "rounded-t-sm"
-      , "overflow-auto"
+      , "overflow-y-scroll"
+      , "h-messages"
+      , "flex-none"
+      , "pl-2"
+      , "pr-1"
       ]
   ]
-  [ HH.ol [ HP.classNames [ "chat", "font-mono", "flex", "flex-col-reverse" ] ]
+  [ HH.ol [ HP.classNames [ "font-mono", "flex", "flex-col-reverse" ] ]
       $ state.messages
       <#> \(Message m) →
         HH.li_
@@ -82,6 +83,7 @@ render state = HH.div
               , NES.toString m.text
               ]
           ]
+  , HH.div [ HP.id "bottom" ] []
   ]
 
 handleAction ∷ Action → H.HalogenM State Action () Output App Unit
@@ -90,17 +92,15 @@ handleAction = case _ of
     _ ← H.subscribe =<< timer Tick
     updateMessages
   Tick → updateMessages
+  where
+  updateMessages = do
+    token ← H.gets _.auth.token
+    H.raiseError (Backend.getLastMessages token) \messages →
+      H.modify_ _ { messages = messages }
 
-updateMessages ∷ H.HalogenM State Action () Output App Unit
-updateMessages = do
-  token ← H.gets _.auth.token
-  H.raiseError (Backend.getLastMessages token) \messages →
-    H.modify_ _ { messages = messages }
-
-timer ∷ ∀ m a. MonadAff m ⇒ a → m (HS.Emitter a)
-timer val = do
-  { emitter, listener } ← H.liftEffect HS.create
-  _ ← H.liftAff $ Aff.forkAff $ forever do
-    Aff.delay $ Milliseconds 1000.0
-    H.liftEffect $ HS.notify listener val
-  pure emitter
+  timer val = do
+    { emitter, listener } ← H.liftEffect HS.create
+    _ ← H.liftAff $ Aff.forkAff $ forever do
+      Aff.delay $ Milliseconds 1000.0
+      H.liftEffect $ HS.notify listener val
+    pure emitter

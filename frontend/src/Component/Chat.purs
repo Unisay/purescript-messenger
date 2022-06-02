@@ -47,16 +47,16 @@ component =
           , "grid-flow-col"
           ]
       ]
-      [ slotUsers
-      , HH.div
+      [ HH.div
           [ HP.classNames
               [ "h-full"
               , "flex"
               , "flex-col"
-              , "pr-2"
+              , "pl-2"
               ]
           ]
           [ slotMessages, slotControls ]
+      , slotUsers
       ]
     where
     slotUsers =

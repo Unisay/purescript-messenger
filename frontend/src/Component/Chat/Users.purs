@@ -47,7 +47,7 @@ render { users } =
         , "flex-col"
         , "bg-slate-200"
         , "opacity-90"
-        , "rounded-br-md"
+        , "rounded-b-md"
         , "border-r"
         , "border-y"
         , "border-slate-300"

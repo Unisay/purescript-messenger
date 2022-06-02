@@ -141,6 +141,28 @@ render state = HH.form
       , HP.id "controls"
       , HP.disabled isDelay
       ]
+  , HH.a
+      [ HP.classNames
+          [ "w-7"
+          , "h-6"
+          , "text-center"
+          , "text-white"
+          , "duration-100"
+          , "focus:outline-none"
+          , "transition"
+          , "absolute"
+          , "right-0"
+          , "top-0"
+          , "rounded-b-lg"
+          , "bg-slate-300"
+          , "hover:bg-slate-400"
+          , "mr-1"
+          , "text-sm"
+          , "text-center"
+          ]
+      , HP.href "#bottom"
+      ]
+      [ HH.text "⇣" ]
   ]
   where
   isDelay = if state.delay then true else false
