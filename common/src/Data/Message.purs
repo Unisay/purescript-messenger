@@ -22,7 +22,7 @@ import Data.Time.Duration (Seconds, convertDuration)
 import Data.Username (Username)
 
 newtype Message = Message
-  { message ∷ NonEmptyString
+  { text ∷ NonEmptyString
   , createdAt ∷ DateTime
   , username ∷ Username
   }
@@ -32,7 +32,7 @@ derive newtype instance Eq Message
 
 instance EncodeJson Message where
   encodeJson (Message m) = encodeJson
-    { message: m.message
+    { text: m.text
     , created_at:
         Number.round
           $ (unwrap ∷ Seconds → _)
@@ -44,19 +44,18 @@ instance EncodeJson Message where
 
 instance DecodeJson Message where
   decodeJson json = do
-    { message, created_at, username }
-      ∷ { message ∷ String, created_at ∷ Number, username ∷ Username } ←
+    m ∷ { text ∷ String, created_at ∷ Number, username ∷ Username } ←
       decodeJson json
     posix ← note (TypeMismatch "Unexpected Milliseconds value")
       $ Instant.instant
       $ (convertDuration ∷ Seconds → _)
-      $ wrap created_at
+      $ wrap m.created_at
     text ← note (TypeMismatch "The `message` value is empty")
-      $ NES.fromString message
-    pure $ Message { createdAt: toDateTime posix, message: text, username }
+      $ NES.fromString m.text
+    pure $ Message { createdAt: toDateTime posix, text, username: m.username }
 
 toString ∷ Message → String
-toString (Message m) = NonEmptyString.toString m.message
+toString (Message m) = NonEmptyString.toString m.text
 
 parse ∷ String → Either (NonEmptyArray String) NonEmptyString
 parse s = NES.fromString (String.trim s) # maybe

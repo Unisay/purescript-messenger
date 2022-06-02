@@ -105,7 +105,8 @@ handleAction = case _ of
         Left err → log (show err <> ": " <> show hash) $> Home
         Right route → pure route
     navigate route
-  RecordAppError err →
+  RecordAppError err → do
+    logShow err
     H.modify_ _ { error = Just err }
   ErrorAction action → do
     case action of

@@ -57,7 +57,7 @@ spec = describe "Backend" do
     token = Token.unsafe "1234567890"
     message = Message
       { username
-      , message: NES.nes (Proxy ∷ _ "nes")
+      , text: NES.nes (Proxy ∷ _ "nes")
       , createdAt: mockDateTime
       }
     jsonToken =
