@@ -62,7 +62,7 @@ component =
     slotUsers =
       HH.slot _users unit Users.component authInfo HandleBackendError
     slotMessages =
-      HH.slot _messages unit Messages.component unit HandleBackendError
+      HH.slot _messages unit Messages.component authInfo HandleBackendError
     slotControls =
       HH.slot _controls unit Controls.component authInfo HandleBackendError
     _users =

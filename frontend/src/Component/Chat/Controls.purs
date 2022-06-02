@@ -162,7 +162,7 @@ handleAction = case _ of
         username ← H.gets _.info.username
         token ← H.gets _.info.token
         createdAt ← liftEffect nowDateTime
-        let message = Message { text, createdAt }
+        let message = Message { text, createdAt, username }
         H.raiseError_ $ Chat.sendMessage username message token
         H.modify_ _ { delay = true, message { inputValue = "" } }
         disableSending

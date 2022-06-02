@@ -9,7 +9,13 @@ import Affjax.RequestHeader (RequestHeader)
 import Affjax.ResponseFormat as ResponseFormat
 import Affjax.StatusCode (StatusCode(..))
 import Affjax.Web as AW
-import Chat.Api.Http (SignInResponseBody, SignUpResponse(..), SignUpResponseBody, SignoutReason, UserPresence)
+import Chat.Api.Http
+  ( SignInResponseBody
+  , SignUpResponse(..)
+  , SignUpResponseBody
+  , SignoutReason
+  , UserPresence
+  )
 import Chat.Api.Http.Problem (Problem)
 import Chat.Api.Http.Problem as Problem
 import Control.Monad.Error.Class (class MonadThrow)
@@ -259,6 +265,40 @@ sendMessage' transport username message token = do
     Right { status: StatusCode 200 } → pass
     Right { status: actual } →
       throwError $ ResponseStatusError { expected: StatusCode 200, actual }
+
+getLastMessages'
+  ∷ ∀ m r
+  . MonadAff m
+  ⇒ MonadAsk (Record (HasBackendConfig r)) m
+  ⇒ MonadThrow Error m
+  ⇒ Transport
+  → Token
+  → m (Array Message)
+getLastMessages' transport token = do
+  backendApiUrl ← asks _.backendApiUrl
+  response ← liftAff $ transport defaultBackendRequest
+    { method = Left GET
+    , url = String.joinWith "/"
+        [ backendApiUrl, "chat", "messages" ]
+    , responseFormat = ResponseFormat.json
+    , headers = [ authorization token ]
+    }
+  case response of
+    Left err → throwError $ AffjaxError err
+    Right { status, body } → case status of
+      StatusCode 200 → decodeJson body #
+        either (ResponseDecodeError >>> throwError) pure
+      _ → throwError $ ResponseStatusError
+        { expected: wrap 200, actual: status }
+
+getLastMessages
+  ∷ ∀ m r
+  . MonadAff m
+  ⇒ MonadAsk (Record (HasBackendConfig r)) m
+  ⇒ MonadThrow Error m
+  ⇒ Token
+  → m (Array Message)
+getLastMessages = getLastMessages' AW.request
 
 hoistError ∷ ∀ m e e'. MonadThrow e' m ⇒ (e → e') → ExceptT e m ~> m
 hoistError f ma = runExceptT ma >>= either (f >>> throwError) pure
