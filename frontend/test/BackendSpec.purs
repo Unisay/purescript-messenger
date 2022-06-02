@@ -9,14 +9,7 @@ import Affjax.RequestHeader (RequestHeader(..)) as AX
 import Affjax.ResponseFormat (ResponseFormat)
 import Affjax.ResponseFormat as ResponseFormat
 import Affjax.StatusCode (StatusCode(..))
-import Backend
-  ( HasBackendConfig
-  , SignInResponse(..)
-  , createAccount'
-  , createSession'
-  , deleteSession'
-  , listUsers'
-  )
+import Backend (HasBackendConfig, SignInResponse(..), createAccount', createSession', deleteSession', listUsers', sendMessage')
 import Backend as Backend
 import Chat.Api.Http (SignUpResponse(..), SignoutReason(..))
 import Chat.Presence (Presence(..))
@@ -29,13 +22,19 @@ import Data.Argonaut.Decode (decodeJson)
 import Data.Argonaut.Encode (encodeJson)
 import Data.Array as Array
 import Data.Auth.Token as Token
+import Data.DateTime (DateTime(..))
+import Data.DateTime.Instant (instant, toDateTime)
 import Data.Email (Email)
 import Data.Email as Email
+import Data.Enum (toEnum)
 import Data.Function (on)
 import Data.HTTP.Method (Method(..))
+import Data.Message (Message(..))
+import Data.Newtype (wrap)
 import Data.Notification (Notification)
 import Data.Password (Password)
 import Data.Password as Password
+import Data.String.NonEmpty as NES
 import Data.Username (Username)
 import Data.Username as Username
 import Effect.Aff (Aff)
@@ -45,6 +44,8 @@ import Halogen.Subscription (SubscribeIO)
 import Halogen.Subscription as H
 import Test.Spec (Spec, describe, it)
 import Test.Spec.Assertions (fail, shouldEqual)
+import Type.Proxy (Proxy(..))
+import Unsafe.Coerce (unsafeCoerce)
 
 spec ∷ Spec Unit
 spec = describe "Backend" do
@@ -55,6 +56,11 @@ spec = describe "Backend" do
     presence = Online
     reason = UserAction
     token = Token.unsafe "1234567890"
+    message = Message
+      { username
+      , message: NES.nes (Proxy ∷ _ "nes")
+      , createdAt: mockDateTime
+      }
     jsonToken =
       { payload: "123"
       , signature: "456"
@@ -214,6 +220,39 @@ spec = describe "Backend" do
         Left (Backend.AffjaxError AX.TimeoutError) → pure unit
         result → fail $ "Expected TimeoutError but got " <> show result
 
+  describe "Send message" do
+    it "sends proper data to the backend" do
+      let
+        server ∷ Backend.Transport
+        server { method, responseFormat, content, headers } = do
+          method `shouldEqual` Left PUT
+          responseFormat `assertResponseFormat` ResponseFormat.json
+          headers `shouldEqual`
+            [ AX.RequestHeader "Authorization"
+                ("Bearer " <> Token.toString token)
+            ]
+          content # maybe (fail "Body is absent") case _ of
+            RequestBody.Json j → do
+              (actual ∷ Message) ← fromRight $ decodeJson j
+              actual `shouldEqual` message
+            _ → fail "NonJson body"
+          respond ok200
+      withConfig (sendMessage' server username message token) >>= case _ of
+        Left err → fail $ show err
+        Right _ → pass
+
+    it "handles request error" do
+      let server _request = pure $ Left AX.RequestFailedError
+      withConfig (sendMessage' server username message token) >>= case _ of
+        Left (Backend.AffjaxError AX.RequestFailedError) → pure unit
+        result → fail $ "Expected RequestFailedError but got " <> show result
+
+    it "handles timeout error" do
+      let server _request = pure $ Left AX.TimeoutError
+      withConfig (sendMessage' server username message token) >>= case _ of
+        Left (Backend.AffjaxError AX.TimeoutError) → pure unit
+        result → fail $ "Expected TimeoutError but got " <> show result
+
 withConfig
   ∷ ∀ e a
   . ReaderT
@@ -268,6 +307,9 @@ mockUserList =
       , presence: encodeJson Online
       }
   ]
+
+mockDateTime ∷ DateTime
+mockDateTime = maybe (unsafeCoerce unit) toDateTime $ instant $ wrap 1000.0
 
 ok200 ∷ Response Json
 ok200 =

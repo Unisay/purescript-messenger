@@ -158,12 +158,12 @@ handleAction = case _ of
           HS.notify listener >>> liftEffect
         notify $ important $ NEA.head err
         disableSending
-      Right text → do
+      Right message → do
         username ← H.gets _.info.username
         token ← H.gets _.info.token
         createdAt ← liftEffect nowDateTime
-        let message = Message { text, createdAt, username }
-        H.raiseError_ $ Chat.sendMessage username message token
+        let msg = Message { message, createdAt, username }
+        H.raiseError_ $ Chat.sendMessage username msg token
         H.modify_ _ { delay = true, message { inputValue = "" } }
         disableSending
   KeyPressed keyEv → do
