@@ -42,6 +42,7 @@
   , "tuples"
   , "unicode"
   , "unsafe-coerce"
+  , "web-dom"
   , "web-events"
   , "web-html"
   , "web-storage"
