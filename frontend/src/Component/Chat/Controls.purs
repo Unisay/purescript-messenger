@@ -12,6 +12,7 @@ import Data.Array.NonEmpty as NEA
 import Data.Message (Message(..))
 import Data.Message as Message
 import Data.Notification (important)
+import Data.String as String
 import Data.Validation (Validation)
 import Effect.Aff (Milliseconds(..), delay)
 import Effect.Now (nowDateTime)
@@ -109,6 +110,23 @@ render state = HH.form
           , "overflow-hidden"
           ]
       ]
+  , HH.p
+      [ HP.classNames
+          $
+            [ "right-0"
+            , "bottom-0"
+            , "absolute"
+            , "mr-2"
+            , "mb-9"
+            , "text-base"
+            ]
+          <>
+            if String.length state.message.inputValue > 800 then
+              [ "text-red-500", "font-medium" ]
+            else [ "text-slate-400", "italic", "font-leight" ]
+      , prop (PropName "hidden") (String.null state.message.inputValue)
+      ]
+      [ HH.text $ show $ String.length state.message.inputValue ]
   , HH.input
       [ HP.classNames
           $
