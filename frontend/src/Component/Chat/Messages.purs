@@ -60,7 +60,14 @@ render state = HH.div
       , "pr-1"
       ]
   ]
-  [ HH.ol [ HP.classNames [ "font-mono", "flex", "flex-col-reverse" ] ]
+  [ HH.ol
+      [ HP.classNames
+          [ "font-mono"
+          , "flex"
+          , "flex-col-reverse"
+          , "wrap-anywhere"
+          ]
+      ]
       $ state.messages
       <#> \(Message m) →
         HH.li_
@@ -83,6 +90,7 @@ render state = HH.div
               , NES.toString m.text
               ]
           ]
+
   , HH.div [ HP.id "bottom" ] []
   ]
 
