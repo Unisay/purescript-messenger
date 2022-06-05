@@ -129,6 +129,46 @@ paths:
         "403":
           description: Access denied
 
+  /chat/messages:
+    get:
+      summary: Last 100 messages in the chat
+      tags:
+        - chat
+      security:
+        - auth: []
+      responses:
+        "200":
+          description: List of last messages
+          content:
+            application/json:
+              schema:
+                type: array
+                items: 
+                  $ref: "#/components/schemas/Message" 
+        "403": 
+          description: Access denied
+
+  /chat/messages/{id}:
+    get:
+      summary: Last messages after the one with given id
+      tags:
+        - chat
+      security:
+        - auth: []
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "200":
+          description: List of last messages after the one with given id
+          content:
+            application/json:
+              schema:
+                type: array
+                items: 
+                  $ref: "#/components/schemas/Message" 
+        "403":
+          description: Access denied
+
 components:
   parameters:
     username:
@@ -142,6 +182,16 @@ components:
       description:
         Username is used to uniquely identify a user within the system.
         It could only contain alphanumeric characters.
+    id: 
+      in: path
+      name: id
+      schema:
+        type: integer
+        minimum: 0
+      required: true  
+      example: 100
+      description:
+        Unique identificator for every message 
   schemas:
     UserInfo:
       type: object
@@ -193,9 +243,6 @@ components:
         - created_at
         - username
       properties:
-        id:
-          type: integer
-          example: 100
         text:
           type: string
           minimum: 1
@@ -207,6 +254,8 @@ components:
           description: Unix timestamp in seconds
           minimum: 0.0
           example: 123456.0
+        id:
+          $ref: "#/components/parameters/id"
         username:
           $ref: "#/components/parameters/username"
     Problem:
