@@ -6,12 +6,9 @@ import AppM (App)
 import Auth as Auth
 import Backend as Backend
 import Backend as Chat
-import Control.Monad.Reader (asks)
 import DOM.HTML.Indexed.WrapValue (WrapValue(..))
-import Data.Array.NonEmpty as NEA
 import Data.Message (Message(..))
 import Data.Message as Message
-import Data.Notification (important)
 import Data.String as String
 import Data.Validation (Validation)
 import Effect.Aff (Milliseconds(..), delay)
@@ -23,7 +20,6 @@ import Halogen.HTML.Extended (prop)
 import Halogen.HTML.Extended as HH
 import Halogen.HTML.Properties.Extended (InputType(..))
 import Halogen.HTML.Properties.Extended as HP
-import Halogen.Subscription as HS
 import Prelude (whenM)
 import Web.Event.CustomEvent as CustomEvent
 import Web.Event.Event as Event
@@ -42,7 +38,7 @@ type Input = Auth.Info
 type State =
   { info ∷ Auth.Info
   , message ∷ Validation Message
-  , delay ∷ Boolean
+  , buttonBlocked ∷ Boolean
   }
 
 type Output = Backend.Error
@@ -59,7 +55,7 @@ component = H.mkComponent
 
 initialState ∷ Input → State
 initialState info =
-  { delay: false
+  { buttonBlocked: true
   , message: { inputValue: "", result: Nothing }
   , info
   }
@@ -144,7 +140,7 @@ render state = HH.form
             , "rounded-tl-lg"
             ]
           <>
-            if isDelay then [ "bg-gray-500", "cursor-not-allowed" ]
+            if isBlocked then [ "bg-gray-500", "cursor-not-allowed" ]
             else
               [ "bg-blue-500"
               , "hover:bg-blue-600"
@@ -157,7 +153,7 @@ render state = HH.form
       , HP.value "↑"
       , HP.type_ InputSubmit
       , HP.id "controls"
-      , HP.disabled isDelay
+      , HP.disabled isBlocked
       ]
   , HH.a
       [ HP.classNames
@@ -183,41 +179,42 @@ render state = HH.form
       [ HH.text "⇣" ]
   ]
   where
-  isDelay = if state.delay then true else false
+  isBlocked = if state.buttonBlocked then true else false
 
 handleAction ∷ Action → H.HalogenM State Action () Output App Unit
 handleAction = case _ of
   UpdateInfo info → H.modify_ _ { info = info }
-  SetMessage str → H.modify_ _ { message { inputValue = str } }
+  SetMessage str →
+    H.modify_ _ { message { inputValue = str } } *> validateInput
   SendMessage ev → do
     liftEffect $ Event.preventDefault ev
-    H.gets _.message.inputValue >>= \s → case Message.parse s of
+    H.gets _.message.inputValue <#> Message.parse >>= case _ of
       Left err → do
-        H.modify_ _ { delay = true, message { result = Just $ Left err } }
-        notify ← asks _.notifications.listener <#> \listener →
-          HS.notify listener >>> liftEffect
-        notify $ important $ NEA.head err
-        disableSending
+        H.modify_ _
+          { buttonBlocked = true, message { result = Just $ Left err } }
+        liftAff (delay $ Milliseconds 500.0) *> validateInput
       Right text → do
         username ← H.gets _.info.username
         token ← H.gets _.info.token
         createdAt ← liftEffect nowDateTime
         let msg = Message { text, createdAt, username }
-        H.raiseError_ $ Chat.sendMessage username msg token
-        H.modify_ _ { delay = true, message { inputValue = "" } }
-        disableSending
-  KeyPressed keyEv → do
+        H.raiseError_ (Chat.sendMessage username msg token)
+        H.modify_ _ { buttonBlocked = true, message { inputValue = "" } }
+        liftAff (delay $ Milliseconds 500.0) *> validateInput
+  KeyPressed keyEv →
     if shiftKey keyEv then pass
     else case key keyEv of
       "Enter" → do
         liftEffect $ Event.preventDefault $ toEvent keyEv
-        whenM (not <$> H.gets _.delay)
+        whenM (not <$> H.gets _.buttonBlocked)
           $ liftEffect (CustomEvent.new submit)
           >>= CustomEvent.toEvent
           >>> SendMessage
           >>> handleAction
       _ → pass
   where
-  disableSending = do
-    liftAff $ delay $ Milliseconds 500.0
-    H.modify_ _ { delay = false }
+  validateInput = H.gets _.message.inputValue <#> Message.parse >>=
+    either (const $ H.modify_ _ { buttonBlocked = true }) (const unblockBtn)
+
+  unblockBtn = H.modify_ _ { buttonBlocked = false }
+    # whenM (H.gets _.buttonBlocked)
