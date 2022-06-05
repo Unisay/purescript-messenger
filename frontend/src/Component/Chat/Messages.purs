@@ -10,7 +10,7 @@ import Data.Array as Array
 import Data.Formatter.DateTime (format)
 import Data.Formatter.DateTime as F
 import Data.List (List(..), (:))
-import Data.Message (Message(..))
+import Data.Message (Message(..), MessageInfo, WithId(..))
 import Data.Number (abs)
 import Data.String as String
 import Data.String.NonEmpty as NES
@@ -32,7 +32,7 @@ import Web.HTML (window)
 import Web.HTML.HTMLDocument (toDocument)
 import Web.HTML.Window (document)
 
-data Action = Initialize | Tick | MessagesScroll 
+data Action = Initialize | Tick | MessagesScroll
 
 type Input = Auth.Info
 
@@ -42,7 +42,7 @@ data ScrollMode = Following | NotFollowing
 
 type State =
   { auth ∷ Auth.Info
-  , messages ∷ Array Message
+  , messages ∷ Array MessageInfo
   , scrollMode ∷ ScrollMode
   }
 
@@ -68,11 +68,9 @@ render state = HH.div
         , "border-t-2"
         , "border-slate-400"
         , "rounded-t-sm"
-        , "overflow-y-scroll"
-        , "h-messages"
-        , "flex-none"
         , "pl-2"
         , "pr-1"
+        , "overflow-auto"
         ]
       , case state.scrollMode of
           Following → [ "bg-slate-100" ]
@@ -89,7 +87,7 @@ render state = HH.div
           ]
       ]
       $ state.messages
-      <#> \(Message m) →
+      <#> \(WithId _ (Message m)) →
         HH.li_
           [ HH.text $ String.joinWith " "
               [ format
@@ -118,9 +116,12 @@ handleAction ∷ Action → H.HalogenM State Action () Output App Unit
 handleAction = case _ of
   Initialize → do
     _ ← H.subscribe =<< timer Tick
-    updateMessages
+    token ← H.gets _.auth.token
+    H.raiseError (Backend.getLastMessages token) \messages → do
+      H.modify_ _ { messages = messages }
+      updateScroll
   Tick →
-    updateMessages
+    H.gets _.messages <#> Array.head >>= traverse_ updateMessages
   MessagesScroll →
     liftEffect messagesScrollInfo >>= traverse_ \{ sheight, cheight, top } → do
       if abs (sheight - (cheight + top)) > 1.0 then
@@ -128,17 +129,18 @@ handleAction = case _ of
       else H.modify_ _ { scrollMode = Following }
 
   where
-  updateMessages = do
-    token ← H.gets _.auth.token
-    H.raiseError (Backend.getLastMessages token) \messages → do
-      H.modify_ _ { messages = messages }
-      updateScroll
   timer val = do
     { emitter, listener } ← H.liftEffect HS.create
     _ ← H.liftAff $ Aff.forkAff $ forever do
       Aff.delay $ Milliseconds 1000.0
       H.liftEffect $ HS.notify listener val
     pure emitter
+
+  updateMessages msgInfo = do
+    token ← H.gets _.auth.token
+    H.raiseError (Backend.messagesWithCursor msgInfo token) \messages → do
+      H.modify_ \st → st { messages = messages <> st.messages }
+      updateScroll
 
   updateScroll = H.gets _.scrollMode >>= case _ of
     NotFollowing → pass

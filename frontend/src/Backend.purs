@@ -29,7 +29,7 @@ import Data.Auth.Token (Token)
 import Data.Auth.Token as Token
 import Data.Email (Email)
 import Data.HTTP.Method (Method(..))
-import Data.Message (Message)
+import Data.Message (Message, MessageInfo, WithId(..))
 import Data.Newtype (unwrap, wrap)
 import Data.Password (Password)
 import Data.String as String
@@ -255,7 +255,12 @@ sendMessage' transport username message token = do
   response ← liftAff $ transport defaultBackendRequest
     { method = Left PUT
     , url = String.joinWith "/"
-        [ backendApiUrl, "chat", Username.toString username ]
+        [ backendApiUrl
+        , "chat"
+        , "users"
+        , Username.toString username
+        , "messages"
+        ]
     , responseFormat = ResponseFormat.json
     , content = Just $ RB.Json $ Json.encodeJson message
     , headers = [ authorization token ]
@@ -273,7 +278,7 @@ getLastMessages'
   ⇒ MonadThrow Error m
   ⇒ Transport
   → Token
-  → m (Array Message)
+  → m (Array MessageInfo)
 getLastMessages' transport token = do
   backendApiUrl ← asks _.backendApiUrl
   response ← liftAff $ transport defaultBackendRequest
@@ -297,8 +302,45 @@ getLastMessages
   ⇒ MonadAsk (Record (HasBackendConfig r)) m
   ⇒ MonadThrow Error m
   ⇒ Token
-  → m (Array Message)
+  → m (Array MessageInfo)
 getLastMessages = getLastMessages' AW.request
+
+messagesWithCursor'
+  ∷ ∀ m r
+  . MonadAff m
+  ⇒ MonadAsk (Record (HasBackendConfig r)) m
+  ⇒ MonadThrow Error m
+  ⇒ Transport
+  → MessageInfo
+  → Token
+  → m (Array MessageInfo)
+messagesWithCursor' transport (WithId id _) token = do
+  backendApiUrl ← asks _.backendApiUrl
+  response ← liftAff $ transport
+    defaultBackendRequest
+      { method = Left GET
+      , url = String.joinWith "/"
+          [ backendApiUrl, "chat", "messages", show id ]
+      , responseFormat = ResponseFormat.json
+      , headers = [ authorization token ]
+      }
+  case response of
+    Left err → throwError $ AffjaxError err
+    Right { status, body } → case status of
+      StatusCode 200 → decodeJson body #
+        either (ResponseDecodeError >>> throwError) pure
+      _ → throwError $ ResponseStatusError
+        { expected: wrap 200, actual: status }
+
+messagesWithCursor
+  ∷ ∀ m r
+  . MonadAff m
+  ⇒ MonadAsk (Record (HasBackendConfig r)) m
+  ⇒ MonadThrow Error m
+  ⇒ MessageInfo
+  → Token
+  → m (Array MessageInfo)
+messagesWithCursor = messagesWithCursor' AW.request
 
 hoistError ∷ ∀ m e e'. MonadThrow e' m ⇒ (e → e') → ExceptT e m ~> m
 hoistError f ma = runExceptT ma >>= either (f >>> throwError) pure

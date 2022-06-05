@@ -2,6 +2,8 @@ module Data.Message
   ( toString
   , Message(..)
   , parse
+  , MessageInfo
+  , WithId(..)
   ) where
 
 import Preamble
@@ -26,6 +28,10 @@ newtype Message = Message
   , createdAt ∷ DateTime
   , username ∷ Username
   }
+
+data WithId a = WithId Int a
+
+type MessageInfo = WithId Message
 
 derive newtype instance Show Message
 derive newtype instance Eq Message
@@ -52,7 +58,23 @@ instance DecodeJson Message where
       $ wrap m.created_at
     text ← note (TypeMismatch "The `message` value is empty")
       $ NES.fromString m.text
-    pure $ Message { createdAt: toDateTime posix, text, username: m.username }
+    pure $ Message
+      { createdAt: toDateTime posix, text, username: m.username }
+
+instance DecodeJson MessageInfo where
+  decodeJson json = do
+    m ∷ { text ∷ String, created_at ∷ Number, username ∷ Username, id ∷ Int } ←
+      decodeJson json
+    posix ← note (TypeMismatch "Unexpected Milliseconds value")
+      $ Instant.instant
+      $ (convertDuration ∷ Seconds → _)
+      $ wrap m.created_at
+    text ← note (TypeMismatch "The `message` value is empty")
+      $ NES.fromString m.text
+    let
+      message = Message
+        { createdAt: toDateTime posix, text, username: m.username }
+    pure $ WithId m.id message
 
 toString ∷ Message → String
 toString (Message m) = NonEmptyString.toString m.text
