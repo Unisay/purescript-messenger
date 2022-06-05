@@ -12,7 +12,6 @@ import Data.Formatter.DateTime as F
 import Data.List (List(..), (:))
 import Data.Message (Message(..), MessageInfo, WithId(..))
 import Data.Number (abs)
-import Data.String as String
 import Data.String.NonEmpty as NES
 import Data.Traversable (traverse_)
 import Data.Username as Username
@@ -84,8 +83,7 @@ render state = HH.div [ HP.classNames [ "relative" ] ]
       ]
       [ HH.ol
           [ HP.classNames
-              [ "font-mono"
-              , "flex"
+              [ "flex"
               , "flex-col-reverse"
               , "wrap-anywhere"
               ]
@@ -93,23 +91,27 @@ render state = HH.div [ HP.classNames [ "relative" ] ]
           $ state.messages
           <#> \(WithId _ (Message m)) →
             HH.li_
-              [ HH.text $ String.joinWith " "
-                  [ format
-                      ( F.Placeholder "["
-                          : F.DayOfMonth
-                          : F.Placeholder " "
-                          : F.MonthShort
-                          : F.Placeholder " "
-                          : F.Hours24
-                          : F.Placeholder ":"
-                          : F.MinutesTwoDigits
-                          : F.Placeholder "]"
-                          : Nil
-                      )
-                      m.createdAt
-                  , Username.toString m.username
-                  , ":"
-                  , NES.toString m.text
+              [ HH.div [ HP.classNames [ "font-mono" ] ]
+                  [ HH.span
+                      [ HP.classNames
+                          [ "cursor-default"
+                          , "text-blue-600"
+                          , "font-datetime"
+                          , "italic"
+                          ]
+                      ]
+                      [ HH.text $ format dateTimeFormat m.createdAt <> " " ]
+                  , HH.span
+                      [ HP.classNames
+                          [ "cursor-pointer"
+                          , "text-blue-600"
+                          , "hover:text-blue-700"
+                          , "font-semibold"
+                          ]
+                      ]
+                      [ HH.text $ Username.toString m.username <> ": " ]
+                  , HH.p [ HP.classNames [ "inline" ] ]
+                      [ HH.text $ NES.toString m.text ]
                   ]
               ]
       ]
@@ -130,8 +132,8 @@ render state = HH.div [ HP.classNames [ "relative" ] ]
             , "right-0"
             , "bottom-0"
             , "cursor-pointer"
-            , "mb-3"
-            , "mr-4"
+            , "mb-4"
+            , "mr-5"
             , "bg-slate-400"
             , "hover:bg-slate-500"
             , "opacity-80"
@@ -143,8 +145,20 @@ render state = HH.div [ HP.classNames [ "relative" ] ]
       , HE.onClick $ const ScrollBtnClicked
       ]
   ]
-
   where
+  dateTimeFormat =
+    ( F.Placeholder "["
+        : F.DayOfMonth
+        : F.Placeholder " "
+        : F.MonthShort
+        : F.Placeholder " "
+        : F.Hours24
+        : F.Placeholder ":"
+        : F.MinutesTwoDigits
+        : F.Placeholder "]"
+        : Nil
+    )
+
   isFollowing = case state.scrollMode of
     Following → true
     NotFollowing → false

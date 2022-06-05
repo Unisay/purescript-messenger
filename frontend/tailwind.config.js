@@ -38,6 +38,9 @@ module.exports = {
       colors: {
         'slate-350': 'E2E0E0'
       },
+      fontWeight: {
+        'datetime': '550'
+      }
     }
   },
   plugins: [],
