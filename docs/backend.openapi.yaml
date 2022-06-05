@@ -113,6 +113,21 @@ paths:
           description: User successfully signed out
         "403":
           description: Access denied
+  
+  /chat/users/{username}/messages:
+    put:
+      summary: User sends a message
+      tags:
+        - chat
+      security:
+        - auth: []
+      parameters:
+        - $ref: "#/components/parameters/username"
+      responses:
+        "200":
+          description: Message was successfully handled
+        "403":
+          description: Access denied
 
 components:
   parameters:
@@ -170,6 +185,30 @@ components:
         token:
           type: string
           format: jwt
+    Message:
+      type: object
+      required:
+        - id
+        - text
+        - created_at
+        - username
+      properties:
+        id:
+          type: integer
+          example: 100
+        text:
+          type: string
+          minimum: 1
+          maximum: 800
+          example: Hello everyone!
+        created_at:
+          type: number
+          format: float
+          description: Unix timestamp in seconds
+          minimum: 0.0
+          example: 123456.0
+        username:
+          $ref: "#/components/parameters/username"
     Problem:
       description: A Problem Details object (RFC 7807)
       type: object
