@@ -33,7 +33,7 @@ module.exports = {
       },
       height: {
         21: '85px',
-        'chat': 'calc(100vh - 90px)'
+        'chat': 'calc(100vh - 12rem)'
       },
       colors: {
         'slate-350': 'E2E0E0'

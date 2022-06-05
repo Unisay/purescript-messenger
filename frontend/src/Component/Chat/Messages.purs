@@ -22,6 +22,7 @@ import Effect.Class.Console (warn)
 import Halogen.Extended as H
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Extended as HH
+import Halogen.HTML.Properties.Extended (InputType(..))
 import Halogen.HTML.Properties.Extended as HP
 import Halogen.Subscription as HS
 import Web.DOM (Element)
@@ -32,7 +33,7 @@ import Web.HTML (window)
 import Web.HTML.HTMLDocument (toDocument)
 import Web.HTML.Window (document)
 
-data Action = Initialize | Tick | MessagesScroll
+data Action = Initialize | Tick | MessagesScroll | ScrollBtnClicked
 
 type Input = Auth.Info
 
@@ -61,56 +62,92 @@ initialState ∷ Input → State
 initialState auth = { auth, scrollMode: Following, messages: [] }
 
 render ∷ ∀ m. State → H.ComponentHTML Action () m
-render state = HH.div
-  [ HP.id "messages"
-  , HP.classNames $ Array.concat
-      [ [ "border-x-2"
-        , "border-t-2"
-        , "border-slate-400"
-        , "rounded-t-sm"
-        , "pl-2"
-        , "pr-1"
-        , "overflow-auto"
-        ]
-      , case state.scrollMode of
-          Following → [ "bg-slate-100" ]
-          NotFollowing → [ "bg-slate-300" ]
-      ]
-  , HE.onScroll $ const MessagesScroll
-  ]
-  [ HH.ol
-      [ HP.classNames
-          [ "font-mono"
-          , "flex"
-          , "flex-col-reverse"
-          , "wrap-anywhere"
+render state = HH.div [ HP.classNames [ "relative" ] ]
+  [ HH.div
+      [ HP.id "messages"
+      , HP.classNames $ Array.concat
+          [ [ "border-x-2"
+            , "border-t-2"
+            , "border-slate-400"
+            , "rounded-t-sm"
+            , "pl-2"
+            , "pr-1"
+            , "overflow-y-scroll"
+            , "relative"
+            , "h-chat"
+            ]
+          , case state.scrollMode of
+              Following → [ "bg-slate-100" ]
+              NotFollowing → [ "bg-slate-300" ]
           ]
+      , HE.onScroll $ const MessagesScroll
       ]
-      $ state.messages
-      <#> \(WithId _ (Message m)) →
-        HH.li_
-          [ HH.text $ String.joinWith " "
-              [ format
-                  ( F.Placeholder "["
-                      : F.DayOfMonth
-                      : F.Placeholder " "
-                      : F.MonthShort
-                      : F.Placeholder " "
-                      : F.Hours24
-                      : F.Placeholder ":"
-                      : F.MinutesTwoDigits
-                      : F.Placeholder "]"
-                      : Nil
-                  )
-                  m.createdAt
-              , Username.toString m.username
-              , ":"
-              , NES.toString m.text
+      [ HH.ol
+          [ HP.classNames
+              [ "font-mono"
+              , "flex"
+              , "flex-col-reverse"
+              , "wrap-anywhere"
               ]
           ]
-
-  , HH.div [ HP.id "bottom" ] []
+          $ state.messages
+          <#> \(WithId _ (Message m)) →
+            HH.li_
+              [ HH.text $ String.joinWith " "
+                  [ format
+                      ( F.Placeholder "["
+                          : F.DayOfMonth
+                          : F.Placeholder " "
+                          : F.MonthShort
+                          : F.Placeholder " "
+                          : F.Hours24
+                          : F.Placeholder ":"
+                          : F.MinutesTwoDigits
+                          : F.Placeholder "]"
+                          : Nil
+                      )
+                      m.createdAt
+                  , Username.toString m.username
+                  , ":"
+                  , NES.toString m.text
+                  ]
+              ]
+      ]
+  , HH.input
+      [ HP.classNames
+          $
+            [ "w-8"
+            , "h-8"
+            , "text-center"
+            , "text-white"
+            , "duration-100"
+            , "transition"
+            , "rounded-lg"
+            , "text-sm"
+            , "text-center"
+            , "z-50"
+            , "absolute"
+            , "right-0"
+            , "bottom-0"
+            , "cursor-pointer"
+            , "mb-3"
+            , "mr-4"
+            , "bg-slate-400"
+            , "hover:bg-slate-500"
+            , "opacity-80"
+            , "hover:opacity-70"
+            ]
+          <> if isFollowing then [ "hidden" ] else []
+      , HP.value "⇣"
+      , HP.type_ InputButton
+      , HE.onClick $ const ScrollBtnClicked
+      ]
   ]
+
+  where
+  isFollowing = case state.scrollMode of
+    Following → true
+    NotFollowing → false
 
 handleAction ∷ Action → H.HalogenM State Action () Output App Unit
 handleAction = case _ of
@@ -123,10 +160,12 @@ handleAction = case _ of
   Tick →
     H.gets _.messages <#> Array.head >>= traverse_ updateMessages
   MessagesScroll →
-    liftEffect messagesScrollInfo >>= traverse_ \{ sheight, cheight, top } → do
+    messagesScrollInfo >>= traverse_ \{ sheight, cheight, top } → do
       if abs (sheight - (cheight + top)) > 1.0 then
         H.modify_ _ { scrollMode = NotFollowing }
       else H.modify_ _ { scrollMode = Following }
+  ScrollBtnClicked →
+    scrollToBottom
 
   where
   timer val = do
@@ -144,10 +183,10 @@ handleAction = case _ of
 
   updateScroll = H.gets _.scrollMode >>= case _ of
     NotFollowing → pass
-    Following → liftEffect scrollToBottom
+    Following → scrollToBottom
 
-  messagesScrollInfo ∷ Effect (Maybe ScrollInfo)
-  messagesScrollInfo = do
+  messagesScrollInfo ∷ ∀ m. MonadEffect m ⇒ m (Maybe ScrollInfo)
+  messagesScrollInfo = liftEffect do
     parent ← window >>= document <#> toDocument >>> toNonElementParentNode
     let elementId = "messages"
     getElementById elementId parent >>= case _ of
@@ -160,9 +199,9 @@ handleAction = case _ of
         warn $ "DOM Element not found by id = '" <> elementId <> "'"
         pure Nothing
 
-  scrollToBottom ∷ Effect Unit
-  scrollToBottom = messagesScrollInfo >>= traverse_ \{ el, sheight } →
-    setScrollTop sheight el
+  scrollToBottom ∷ ∀ m. MonadEffect m ⇒ m Unit
+  scrollToBottom = liftEffect $ messagesScrollInfo >>= traverse_
+    \{ el, sheight } → setScrollTop sheight el
 
 type ScrollInfo =
   { el ∷ Element

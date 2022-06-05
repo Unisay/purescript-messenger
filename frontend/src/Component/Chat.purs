@@ -53,7 +53,6 @@ component =
               , "flex"
               , "flex-col"
               , "pl-2"
-              , "h-chat"
               ]
           ]
           [ slotMessages, slotControls ]
