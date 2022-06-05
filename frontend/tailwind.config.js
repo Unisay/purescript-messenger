@@ -31,25 +31,13 @@ module.exports = {
       gridTemplateColumns: {
         chat: '1fr 13rem'
       },
-      minHeight: {
-        '4/5': '80%'
-      },
-      minWidth: {
-        '4/5': '80%'
-      },
-      maxHeight: {
-        '4/5': '80%'
-      },
-      maxWidth: {
-        '4/5': '80%'
-      },
       height: {
         21: '85px',
-        'messages': '38rem'
+        'chat': 'calc(100vh - 90px)'
       },
       colors: {
         'slate-350': 'E2E0E0'
-      }
+      },
     }
   },
   plugins: [],
