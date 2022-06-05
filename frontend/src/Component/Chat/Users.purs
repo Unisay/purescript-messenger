@@ -7,15 +7,19 @@ import Auth as Auth
 import Backend as Backend
 import Chat.Api.Http (UserPresence)
 import Chat.Presence (Presence(..))
+import Control.Monad.Rec.Class (forever)
 import Data.Array as Array
 import Data.Username as Username
+import Effect.Aff (Milliseconds(..))
+import Effect.Aff as Aff
 import Halogen.Extended as H
 import Halogen.HTML.Extended as HH
 import Halogen.HTML.Properties.Extended as HP
+import Halogen.Subscription as HS
 import Network.RemoteData (RemoteData)
 import Network.RemoteData as RD
 
-data Action = Initialize | ReceiveAuth Auth.Info
+data Action = Initialize | ReceiveAuth Auth.Info | Tick
 
 type Input = Auth.Info
 
@@ -105,10 +109,22 @@ render { users } =
 handleAction ∷ ∀ s. Action → H.HalogenM State Action s Output App Unit
 handleAction = case _ of
   Initialize → do
+    _ ← timer Tick >>= H.subscribe
     H.modify_ _ { users = RD.Loading }
+    updateUsers
+  ReceiveAuth authInfo →
+    H.modify_ _ { authInfo = authInfo }
+  Tick →
+    updateUsers
+  where
+  timer val = do
+    { emitter, listener } ← H.liftEffect HS.create
+    _ ← H.liftAff $ Aff.forkAff $ forever do
+      Aff.delay $ Milliseconds 1000.0
+      H.liftEffect $ HS.notify listener val
+    pure emitter
+
+  updateUsers = do
     token ← H.gets _.authInfo.token
     H.raiseError (Backend.listUsers token) \userPresenses →
       H.modify_ _ { users = RD.Success userPresenses }
-  ReceiveAuth authInfo →
-    H.modify_ _ { authInfo = authInfo }
-
