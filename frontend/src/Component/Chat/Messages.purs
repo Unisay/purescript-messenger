@@ -10,7 +10,8 @@ import Data.Array as Array
 import Data.Formatter.DateTime (format)
 import Data.Formatter.DateTime as F
 import Data.List (List(..), (:))
-import Data.Message (Message(..), MessageInfo, WithId(..))
+import Data.Message (CursoredMessages, Message(..), WithCursor(..))
+import Data.Message as Message
 import Data.Number (abs)
 import Data.String.NonEmpty as NES
 import Data.Traversable (traverse_)
@@ -42,7 +43,7 @@ data ScrollMode = Following | NotFollowing
 
 type State =
   { auth ∷ Auth.Info
-  , messages ∷ Array MessageInfo
+  , messages ∷ CursoredMessages
   , scrollMode ∷ ScrollMode
   }
 
@@ -58,7 +59,7 @@ component = H.mkComponent
   }
 
 initialState ∷ Input → State
-initialState auth = { auth, scrollMode: Following, messages: [] }
+initialState auth = { auth, scrollMode: Following, messages: WithCursor 0 [] }
 
 render ∷ ∀ m. State → H.ComponentHTML Action () m
 render state = HH.div [ HP.classNames [ "relative" ] ]
@@ -88,8 +89,8 @@ render state = HH.div [ HP.classNames [ "relative" ] ]
               , "wrap-anywhere"
               ]
           ]
-          $ state.messages
-          <#> \(WithId _ (Message m)) →
+          $ Message.fromCursored state.messages
+          <#> \(Message m) →
             HH.li_
               [ HH.div [ HP.classNames [ "font-mono" ] ]
                   [ HH.span
@@ -167,12 +168,12 @@ handleAction ∷ Action → H.HalogenM State Action () Output App Unit
 handleAction = case _ of
   Initialize → do
     _ ← H.subscribe =<< timer Tick
-    token ← H.gets _.auth.token
-    H.raiseError (Backend.getLastMessages token) \messages → do
-      H.modify_ _ { messages = messages }
-      updateScroll
+    updateMessages Nothing
   Tick →
-    H.gets _.messages <#> Array.head >>= traverse_ updateMessages
+    H.gets _.messages >>=
+      \(WithCursor c msg) → updateMessages
+        if Array.null msg then Nothing
+        else Just c
   MessagesScroll →
     messagesScrollInfo >>= traverse_ \{ sheight, cheight, top } → do
       if abs (sheight - (cheight + top)) > 1.0 then
@@ -189,11 +190,15 @@ handleAction = case _ of
       H.liftEffect $ HS.notify listener val
     pure emitter
 
-  updateMessages msgInfo = do
+  updateMessages cursor = do
     token ← H.gets _.auth.token
-    H.raiseError (Backend.messagesWithCursor msgInfo token) \messages → do
-      H.modify_ \st → st { messages = messages <> st.messages }
-      updateScroll
+    H.raiseError (Backend.messagesWithCursor cursor token)
+      \(WithCursor last messages) → do
+        H.modify_ \st → st
+          { messages = WithCursor last
+              (messages <> Message.fromCursored st.messages)
+          }
+        updateScroll
 
   updateScroll = H.gets _.scrollMode >>= case _ of
     NotFollowing → pass

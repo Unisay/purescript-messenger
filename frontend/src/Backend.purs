@@ -9,13 +9,7 @@ import Affjax.RequestHeader (RequestHeader)
 import Affjax.ResponseFormat as ResponseFormat
 import Affjax.StatusCode (StatusCode(..))
 import Affjax.Web as AW
-import Chat.Api.Http
-  ( SignInResponseBody
-  , SignUpResponse(..)
-  , SignUpResponseBody
-  , SignoutReason
-  , UserPresence
-  )
+import Chat.Api.Http (SignInResponseBody, SignUpResponse(..), SignUpResponseBody, SignoutReason, UserPresence)
 import Chat.Api.Http.Problem (Problem)
 import Chat.Api.Http.Problem as Problem
 import Control.Monad.Error.Class (class MonadThrow)
@@ -29,7 +23,7 @@ import Data.Auth.Token (Token)
 import Data.Auth.Token as Token
 import Data.Email (Email)
 import Data.HTTP.Method (Method(..))
-import Data.Message (Message, MessageInfo, WithId(..))
+import Data.Message (Cursor, CursoredMessages, Message)
 import Data.Newtype (unwrap, wrap)
 import Data.Password (Password)
 import Data.String as String
@@ -271,56 +265,24 @@ sendMessage' transport username message token = do
     Right { status: actual } →
       throwError $ ResponseStatusError { expected: StatusCode 200, actual }
 
-getLastMessages'
-  ∷ ∀ m r
-  . MonadAff m
-  ⇒ MonadAsk (Record (HasBackendConfig r)) m
-  ⇒ MonadThrow Error m
-  ⇒ Transport
-  → Token
-  → m (Array MessageInfo)
-getLastMessages' transport token = do
-  backendApiUrl ← asks _.backendApiUrl
-  response ← liftAff $ transport defaultBackendRequest
-    { method = Left GET
-    , url = String.joinWith "/"
-        [ backendApiUrl, "chat", "messages" ]
-    , responseFormat = ResponseFormat.json
-    , headers = [ authorization token ]
-    }
-  case response of
-    Left err → throwError $ AffjaxError err
-    Right { status, body } → case status of
-      StatusCode 200 → decodeJson body #
-        either (ResponseDecodeError >>> throwError) pure
-      _ → throwError $ ResponseStatusError
-        { expected: wrap 200, actual: status }
-
-getLastMessages
-  ∷ ∀ m r
-  . MonadAff m
-  ⇒ MonadAsk (Record (HasBackendConfig r)) m
-  ⇒ MonadThrow Error m
-  ⇒ Token
-  → m (Array MessageInfo)
-getLastMessages = getLastMessages' AW.request
-
 messagesWithCursor'
   ∷ ∀ m r
   . MonadAff m
   ⇒ MonadAsk (Record (HasBackendConfig r)) m
   ⇒ MonadThrow Error m
   ⇒ Transport
-  → MessageInfo
+  → Maybe Cursor
   → Token
-  → m (Array MessageInfo)
-messagesWithCursor' transport (WithId id _) token = do
+  → m (CursoredMessages)
+messagesWithCursor' transport cursor token = do
   backendApiUrl ← asks _.backendApiUrl
   response ← liftAff $ transport
     defaultBackendRequest
       { method = Left GET
-      , url = String.joinWith "/"
-          [ backendApiUrl, "chat", "messages", show id ]
+      , url =
+          ( String.joinWith "/"
+              [ backendApiUrl, "chat", "messages" ]
+          ) <> fromMaybe "" (cursor <#> show >>> append "?cursor=")
       , responseFormat = ResponseFormat.json
       , headers = [ authorization token ]
       }
@@ -337,9 +299,9 @@ messagesWithCursor
   . MonadAff m
   ⇒ MonadAsk (Record (HasBackendConfig r)) m
   ⇒ MonadThrow Error m
-  ⇒ MessageInfo
+  ⇒ Maybe Cursor
   → Token
-  → m (Array MessageInfo)
+  → m (CursoredMessages)
 messagesWithCursor = messagesWithCursor' AW.request
 
 hoistError ∷ ∀ m e e'. MonadThrow e' m ⇒ (e → e') → ExceptT e m ~> m

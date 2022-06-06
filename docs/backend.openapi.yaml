@@ -131,35 +131,16 @@ paths:
 
   /chat/messages:
     get:
-      summary: Last 100 messages in the chat
-      tags:
-        - chat
-      security:
-        - auth: []
-      responses:
-        "200":
-          description: List of last messages
-          content:
-            application/json:
-              schema:
-                type: array
-                items: 
-                  $ref: "#/components/schemas/Message" 
-        "403": 
-          description: Access denied
-
-  /chat/messages/{id}:
-    get:
       summary: Last messages after the one with given id
       tags:
         - chat
       security:
         - auth: []
       parameters:
-        - $ref: "#/components/parameters/id"
+        - $ref: "#/components/parameters/cursor"
       responses:
         "200":
-          description: List of last messages after the one with given id
+          description: List of last messages after the cursor
           content:
             application/json:
               schema:
@@ -182,16 +163,14 @@ components:
       description:
         Username is used to uniquely identify a user within the system.
         It could only contain alphanumeric characters.
-    id: 
-      in: path
-      name: id
+    cursor: 
+      in: query
+      name: cursor
       schema:
-        type: integer
-        minimum: 0
-      required: true  
-      example: 100
+        type: String
+      example: abc34jsl446
       description:
-        Unique identificator for every message 
+        Opaque cursor value that points to a next portion of items
   schemas:
     UserInfo:
       type: object

@@ -2,8 +2,10 @@ module Data.Message
   ( toString
   , Message(..)
   , parse
-  , MessageInfo
-  , WithId(..)
+  , fromCursored
+  , WithCursor(..)
+  , Cursor
+  , CursoredMessages
   ) where
 
 import Preamble
@@ -23,15 +25,17 @@ import Data.String.NonEmpty as NonEmptyString
 import Data.Time.Duration (Seconds, convertDuration)
 import Data.Username (Username)
 
+type Cursor = Int
+
+data WithCursor a = WithCursor Cursor a
+
 newtype Message = Message
   { text ∷ NonEmptyString
   , createdAt ∷ DateTime
   , username ∷ Username
   }
 
-data WithId a = WithId Int a
-
-type MessageInfo = WithId Message
+type CursoredMessages = WithCursor (Array Message)
 
 derive newtype instance Show Message
 derive newtype instance Eq Message
@@ -61,20 +65,10 @@ instance DecodeJson Message where
     pure $ Message
       { createdAt: toDateTime posix, text, username: m.username }
 
-instance DecodeJson MessageInfo where
+instance DecodeJson CursoredMessages where
   decodeJson json = do
-    m ∷ { text ∷ String, created_at ∷ Number, username ∷ Username, id ∷ Int } ←
-      decodeJson json
-    posix ← note (TypeMismatch "Unexpected Milliseconds value")
-      $ Instant.instant
-      $ (convertDuration ∷ Seconds → _)
-      $ wrap m.created_at
-    text ← note (TypeMismatch "The `message` value is empty")
-      $ NES.fromString m.text
-    let
-      message = Message
-        { createdAt: toDateTime posix, text, username: m.username }
-    pure $ WithId m.id message
+    m ∷ { cursor ∷ Int, message ∷ Array Message } ← decodeJson json
+    pure $ WithCursor m.cursor m.message
 
 toString ∷ Message → String
 toString (Message m) = NonEmptyString.toString m.text
@@ -85,3 +79,6 @@ parse s = NES.fromString (String.trim s) # maybe
   \str →
     if NES.length str > 800 then Left $ pure "Your message is too long!"
     else Right str
+
+fromCursored ∷ CursoredMessages → Array Message
+fromCursored (WithCursor _ arr) = arr
