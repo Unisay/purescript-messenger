@@ -68,6 +68,24 @@ paths:
                 $ref: "#/components/schemas/Session"
         "403":
           description: Access denied
+    
+    get:
+      summary: Update user's JWT token
+      security:
+        - auth: []
+      tags: 
+        - auth
+      parameters:
+        - $ref: "#/components/parameters/username"
+      responses:
+          "200":
+            description: User session
+            content:
+              application/json:
+                schema:
+                  $ref: "#/components/schemas/Session"
+          "403":
+            description: Access denied
 
   /chat/users:
     get:
@@ -167,7 +185,7 @@ components:
       in: query
       name: cursor
       schema:
-        type: String
+        type: string
       example: abc34jsl446
       description:
         Opaque cursor value that points to a next portion of items
@@ -234,7 +252,7 @@ components:
           minimum: 0.0
           example: 123456.0
         id:
-          $ref: "#/components/parameters/id"
+          $ref: "#/components/parameters/cursor"
         username:
           $ref: "#/components/parameters/username"
     Problem:
