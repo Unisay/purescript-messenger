@@ -67,8 +67,8 @@ instance DecodeJson Message where
 
 instance DecodeJson CursoredMessages where
   decodeJson json = do
-    m ∷ { cursor ∷ Int, message ∷ Array Message } ← decodeJson json
-    pure $ WithCursor m.cursor m.message
+    m ∷ { cursor ∷ Int, messages ∷ Array Message } ← decodeJson json
+    pure $ WithCursor m.cursor m.messages
 
 toString ∷ Message → String
 toString (Message m) = NonEmptyString.toString m.text
