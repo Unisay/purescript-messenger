@@ -39,7 +39,7 @@ paths:
 
   /users/{username}/session/:
     put:
-      summary: Signin user
+      summary: Create new user session or update an existing one.
       operationId: signin
       security: []
       tags:
@@ -52,13 +52,9 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              required:
-                - password
-              properties:
-                password:
-                  type: string
-                  minLength: 8
+              oneOf:
+                - $ref: "#/components/schemas/Password"
+                - $ref: "#/components/schemas/Session"
       responses:
         "200":
           description: User session
@@ -68,24 +64,6 @@ paths:
                 $ref: "#/components/schemas/Session"
         "403":
           description: Access denied
-    
-    get:
-      summary: Update user's JWT token
-      security:
-        - auth: []
-      tags: 
-        - auth
-      parameters:
-        - $ref: "#/components/parameters/username"
-      responses:
-          "200":
-            description: User session
-            content:
-              application/json:
-                schema:
-                  $ref: "#/components/schemas/Session"
-          "403":
-            description: Access denied
 
   /chat/users:
     get:
@@ -131,7 +109,7 @@ paths:
           description: User successfully signed out
         "403":
           description: Access denied
-  
+
   /chat/users/{username}/messages:
     put:
       summary: User sends a message
@@ -163,8 +141,8 @@ paths:
             application/json:
               schema:
                 type: array
-                items: 
-                  $ref: "#/components/schemas/Message" 
+                items:
+                  $ref: "#/components/schemas/Message"
         "403":
           description: Access denied
 
@@ -174,22 +152,31 @@ components:
       in: path
       name: username
       schema:
-        type: string
-        minLength: 2
+        $ref: "#/components/schemas/Username"
       required: true
       example: john
       description:
         Username is used to uniquely identify a user within the system.
         It could only contain alphanumeric characters.
-    cursor: 
+    cursor:
       in: query
       name: cursor
       schema:
         type: string
       example: abc34jsl446
-      description:
-        Opaque cursor value that points to a next portion of items
+      description: Opaque cursor value that points to a next portion of items
   schemas:
+    Password:
+      type: object
+      required:
+        - password
+      properties:
+        password:
+          type: string
+          minLength: 8
+    Username:
+      type: string
+      minLength: 2
     UserInfo:
       type: object
       required:
@@ -252,9 +239,9 @@ components:
           minimum: 0.0
           example: 123456.0
         id:
-          $ref: "#/components/parameters/cursor"
+          type: string
         username:
-          $ref: "#/components/parameters/username"
+          $ref: "#/components/schemas/Username"
     Problem:
       description: A Problem Details object (RFC 7807)
       type: object
@@ -263,7 +250,7 @@ components:
           type: string
           format: uri
           description: An absolute URI that identifies the problem type
-          default: about:blank  # kept for backwards-compatibility, type will be mandatory in problem-v2
+          default: about:blank # kept for backwards-compatibility, type will be mandatory in problem-v2
         href:
           type: string
           format: uri
