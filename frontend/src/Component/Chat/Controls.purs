@@ -163,7 +163,7 @@ handleAction ∷ Action → H.HalogenM State Action () Output App Unit
 handleAction = case _ of
   UpdateInfo info → H.modify_ _ { info = info }
   SetMessage str →
-    H.modify_ _ { message { inputValue = str } } *> validateInput
+    H.modify_ _ { message { inputValue = String.trim str } } *> validateInput
   SendMessage ev → do
     liftEffect $ Event.preventDefault ev
     H.gets _.message.inputValue <#> Message.parse >>= case _ of

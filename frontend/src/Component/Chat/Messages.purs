@@ -65,20 +65,17 @@ render ∷ ∀ m. State → H.ComponentHTML Action () m
 render state = HH.div [ HP.classNames [ "relative" ] ]
   [ HH.div
       [ HP.id "messages"
-      , HP.classNames $ Array.concat
-          [ [ "border-x-2"
-            , "border-t-2"
-            , "border-slate-400"
-            , "rounded-t-sm"
-            , "pl-2"
-            , "pr-1"
-            , "overflow-y-scroll"
-            , "relative"
-            , "h-chat"
-            ]
-          , case state.scrollMode of
-              Following → [ "bg-slate-100" ]
-              NotFollowing → [ "bg-slate-300" ]
+      , HP.classNames
+          [ "border-x-2"
+          , "border-t-2"
+          , "border-slate-400"
+          , "rounded-t-sm"
+          , "pl-2"
+          , "pr-1"
+          , "overflow-y-scroll"
+          , "relative"
+          , "h-chat"
+          , "bg-slate-100"
           ]
       , HE.onScroll $ const MessagesScroll
       ]
