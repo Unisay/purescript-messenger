@@ -3,6 +3,9 @@ module.exports = {
     files: ["src/**/*.purs"],
   },
   theme: {
+    fontFamily: {
+      'mono': ['Roboto Mono', 'monospace']
+    },
     extend: {
       animation: {
         'disappear-useful': 'disappear 2s linear 1s 1 forwards',
@@ -26,10 +29,17 @@ module.exports = {
         101: '1.01',
       },
       gridTemplateColumns: {
-        chat: '13rem 1fr'
+        chat: '1fr 13rem'
       },
-      minHeight: {
-        8: '3rem'
+      height: {
+        21: '85px',
+        'chat': 'calc(100vh - 12rem)'
+      },
+      colors: {
+        'slate-350': 'E2E0E0'
+      },
+      fontWeight: {
+        'datetime': '550'
       }
     }
   },

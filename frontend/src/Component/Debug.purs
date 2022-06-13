@@ -21,8 +21,7 @@ import Data.Notification
   )
 import Data.String as String
 import Data.Traversable (traverse_)
-import Effect.Class (class MonadEffect)
-import Halogen (Component, liftEffect)
+import Halogen (Component)
 import Halogen as H
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Extended as HH

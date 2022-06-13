@@ -19,7 +19,7 @@ import Data.Route as Route
 import Data.Username as Username
 import Data.Validation (Validation)
 import Effect.Aff (Milliseconds(..), delay)
-import Halogen (liftAff, liftEffect)
+import Halogen (liftAff)
 import Halogen.Extended as H
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Extended as HH

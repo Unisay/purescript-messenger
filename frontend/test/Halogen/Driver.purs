@@ -10,7 +10,6 @@ import Data.Traversable (traverse_)
 import Data.Tuple (Tuple(..))
 import Effect.Aff (Aff)
 import Effect.Aff.Class (liftAff)
-import Effect.Class (liftEffect)
 import Effect.Ref (Ref)
 import Effect.Ref as Ref
 import Halogen.Aff.Driver.Eval (handleAff)

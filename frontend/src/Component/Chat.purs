@@ -21,6 +21,12 @@ type Input = Auth.Info
 
 type Output = Backend.Error
 
+type ChildSlots =
+  ( "users" ∷ ∀ query. H.Slot query Backend.Error Unit
+  , "messages" ∷ ∀ query. H.Slot query Backend.Error Unit
+  , "controls" ∷ ∀ query. H.Slot query Backend.Error Unit
+  )
+
 component ∷ ∀ q. H.Component q Input Output App
 component =
   H.mkComponent
@@ -41,22 +47,22 @@ component =
           , "grid-flow-col"
           ]
       ]
-      [ slotUsers
-      , HH.div
+      [ HH.div
           [ HP.classNames
               [ "h-full"
               , "flex"
               , "flex-col"
-              , "pr-2"
+              , "pl-2"
               ]
           ]
           [ slotMessages, slotControls ]
+      , slotUsers
       ]
     where
     slotUsers =
       HH.slot _users unit Users.component authInfo HandleBackendError
     slotMessages =
-      HH.slot _messages unit Messages.component unit HandleBackendError
+      HH.slot _messages unit Messages.component authInfo HandleBackendError
     slotControls =
       HH.slot _controls unit Controls.component authInfo HandleBackendError
     _users =
@@ -66,6 +72,6 @@ component =
     _controls =
       Proxy ∷ Proxy "controls"
 
-handleAction ∷ ∀ s slots m. Action → H.HalogenM s Action slots Output m Unit
+handleAction ∷ ∀ m. Action → H.HalogenM State Action ChildSlots Output m Unit
 handleAction = case _ of
   HandleBackendError backendError → H.raise backendError

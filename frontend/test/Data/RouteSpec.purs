@@ -9,7 +9,6 @@ import Data.Route (Route(..), codec)
 import Data.String (toCodePointArray)
 import Data.String as String
 import Data.Username as Username
-import Effect.Class (class MonadEffect, liftEffect)
 import Routing.Duplex as Routing
 import Test.QuickCheck
   ( class Testable

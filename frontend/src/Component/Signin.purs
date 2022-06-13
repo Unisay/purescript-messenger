@@ -23,8 +23,7 @@ import Data.Username (Username)
 import Data.Username as Username
 import Data.Validation (Validation)
 import Effect.Aff (Milliseconds(..), delay)
-import Effect.Class (liftEffect)
-import Halogen.Extended (liftAff)
+import Effect.Aff.Class (liftAff)
 import Halogen.Extended as H
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Extended as HH

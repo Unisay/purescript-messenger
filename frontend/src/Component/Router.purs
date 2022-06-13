@@ -7,8 +7,10 @@ import Preamble
 
 import AppM (App)
 import AppM as App
-import Auth as Auth
+import Auth (Info, decodeToken, loadInfo, removeToken) as Auth
+import Backend (deleteSession) as Auth
 import Backend as Backend
+import Chat.Api.Http (SignoutReason(..))
 import Component.Chat as Chat
 import Component.Debug as Debug
 import Component.Error as Error
@@ -19,12 +21,15 @@ import Component.Notifications as Notifications
 import Component.Signin as Signin
 import Component.Signup as Signup
 import Config (Config)
-import Control.Monad.Except (runExceptT)
-import Control.Monad.Reader (runReaderT)
+import Control.Monad.Except (ExceptT, runExceptT)
+import Control.Monad.Reader (ReaderT, runReaderT)
+import Control.Monad.State (class MonadState, gets, modify_)
+import Data.Bitraversable (bitraverse_, ltraverse)
 import Data.Route (Route(..), goTo)
 import Data.Route as Route
+import Data.Traversable (traverse_)
 import Effect.Aff (Aff)
-import Effect.Class (class MonadEffect, liftEffect)
+import Effect.Aff.Class (class MonadAff)
 import Halogen.Component as HC
 import Halogen.Extended as H
 import Halogen.HTML as HH
@@ -44,6 +49,7 @@ type State =
 
 data Action
   = Initialize
+  | Finalize
   | RecordAppError App.Error
   | ErrorAction Error.Output
   | SigninOutput Signin.Output
@@ -79,6 +85,7 @@ component = H.mkComponent
       { handleAction = handleAction
       , handleQuery = handleQuery
       , initialize = Just Initialize
+      , finalize = Just Finalize
       }
   }
 
@@ -92,41 +99,55 @@ initialState config =
 
 handleAction
   ∷ ∀ m
-  . MonadEffect m
+  . MonadAff m
   ⇒ Action
   → H.HalogenM State Action ChildSlots Void m Unit
-handleAction = case _ of
-  Initialize → do
-    runExceptT (H.gets _.config >>= runReaderT Auth.loadInfo) >>= case _ of
-      Left err → handleAction $ RecordAppError $ App.AuthError err
-      Right info → H.modify_ _ { authInfo = info }
-    -- Route handling:
-    route ← liftEffect getHash >>= \hash → do
-      case RD.parse Route.codec hash of
-        Left err → log (show err <> ": " <> show hash) $> Home
-        Right route → pure route
-    navigate route
-  RecordAppError err →
-    H.modify_ _ { error = Just err }
-  ErrorAction action → do
-    case action of
-      Error.Retry → do
-        H.modify_ _ { error = Nothing }
+handleAction = do
+  case _ of
+    Initialize → do
+      run Auth.loadInfo >>=
+        bitraverse_ (recordAppError <<< App.AuthError) \info →
+          modify_ _ { authInfo = info }
+      -- Route handling:
+      route ← liftEffect getHash >>= \hash → do
+        case RD.parse Route.codec hash of
+          Left err → log (show err <> ": " <> show hash) $> Home
+          Right route → pure route
+      navigate route
+    Finalize →
+      gets _.authInfo >>= traverse_ \{ token, username } →
+        run (Auth.deleteSession username token UserAction)
+          >>= ltraverse (recordAppError <<< App.BackendError)
+    ErrorAction action → case action of
+      Error.Retry → modify_ _ { error = Nothing }
       Error.SignIn → do
-        H.gets _.config >>= runReaderT Auth.removeToken
-        H.modify_ _ { error = Nothing, authInfo = Nothing }
+        gets _.config >>= runReaderT Auth.removeToken
+        modify_ _ { error = Nothing, authInfo = Nothing }
         goTo Route.SignIn
-  SigninOutput signinOut → case signinOut of
-    Left err →
-      handleAction $ RecordAppError $ App.BackendError err
-    Right token →
-      runExceptT (Auth.decodeToken token) >>= case _ of
-        Left err →
-          handleAction $ RecordAppError $ App.AuthError err
-        Right info → H.modify_ _ { authInfo = Just info }
-  NavigationOutput output → case output of
-    OutputError err → handleAction $ RecordAppError err
-    SignedOut → H.modify_ _ { authInfo = Nothing } *> goTo Route.Home
+    SigninOutput signinOut →
+      case signinOut of
+        Left err → recordAppError $ App.BackendError err
+        Right token →
+          runExceptT (Auth.decodeToken token) >>=
+            bitraverse_ (recordAppError <<< App.AuthError) \info →
+              modify_ _ { authInfo = Just info }
+    NavigationOutput output →
+      case output of
+        OutputError err → recordAppError err
+        SignedOut → modify_ _ { authInfo = Nothing } *> goTo Route.Home
+    RecordAppError err →
+      recordAppError err
+
+  where
+  run
+    ∷ ∀ r e n a
+    . MonadAff n
+    ⇒ MonadState { config ∷ Config | r } n
+    ⇒ ExceptT e (ReaderT Config n) a
+    → n (Either e a)
+  run n = gets _.config >>= runReaderT (runExceptT n)
+
+  recordAppError err = logShow err *> modify_ _ { error = Just err }
 
 handleQuery
   ∷ ∀ a m
@@ -142,7 +163,7 @@ navigate
   → H.HalogenM State Action ChildSlots Void m Unit
 navigate route = do
   liftEffect $ setHash $ RD.print Route.codec route
-  H.modify_ _ { route = route }
+  modify_ _ { route = route }
 
 render ∷ State → H.ComponentHTML Action ChildSlots Aff
 render { config, route, authInfo, error } =

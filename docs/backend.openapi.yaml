@@ -39,7 +39,7 @@ paths:
 
   /users/{username}/session/:
     put:
-      summary: Signin user
+      summary: Create new user session or update an existing one.
       operationId: signin
       security: []
       tags:
@@ -52,13 +52,9 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              required:
-                - password
-              properties:
-                password:
-                  type: string
-                  minLength: 8
+              oneOf:
+                - $ref: "#/components/schemas/Password"
+                - $ref: "#/components/schemas/Session"
       responses:
         "200":
           description: User session
@@ -114,20 +110,73 @@ paths:
         "403":
           description: Access denied
 
+  /chat/users/{username}/messages:
+    put:
+      summary: User sends a message
+      tags:
+        - chat
+      security:
+        - auth: []
+      parameters:
+        - $ref: "#/components/parameters/username"
+      responses:
+        "200":
+          description: Message was successfully handled
+        "403":
+          description: Access denied
+
+  /chat/messages:
+    get:
+      summary: Last messages after the one with given id
+      tags:
+        - chat
+      security:
+        - auth: []
+      parameters:
+        - $ref: "#/components/parameters/cursor"
+      responses:
+        "200":
+          description: List of last messages after the cursor
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Message"
+        "403":
+          description: Access denied
+
 components:
   parameters:
     username:
       in: path
       name: username
       schema:
-        type: string
-        minLength: 2
+        $ref: "#/components/schemas/Username"
       required: true
       example: john
       description:
         Username is used to uniquely identify a user within the system.
         It could only contain alphanumeric characters.
+    cursor:
+      in: query
+      name: cursor
+      schema:
+        type: string
+      example: abc34jsl446
+      description: Opaque cursor value that points to a next portion of items
   schemas:
+    Password:
+      type: object
+      required:
+        - password
+      properties:
+        password:
+          type: string
+          minLength: 8
+    Username:
+      type: string
+      minLength: 2
     UserInfo:
       type: object
       required:
@@ -170,6 +219,29 @@ components:
         token:
           type: string
           format: jwt
+    Message:
+      type: object
+      required:
+        - id
+        - text
+        - created_at
+        - username
+      properties:
+        text:
+          type: string
+          minimum: 1
+          maximum: 800
+          example: Hello everyone!
+        created_at:
+          type: number
+          format: float
+          description: Unix timestamp in seconds
+          minimum: 0.0
+          example: 123456.0
+        id:
+          type: string
+        username:
+          $ref: "#/components/schemas/Username"
     Problem:
       description: A Problem Details object (RFC 7807)
       type: object
@@ -178,7 +250,7 @@ components:
           type: string
           format: uri
           description: An absolute URI that identifies the problem type
-          default: about:blank  # kept for backwards-compatibility, type will be mandatory in problem-v2
+          default: about:blank # kept for backwards-compatibility, type will be mandatory in problem-v2
         href:
           type: string
           format: uri

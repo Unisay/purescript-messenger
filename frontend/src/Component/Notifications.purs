@@ -104,7 +104,9 @@ render { queue } =
               , HH.p [ HP.classNames [ "ml-1" ] ] [ HH.text message ]
               ]
           , HH.button [ HE.onClick \_ → Close id ]
-              [ HH.img [ HP.src "images/close.svg" ] ]
+              [ HH.img
+                  [ HP.src "images/close.svg", HP.classNames [ "h-6", "w-6" ] ]
+              ]
           ]
       ]
 

@@ -3,7 +3,6 @@ module LocalStorage where
 import Preamble
 
 import Control.Monad.Reader (class MonadAsk, asks)
-import Effect.Class (class MonadEffect, liftEffect)
 import Web.Storage.Storage (Storage, getItem, removeItem, setItem)
 
 type HasStorage r = (storage ∷ Storage | r)

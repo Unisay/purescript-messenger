@@ -9,13 +9,7 @@ import Affjax.RequestHeader (RequestHeader)
 import Affjax.ResponseFormat as ResponseFormat
 import Affjax.StatusCode (StatusCode(..))
 import Affjax.Web as AW
-import Chat.Api.Http
-  ( SignInResponseBody
-  , SignUpResponse(..)
-  , SignUpResponseBody
-  , SignoutReason
-  , UserPresence
-  )
+import Chat.Api.Http (SignInResponseBody, SignUpResponse(..), SignUpResponseBody, SignoutReason, UserPresence)
 import Chat.Api.Http.Problem (Problem)
 import Chat.Api.Http.Problem as Problem
 import Control.Monad.Error.Class (class MonadThrow)
@@ -29,6 +23,7 @@ import Data.Auth.Token (Token)
 import Data.Auth.Token as Token
 import Data.Email (Email)
 import Data.HTTP.Method (Method(..))
+import Data.Message (Cursor, CursoredMessages, Message)
 import Data.Newtype (unwrap, wrap)
 import Data.Password (Password)
 import Data.String as String
@@ -105,8 +100,11 @@ createSession' transport username password = do
     Left err → throwError $ AffjaxError err
     Right { status, body } →
       case unwrap status, decodeJson body of
-        200, Right (srb ∷ SignInResponseBody) → pure $ SignedIn srb.token
-        200, Left err → throwError $ ResponseDecodeError err
+        200, Right (token ∷ SignInResponseBody) → pure
+          $ SignedIn token
+        200, Left err → do
+          logShow err
+          throwError $ ResponseDecodeError err
         403, _ → pure Forbidden
         _, _ → throwError $ ResponseStatusError
           { expected: wrap 200, actual: status }
@@ -225,8 +223,89 @@ deleteSession' transport username token reason = do
     Right { status: actual } →
       throwError $ ResponseStatusError { expected: StatusCode 200, actual }
 
+sendMessage
+  ∷ ∀ m r
+  . MonadAff m
+  ⇒ MonadAsk (Record (HasBackendConfig r)) m
+  ⇒ MonadThrow Error m
+  ⇒ Username
+  → Message
+  → Token
+  → m Unit
+sendMessage = sendMessage' AW.request
+
+sendMessage'
+  ∷ ∀ m r
+  . MonadAff m
+  ⇒ MonadAsk (Record (HasBackendConfig r)) m
+  ⇒ MonadThrow Error m
+  ⇒ Transport
+  → Username
+  → Message
+  → Token
+  → m Unit
+sendMessage' transport username message token = do
+  backendApiUrl ← asks _.backendApiUrl
+  response ← liftAff $ transport defaultBackendRequest
+    { method = Left PUT
+    , url = String.joinWith "/"
+        [ backendApiUrl
+        , "chat"
+        , "users"
+        , Username.toString username
+        , "messages"
+        ]
+    , responseFormat = ResponseFormat.json
+    , content = Just $ RB.Json $ Json.encodeJson message
+    , headers = [ authorization token ]
+    }
+  case response of
+    Left err → throwError $ AffjaxError err
+    Right { status: StatusCode 200 } → pass
+    Right { status: actual } →
+      throwError $ ResponseStatusError { expected: StatusCode 200, actual }
+
+messagesWithCursor'
+  ∷ ∀ m r
+  . MonadAff m
+  ⇒ MonadAsk (Record (HasBackendConfig r)) m
+  ⇒ MonadThrow Error m
+  ⇒ Transport
+  → Maybe Cursor
+  → Token
+  → m (CursoredMessages)
+messagesWithCursor' transport cursor token = do
+  backendApiUrl ← asks _.backendApiUrl
+  response ← liftAff $ transport
+    defaultBackendRequest
+      { method = Left GET
+      , url =
+          ( String.joinWith "/"
+              [ backendApiUrl, "chat", "messages" ]
+          ) <> fromMaybe "" (cursor <#> show >>> append "?cursor=")
+      , responseFormat = ResponseFormat.json
+      , headers = [ authorization token ]
+      }
+  case response of
+    Left err → throwError $ AffjaxError err
+    Right { status, body } → case status of
+      StatusCode 200 → decodeJson body #
+        either (ResponseDecodeError >>> throwError) pure
+      _ → throwError $ ResponseStatusError
+        { expected: wrap 200, actual: status }
+
+messagesWithCursor
+  ∷ ∀ m r
+  . MonadAff m
+  ⇒ MonadAsk (Record (HasBackendConfig r)) m
+  ⇒ MonadThrow Error m
+  ⇒ Maybe Cursor
+  → Token
+  → m (CursoredMessages)
+messagesWithCursor = messagesWithCursor' AW.request
+
 hoistError ∷ ∀ m e e'. MonadThrow e' m ⇒ (e → e') → ExceptT e m ~> m
-hoistError f ma = runExceptT ma >>= either (throwError <<< f) pure
+hoistError f ma = runExceptT ma >>= either (f >>> throwError) pure
 
 authorization ∷ Token → RequestHeader
 authorization token =
