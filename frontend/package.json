@@ -35,6 +35,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@auth0/auth0-spa-js": "^1.22.0",
     "email-validate": "^1.0.0",
     "xhr2": "^0.2.1"
   },

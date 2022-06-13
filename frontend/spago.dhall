@@ -1,6 +1,7 @@
 { name = "purescript-messenger-frontend"
 , dependencies =
   [ "aff"
+  , "aff-promise"
   , "affjax"
   , "affjax-web"
   , "argonaut-codecs"
@@ -11,6 +12,7 @@
   , "common"
   , "console"
   , "datetime"
+  , "debug"
   , "dom-indexed"
   , "either"
   , "enums"
