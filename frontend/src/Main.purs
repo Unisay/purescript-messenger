@@ -22,8 +22,8 @@ main = runHalogenAff do
   storage ← liftEffect $ window >>= localStorage
   notifications ← liftEffect Subscription.create
   auth0Client ← Auth.newClient
-  let redirectOpts = { redirect_url: "https://localhost:8000/ok" }
-  runReaderT (Auth.loginWithRedirect redirectOpts) { auth0Client }
+  -- let redirectOpts = { redirect_url: "https://localhost:8000/ok" }
+  -- runReaderT (Auth.loginWithRedirect redirectOpts) { auth0Client }
   let
     config =
       { notifications
