@@ -4,6 +4,17 @@ import livereload from "livereload";
 import connectLiveReload from 'connect-livereload';
 import PureScriptPlugin from "esbuild-plugin-purescript";
 import * as fs from 'node:fs';
+import * as https from 'https'
+
+const certs = {
+  key: fs.readFileSync('ssl/key.pem'),
+  cert: fs.readFileSync('ssl/cert.crt')
+};
+
+const livereloadServer = livereload.createServer({
+  debug: false,
+  https: certs
+});
 
 esbuild
   .build({
@@ -14,27 +25,27 @@ esbuild
     outdir: "dist/js",
     sourcemap: true,
     plugins: [PureScriptPlugin()],
+    watch: {
+      onRebuild(err) {
+        if (err) {
+          console.error("Rebuild Failed")
+        } else {
+          livereloadServer.refresh("/");
+          console.info("✓ Asked browsers to refresh");
+        }
+      },
+    },
   })
   .then(({ errors, warnings, stop }) => {
-    const lrServer = livereload.createServer({
-      debug: true,
-      https: {
-        key: fs.readFileSync('test/fixtures/keys/agent2-key.pem'),
-        cert: fs.readFileSync('test/fixtures/keys/agent2-cert.pem')
-      }
+    livereloadServer.server.once("connection", () => {
+      setTimeout(() => { livereloadServer.refresh("/"); }, 200);
     });
-    lrServer.watch("dist");
-    lrServer.server.once("connection", () => {
-      setTimeout(() => {
-        lrServer.refresh("/");
-      }, 200);
-    });
-    const app = express();
     const port = 8000;
-    app.use(express.static('dist'));
-    app.use(connectLiveReload());
-    app.listen(port, () => {
-      console.log(`Listening on port ${port}`)
+    const devServer = express();
+    devServer.use(express.static('dist'));
+    devServer.use(connectLiveReload());
+    https.createServer(certs, devServer).listen(port, () => {
+      console.log(`Dev server is listening on port ${port}`)
     })
   })
   .catch((e) => {

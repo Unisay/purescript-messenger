@@ -6,6 +6,7 @@ import Control.Monad.Reader (class MonadAsk, asks)
 import Control.Promise (Promise, toAff, toAffE)
 import Effect.Aff (Aff)
 import Effect.Aff.Class (class MonadAff, liftAff)
+import Foreign (Foreign)
 
 data Client
 
@@ -14,8 +15,11 @@ newClient = toAffE _client
 
 foreign import _client ∷ Effect (Promise Client)
 
-isAuthenticated ∷ Client → Aff Boolean
-isAuthenticated = toAff <<< _isAuthenticated
+isAuthenticated
+  ∷ ∀ c m. MonadAsk (HasClient c) m ⇒ MonadAff m ⇒ m Boolean
+isAuthenticated = do
+  client ← asks _.auth0Client
+  liftAff $ toAff $ _isAuthenticated client
 
 foreign import _isAuthenticated ∷ Client → Promise Boolean
 
@@ -28,7 +32,7 @@ loginWithPopup = do
 
 foreign import _loginWithPopup ∷ Client → Promise Unit
 
-type RedirectOpts = { redirect_url ∷ String }
+type RedirectOpts = { redirect_uri ∷ String }
 
 loginWithRedirect
   ∷ ∀ c m. MonadAsk (HasClient c) m ⇒ MonadAff m ⇒ RedirectOpts → m Unit
@@ -38,3 +42,10 @@ loginWithRedirect opts = do
 
 foreign import _loginWithRedirect ∷ Client → RedirectOpts → Promise Unit
 
+handleRedirectCallback
+  ∷ ∀ c m. MonadAsk (HasClient c) m ⇒ MonadAff m ⇒ m Foreign
+handleRedirectCallback = do
+  client ← asks _.auth0Client
+  liftAff $ toAff $ _handleRedirectCallback client
+
+foreign import _handleRedirectCallback ∷ Client → Promise Foreign

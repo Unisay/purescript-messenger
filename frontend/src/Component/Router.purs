@@ -30,11 +30,13 @@ import Data.Route as Route
 import Data.Traversable (traverse_)
 import Effect.Aff (Aff)
 import Effect.Aff.Class (class MonadAff)
+import Effect.Class.Console as Console
 import Halogen.Component as HC
 import Halogen.Extended as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties.Extended as HP
 import Routing.Duplex as RD
+import Routing.Duplex.Parser (RouteError(..))
 import Routing.Hash (getHash, setHash)
 import Type.Proxy (Proxy(..))
 
@@ -111,7 +113,8 @@ handleAction = do
       -- Route handling:
       route ← liftEffect getHash >>= \hash → do
         case RD.parse Route.codec hash of
-          Left err → log (show err <> ": " <> show hash) $> Home
+          Left EndOfPath → pure Home
+          Left err → Console.error (show err <> ": " <> show hash) $> Home
           Right route → pure route
       navigate route
     Finalize →

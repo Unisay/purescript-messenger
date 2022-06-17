@@ -6,6 +6,7 @@ import Auth0 as Auth
 import Component.Router as Router
 import Control.Monad.Reader (runReaderT)
 import Data.Route as Route
+import Data.String.Utils as Str
 import Effect.Aff (launchAff_)
 import Halogen as H
 import Halogen.Aff (awaitBody, runHalogenAff)
@@ -14,7 +15,8 @@ import Halogen.VDom.Driver (runUI)
 import Routing.Duplex as RD
 import Routing.Hash (matchesWith)
 import Web.HTML (window)
-import Web.HTML.Window (localStorage)
+import Web.HTML.Location (search)
+import Web.HTML.Window (localStorage, location)
 
 main ∷ Effect Unit
 main = runHalogenAff do
@@ -22,12 +24,17 @@ main = runHalogenAff do
   storage ← liftEffect $ window >>= localStorage
   notifications ← liftEffect Subscription.create
   auth0Client ← Auth.newClient
-  -- let redirectOpts = { redirect_url: "https://localhost:8000/ok" }
-  -- runReaderT (Auth.loginWithRedirect redirectOpts) { auth0Client }
+  qry ← liftEffect $ window >>= location >>= search
+  { auth0Client } # runReaderT do
+    when (Str.includes "code=" qry && Str.includes "state=" qry) do
+      void $ Auth.handleRedirectCallback
+    unlessM Auth.isAuthenticated do
+      Auth.loginWithRedirect
+        { redirect_uri: "https://puremess:8000/" }
   let
     config =
       { notifications
-      , backendApiUrl: "http://localhost:8081"
+      , backendApiUrl: "http://puremess:8081"
       , storage
       , auth0Client
       }
