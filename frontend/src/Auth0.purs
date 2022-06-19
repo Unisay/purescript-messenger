@@ -3,17 +3,24 @@ module Auth0 where
 import Preamble
 
 import Control.Monad.Reader (class MonadAsk, asks)
-import Control.Promise (Promise, toAff, toAffE)
+import Control.Promise (Promise, toAff)
 import Effect.Aff (Aff)
 import Effect.Aff.Class (class MonadAff, liftAff)
 import Foreign (Foreign)
 
+data Config
+
+foreign import _config ∷ String → Promise Config
+
+clientConfig ∷ String → Aff Config
+clientConfig = liftAff <<< toAff <<< _config
+
 data Client
 
-newClient ∷ Aff Client
-newClient = toAffE _client
+newClient ∷ Config → Aff Client
+newClient = toAff <<< _client
 
-foreign import _client ∷ Effect (Promise Client)
+foreign import _client ∷ Config → Promise Client
 
 isAuthenticated
   ∷ ∀ c m. MonadAsk (HasClient c) m ⇒ MonadAff m ⇒ m Boolean
