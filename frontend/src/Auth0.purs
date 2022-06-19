@@ -56,3 +56,12 @@ handleRedirectCallback = do
   liftAff $ toAff $ _handleRedirectCallback client
 
 foreign import _handleRedirectCallback ∷ Client → Promise Foreign
+
+type User = Foreign
+
+getUser ∷ ∀ c m. MonadAsk (HasClient c) m ⇒ MonadAff m ⇒ m Foreign
+getUser = do
+  client ← asks _.auth0Client
+  liftAff $ toAff $ _getUser client
+
+foreign import _getUser ∷ Client → Promise User

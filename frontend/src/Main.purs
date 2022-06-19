@@ -4,11 +4,13 @@ import Preamble
 
 import Auth0 as Auth
 import Component.Router as Router
+import Control.Monad.Except (runExcept)
 import Control.Monad.Reader (runReaderT)
 import Data.Route as Route
 import Data.String.Utils as Str
 import Effect.Aff (launchAff_)
-import Foreign (unsafeToForeign)
+import Foreign (F, unsafeToForeign)
+import Foreign.Class as Foreign
 import Halogen as H
 import Halogen.Aff (awaitBody, runHalogenAff)
 import Halogen.Subscription as Subscription
@@ -27,12 +29,9 @@ main = runHalogenAff do
   auth0Config ← Auth.clientConfig (backendApiUrl <> "/auth_config.json")
   auth0Client ← Auth.newClient auth0Config
   qry ← liftEffect $ window >>= location >>= search
-  { auth0Client } # runReaderT do
-    when (Str.includes "code=" qry && Str.includes "state=" qry) do
-      void $ Auth.handleRedirectCallback
-      liftEffect resetQueryString
-    unlessM Auth.isAuthenticated do
-      Auth.loginWithRedirect { redirect_uri: "https://puremess:8000/" }
+  when (Str.includes "code=" qry && Str.includes "state=" qry) do
+    void $ Auth0.handleRedirectCallback
+    liftEffect resetQueryString
   storage ← liftEffect $ window >>= localStorage
   notifications ← liftEffect Subscription.create
   let

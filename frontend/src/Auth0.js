@@ -20,3 +20,6 @@ export const _loginWithRedirect =
 
 export const _handleRedirectCallback =
   client => client.handleRedirectCallback();
+
+export const _getUser =
+  client => client.getUser();

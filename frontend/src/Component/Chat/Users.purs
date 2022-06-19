@@ -19,25 +19,25 @@ import Halogen.Subscription as HS
 import Network.RemoteData (RemoteData)
 import Network.RemoteData as RD
 
-data Action = Initialize | ReceiveAuth Auth.Info | Tick
+data Action = Initialize | ReceiveInput Input | Tick
 
-type Input = Auth.Info
+type Input = Auth.User
 
 type Output = Backend.Error
 
 type State =
-  { authInfo ∷ Auth.Info
+  { user ∷ Auth.User
   , users ∷ RemoteData Unit (Array UserPresence)
   }
 
 component ∷ ∀ q. H.Component q Input Output App
 component =
   H.mkComponent
-    { initialState: \authInfo → { authInfo, users: RD.NotAsked }
+    { initialState: \user → { user, users: RD.NotAsked }
     , render
     , eval: H.mkEval $ H.defaultEval
         { handleAction = handleAction
-        , receive = ReceiveAuth >>> Just
+        , receive = ReceiveInput >>> Just
         , initialize = Just Initialize
         }
     }
@@ -112,8 +112,8 @@ handleAction = case _ of
     _ ← timer Tick >>= H.subscribe
     H.modify_ _ { users = RD.Loading }
     updateUsers
-  ReceiveAuth authInfo →
-    H.modify_ _ { authInfo = authInfo }
+  ReceiveInput user →
+    H.modify_ _ { user = user }
   Tick →
     updateUsers
   where
@@ -125,6 +125,6 @@ handleAction = case _ of
     pure emitter
 
   updateUsers = do
-    token ← H.gets _.authInfo.token
+    token ← Auth.token
     H.raiseError (Backend.listUsers token) \userPresenses →
       H.modify_ _ { users = RD.Success userPresenses }

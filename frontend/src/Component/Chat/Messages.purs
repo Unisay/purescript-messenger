@@ -3,7 +3,7 @@ module Component.Chat.Messages where
 import Preamble
 
 import AppM (App)
-import Auth (Info) as Auth
+import Auth (Info, User, token) as Auth
 import Backend as Backend
 import Control.Monad.Rec.Class (forever)
 import Data.Array as Array
@@ -35,14 +35,14 @@ import Web.HTML.Window (document)
 
 data Action = Initialize | Tick | MessagesScroll | ScrollBtnClicked
 
-type Input = Auth.Info
+type Input = Auth.User
 
 type Output = Backend.Error
 
 data ScrollMode = Following | NotFollowing
 
 type State =
-  { auth ∷ Auth.Info
+  { user ∷ Auth.User
   , messages ∷ CursoredMessages
   , scrollMode ∷ ScrollMode
   }
@@ -59,7 +59,7 @@ component = H.mkComponent
   }
 
 initialState ∷ Input → State
-initialState auth = { auth, scrollMode: Following, messages: WithCursor 0 [] }
+initialState user = { user, scrollMode: Following, messages: WithCursor 0 [] }
 
 render ∷ ∀ m. State → H.ComponentHTML Action () m
 render state = HH.div [ HP.classNames [ "relative" ] ]
@@ -188,7 +188,7 @@ handleAction = case _ of
     pure emitter
 
   updateMessages cursor = do
-    token ← H.gets _.auth.token
+    token ← Auth.token
     H.raiseError (Backend.messagesWithCursor cursor token)
       \(WithCursor last messages) → do
         H.modify_ \st → st

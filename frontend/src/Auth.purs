@@ -2,81 +2,68 @@ module Auth where
 
 import Preamble
 
-import Control.Monad.Error.Class (class MonadThrow)
-import Control.Monad.Except (throwError)
+import Auth0 as Auth0
+import Control.Monad.Except (runExcept)
 import Control.Monad.Reader (class MonadAsk)
-import Data.Argonaut.Decode (JsonDecodeError, decodeJson)
+import Data.Array as Array
 import Data.Auth.Token (Token)
-import Data.Auth.Token as Token
-import Data.Traversable (for)
+import Data.Bifunctor (bimap)
+import Data.Email (Email)
+import Data.Email as Email
+import Data.List.NonEmpty (NonEmptyList)
+import Data.String as String
 import Data.Username (Username)
-import Jwt (JwtError(..))
-import Jwt as Jwt
-import LocalStorage (HasStorage)
-import LocalStorage as Storage
+import Data.Username as Username
+import Effect.Aff.Class (class MonadAff)
+import Effect.Exception (error)
+import Effect.Exception.Unsafe (unsafeThrow)
+import Foreign (ForeignError, renderForeignError)
+import Foreign.Class as Foreign
 
-data Error
-  = TokenDecoding (JwtError JsonDecodeError)
-  | TokenIsMissing
-  | TokenNoSub
+data Error = UserDecodingError (NonEmptyList ForeignError)
 
 instance Show Error where
-  show = case _ of
-    TokenDecoding err →
-      "Failed to decode auth token: " <>
-        case err of
-          MalformedToken → "Malformed token"
-          Base64DecodeError e → "Base63 decode error: " <> show e
-          JsonDecodeError a → "JSON decode error: " <> show a
-          JsonParseError e → "JSON parse error: " <> show e
-    TokenIsMissing → "Authentication token is missing"
-    TokenNoSub → "Authentication token contains no sub claim"
+  show (UserDecodingError errs) =
+    String.joinWith "; "
+      $ Array.fromFoldable
+      $ map renderForeignError errs
 
-type Info = { username ∷ Username, token ∷ Token }
+type Auth0User =
+  { email ∷ String
+  , email_verified ∷ Boolean
+  , family_name ∷ String
+  , given_name ∷ String
+  , name ∷ String
+  , nickname ∷ String
+  , picture ∷ String
+  , updated_at ∷ String
+  }
 
-tokenKey ∷ Storage.Key Token
-tokenKey = Storage.Key "auth.token"
+type User =
+  { email ∷ Email
+  , name ∷ Username
+  }
 
-loadToken
-  ∷ ∀ r m. MonadEffect m ⇒ MonadAsk { | HasStorage r } m ⇒ m (Maybe Token)
-loadToken = Storage.readKey tokenKey (Token.parse >>> hush)
+data Info = Anonymous | Authenticated User
 
-saveToken
-  ∷ ∀ r m
-  . MonadEffect m
-  ⇒ MonadAsk { | HasStorage r } m
-  ⇒ Token
-  → m Unit
-saveToken = Storage.writeKey tokenKey Token.toString
-
-removeToken ∷ ∀ r m. MonadEffect m ⇒ MonadAsk { | HasStorage r } m ⇒ m Unit
-removeToken = Storage.removeKey tokenKey
-
-loadInfo
-  ∷ ∀ r m
-  . MonadEffect m
-  ⇒ MonadThrow Error m
-  ⇒ MonadAsk { | HasStorage r } m
-  ⇒ m (Maybe Info)
-loadInfo = do
-  tok ← loadToken
-  for tok decodeToken
-
-decodeToken ∷ ∀ m. MonadThrow Error m ⇒ Token → m Info
-decodeToken token =
-  case dec of
-    Left err → throwError $ TokenDecoding err
-    Right { sub: Nothing } → throwError TokenNoSub
-    Right { sub: Just username } → pure { username, token }
-  where
-  dec ∷ Either (JwtError JsonDecodeError) { sub ∷ Maybe Username }
-  dec = Jwt.decodeWith decodeJson (Token.toString token)
-
-loadedInfo
+userInfo
   ∷ ∀ m r
-  . MonadEffect m
-  ⇒ MonadAsk { | HasStorage r } m
-  ⇒ MonadThrow Error m
-  ⇒ m Info
-loadedInfo = loadInfo >>= maybe (throwError TokenIsMissing) pure
+  . MonadAff m
+  ⇒ MonadAsk (Auth0.HasClient r) m
+  ⇒ m (Either Error Info)
+userInfo = do
+  isAuthenticated ← Auth0.isAuthenticated
+  if isAuthenticated then do
+    foreignUser ← Auth0.getUser
+    pure $ bimap UserDecodingError (Authenticated <<< fromAuth0User) $
+      runExcept (Foreign.decode foreignUser)
+  else pure $ Right Anonymous
+  where
+  fromAuth0User ∷ Auth0User → User
+  fromAuth0User a0u =
+    { email: Email.unsafe a0u.email
+    , name: Username.unsafe a0u.name
+    }
 
+token ∷ ∀ m. m Token
+token = unsafeThrow "Auth.token is not implemented"
