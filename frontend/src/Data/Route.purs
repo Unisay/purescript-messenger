@@ -60,3 +60,6 @@ goTo = liftEffect <<< setHash <<< print codec
 
 href ∷ ∀ r i. Route → IProp (href ∷ String | r) i
 href = print codec >>> append "#" >>> HP.href
+
+publicRoutes ∷ Array Route
+publicRoutes = [ Home, Debug ]

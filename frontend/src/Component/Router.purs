@@ -24,8 +24,9 @@ import Config (Config)
 import Control.Monad.Except (ExceptT, runExceptT)
 import Control.Monad.Reader (ReaderT, runReaderT)
 import Control.Monad.State (class MonadState, gets, modify_)
+import Data.Array as Array
 import Data.Bitraversable (bitraverse_, ltraverse)
-import Data.Route (Route(..), goTo)
+import Data.Route (Route(..), goTo, publicRoutes)
 import Data.Route as Route
 import Data.Traversable (traverse_)
 import Effect.Aff (Aff)
@@ -132,15 +133,22 @@ handleAction = do
 
 handleQuery
   ∷ ∀ a m
-  . MonadEffect m
+  . MonadAff m
   ⇒ Query a
   → H.HalogenM State Action ChildSlots Void m (Maybe a)
 handleQuery (Navigate route a) = do
-  if not (authorized || route is public) then
-    Auth0.loginWithRedirect
-      { redirect_uri: "https://puremess:8000/" } -- TODO: Config
+  isAuthorized ← _isAuthorized
+  client ← H.gets _.config.auth0Client <#> \auth0Client → { auth0Client }
+  if not (isAuthorized || isPublic route) then flip runReaderT client
+    $ Auth0.loginWithRedirect { redirect_uri: "https://puremess:8000/" }
+  -- TODO: Config
   else navigate route
   pure $ Just a
+  where
+  _isAuthorized = H.gets _.authInfo <#> case _ of
+    Success (Authenticated _) → true
+    _ → false
+  isPublic = flip Array.elem publicRoutes
 
 navigate
   ∷ ∀ m
