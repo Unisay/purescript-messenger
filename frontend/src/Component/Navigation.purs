@@ -9,7 +9,6 @@ import AppM (App)
 import AppM as App
 import Auth (Info(..))
 import Auth as Auth
-import Backend (deleteSession)
 import Chat.Api.Http (SignoutReason(..))
 import Control.Monad.Reader (asks)
 import Data.Notification (useful)

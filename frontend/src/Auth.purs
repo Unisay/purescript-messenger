@@ -15,7 +15,6 @@ import Data.String as String
 import Data.Username (Username)
 import Data.Username as Username
 import Effect.Aff.Class (class MonadAff)
-import Effect.Exception (error)
 import Effect.Exception.Unsafe (unsafeThrow)
 import Foreign (ForeignError, renderForeignError)
 import Foreign.Class as Foreign
@@ -53,10 +52,11 @@ userInfo
   ⇒ m (Either Error Info)
 userInfo = do
   isAuthenticated ← Auth0.isAuthenticated
-  if isAuthenticated then do
-    foreignUser ← Auth0.getUser
-    pure $ bimap UserDecodingError (Authenticated <<< fromAuth0User) $
-      runExcept (Foreign.decode foreignUser)
+  if isAuthenticated then Auth0.getUser
+    >>= Foreign.decode
+    >>> runExcept
+    >>> bimap UserDecodingError (fromAuth0User >>> Authenticated)
+    >>> pure
   else pure $ Right Anonymous
   where
   fromAuth0User ∷ Auth0User → User
