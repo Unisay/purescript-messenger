@@ -100,7 +100,7 @@ handleAction = do
       modify_ _ { authInfo = Loading }
       gets _.config >>= runReaderT Auth.userInfo >>= case _ of
         Left err → recordAppError $ App.AuthError err
-        Right (info ∷ Auth.Info) → modify_ _ { authInfo = Success info }
+        Right info → modify_ _ { authInfo = Success info }
       -- Route handling:
       route ← liftEffect getHash >>= \hash → do
         case RD.parse Route.codec hash of
@@ -131,14 +131,14 @@ handleQuery
   ⇒ Query a
   → H.HalogenM State Action ChildSlots Void m (Maybe a)
 handleQuery (Navigate route a) = do
-  isAuthorized ← _isAuthorized
+  authorized ← isAuthorized
   config ← H.gets _.config
-  if not (isAuthorized || isPublic route) then
+  if not (authorized || isPublic route) then
     runReaderT Auth0.loginWithRedirect config
   else navigate route
   pure $ Just a
   where
-  _isAuthorized = H.gets _.authInfo <#> case _ of
+  isAuthorized = H.gets _.authInfo <#> case _ of
     Success (Authenticated _) → true
     _ → false
   isPublic = case _ of

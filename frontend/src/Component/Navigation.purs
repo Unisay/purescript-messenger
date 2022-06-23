@@ -25,7 +25,7 @@ import Halogen.Subscription as HS
 type State =
   { route ∷ Route
   , authInfo ∷ Maybe Auth.Info
-  , authorizeUrl ∷ String
+  , authorizeUrl ∷ Maybe String
   }
 
 type Input = { route ∷ Route, authInfo ∷ Maybe Auth.Info }
@@ -50,7 +50,7 @@ initialState ∷ Input → State
 initialState { route, authInfo } =
   { route
   , authInfo
-  , authorizeUrl: ""
+  , authorizeUrl: Nothing
   }
 
 render ∷ ∀ m. State → H.ComponentHTML Action () m
@@ -133,25 +133,27 @@ render { route, authInfo, authorizeUrl } = HH.nav_
       pure $
         HH.li
           [ HP.classNames [ "list-none", "mr-16", "mt-8", "text-xl" ] ]
-          [ HH.a
-              [ HP.classNames
-                  [ "decoration-transparent"
-                  , "text-black"
-                  , "transition"
-                  , "duration-50"
-                  , "hover:text-blue-800"
-                  , "active:text-blue-600"
-                  ]
-              , HP.href href
-              ]
-              [ HH.text label ]
+          [ case href of
+              Nothing → HH.text label
+              Just ref → HH.a
+                [ HP.classNames
+                    [ "decoration-transparent"
+                    , "text-black"
+                    , "transition"
+                    , "duration-50"
+                    , "hover:text-blue-800"
+                    , "active:text-blue-600"
+                    ]
+                , HP.href ref
+                ]
+                [ HH.text label ]
           ]
 
 handleAction ∷ ∀ s. Action → H.HalogenM State Action s Output App Unit
 handleAction = case _ of
   Initialize → do
     authorizeUrl ← buildAuthorizeUrl
-    H.modify_ _ { authorizeUrl = authorizeUrl }
+    H.modify_ _ { authorizeUrl = Just authorizeUrl }
   UpdateState { route, authInfo } →
     H.modify_ _ { route = route, authInfo = authInfo }
   SignOut _reason → do

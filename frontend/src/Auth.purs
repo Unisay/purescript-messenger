@@ -44,6 +44,11 @@ type User =
 
 data Info = Anonymous | Authenticated User
 
+instance Show Info where
+  show = case _ of
+    Anonymous → "Anonymous"
+    Authenticated user → "Authenticated: " <> show user
+
 userInfo
   ∷ ∀ m r
   . MonadAff m
@@ -51,6 +56,7 @@ userInfo
   ⇒ m (Either Error Info)
 userInfo = do
   isAuthenticated ← Auth0.isAuthenticated
+  logShow $ "Is authenticated: " <> show isAuthenticated
   if isAuthenticated then Auth0.getUser
     >>= Foreign.decode
     >>> runExcept

@@ -54,9 +54,9 @@ loginWithRedirect = do
 foreign import _loginWithRedirect ∷ Client → RedirectOpts → Promise Unit
 
 handleRedirectCallback ∷ ∀ m. MonadAff m ⇒ Client → m Foreign
-handleRedirectCallback = _handleRedirectCallback >>> toAff >>> liftAff
+handleRedirectCallback = _handleRedirectCallback >>> toAffE >>> liftAff
 
-foreign import _handleRedirectCallback ∷ Client → Promise Foreign
+foreign import _handleRedirectCallback ∷ Client → Effect (Promise Foreign)
 
 type User = Foreign
 
