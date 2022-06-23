@@ -17,6 +17,8 @@ type Config =
 
 type HasConfig r = { auth0Config ∷ Config | r }
 
+type RedirectOpts = { redirect_uri ∷ String }
+
 data ClientConfig
 
 foreign import _config ∷ String → Effect (Promise ClientConfig)
@@ -44,16 +46,12 @@ loginWithPopup =
 
 foreign import _loginWithPopup ∷ Client → Effect (Promise Unit)
 
-loginWithRedirect
-  ∷ ∀ c m. MonadAsk (HasConfig c) m ⇒ MonadAff m ⇒ m Unit
+loginWithRedirect ∷ ∀ c m. MonadAsk (HasConfig c) m ⇒ MonadAff m ⇒ m Unit
 loginWithRedirect = do
   { client, redirectUri } ← asks _.auth0Config
   liftAff $ toAff $ _loginWithRedirect client { redirect_uri: redirectUri }
 
-type RedirectOpts = { redirect_uri ∷ String }
-
-foreign import _loginWithRedirect
-  ∷ Client → RedirectOpts → Promise Unit
+foreign import _loginWithRedirect ∷ Client → RedirectOpts → Promise Unit
 
 handleRedirectCallback ∷ ∀ m. MonadAff m ⇒ Client → m Foreign
 handleRedirectCallback = _handleRedirectCallback >>> toAff >>> liftAff
@@ -77,3 +75,9 @@ getTokenSilently =
 
 foreign import _getTokenSilently ∷ Client → Promise String
 
+buildAuthorizeUrl ∷ ∀ c m. MonadAsk (HasConfig c) m ⇒ MonadAff m ⇒ m String
+buildAuthorizeUrl = do
+  { client, redirectUri } ← asks _.auth0Config
+  liftAff $ toAff $ _buildAuthorizeUrl client { redirect_uri: redirectUri }
+
+foreign import _buildAuthorizeUrl ∷ Client → RedirectOpts → Promise String

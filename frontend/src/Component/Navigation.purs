@@ -9,6 +9,7 @@ import AppM (App)
 import AppM as App
 import Auth (Info(..))
 import Auth as Auth
+import Auth0 (buildAuthorizeUrl)
 import Chat.Api.Http (SignoutReason(..))
 import Control.Monad.Reader (asks)
 import Data.Notification (useful)
@@ -24,27 +25,36 @@ import Halogen.Subscription as HS
 type State =
   { route ∷ Route
   , authInfo ∷ Maybe Auth.Info
+  , authorizeUrl ∷ String
   }
 
-type Input = State
+type Input = { route ∷ Route, authInfo ∷ Maybe Auth.Info }
 
 data Output = OutputError App.Error | SignedOut
 
-data Action = UpdateState State | SignOut SignoutReason
+data Action = UpdateState Input | SignOut SignoutReason | Initialize
 
 component ∷ ∀ q. H.Component q Input Output App
 component =
   H.mkComponent
-    { initialState: identity
+    { initialState
     , render
     , eval: H.mkEval $ H.defaultEval
         { handleAction = handleAction
         , receive = Just <<< UpdateState
+        , initialize = Just Initialize
         }
     }
 
+initialState ∷ Input → State
+initialState { route, authInfo } =
+  { route
+  , authInfo
+  , authorizeUrl: ""
+  }
+
 render ∷ ∀ m. State → H.ComponentHTML Action () m
-render { route, authInfo } = HH.nav_
+render { route, authInfo, authorizeUrl } = HH.nav_
   [ HH.ul
       [ HP.classNames
           [ "bg-white"
@@ -117,10 +127,8 @@ render { route, authInfo } = HH.nav_
           ]
       ]
   anonymousActions =
-    [ { label: "Signin"
-      , href: ""
-      }
-    , { label: "Signup", href: "" }
+    [ { label: "Signin", href: authorizeUrl }
+    , { label: "Signup", href: authorizeUrl }
     ] >>= \{ label, href } →
       pure $
         HH.li
@@ -141,9 +149,12 @@ render { route, authInfo } = HH.nav_
 
 handleAction ∷ ∀ s. Action → H.HalogenM State Action s Output App Unit
 handleAction = case _ of
-  UpdateState newState →
-    H.put newState
-  SignOut reason → do
+  Initialize → do
+    authorizeUrl ← buildAuthorizeUrl
+    H.modify_ _ { authorizeUrl = authorizeUrl }
+  UpdateState { route, authInfo } →
+    H.modify_ _ { route = route, authInfo = authInfo }
+  SignOut _reason → do
 
     -- H.gets _.authInfo >>= case _ of
     --   Nothing → H.raise $ OutputError $ App.AuthError Auth.TokenIsMissing
