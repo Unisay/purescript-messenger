@@ -125,6 +125,5 @@ handleAction = case _ of
     pure emitter
 
   updateUsers = do
-    token ← Auth.token
-    H.raiseError (Backend.listUsers token) \userPresenses →
+    H.raiseError (Backend.listUsers =<< Auth.token) \userPresenses →
       H.modify_ _ { users = RD.Success userPresenses }

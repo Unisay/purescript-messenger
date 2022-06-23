@@ -116,24 +116,28 @@ render { route, authInfo } = HH.nav_
               ]
           ]
       ]
-  anonymousActions = [ SignIn, SignUp ] >>= \route' → pure $
-    HH.li
-      [ HP.classNames [ "list-none", "mr-16", "mt-8", "text-xl" ] ]
-      [ HH.a
-          [ HP.classNames
-              [ if route == route' then "overline"
-                else "decoration-transparent"
-              , if route == route' then "text-blue-800"
-                else "text-black"
-              , "transition"
-              , "duration-50"
-              , "hover:text-blue-800"
-              , "active:text-blue-600"
+  anonymousActions =
+    [ { label: "Signin"
+      , href: ""
+      }
+    , { label: "Signup", href: "" }
+    ] >>= \{ label, href } →
+      pure $
+        HH.li
+          [ HP.classNames [ "list-none", "mr-16", "mt-8", "text-xl" ] ]
+          [ HH.a
+              [ HP.classNames
+                  [ "decoration-transparent"
+                  , "text-black"
+                  , "transition"
+                  , "duration-50"
+                  , "hover:text-blue-800"
+                  , "active:text-blue-600"
+                  ]
+              , HP.href href
               ]
-          , Route.href route'
+              [ HH.text label ]
           ]
-          [ HH.text $ show route' ]
-      ]
 
 handleAction ∷ ∀ s. Action → H.HalogenM State Action s Output App Unit
 handleAction = case _ of

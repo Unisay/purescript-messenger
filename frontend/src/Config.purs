@@ -9,5 +9,6 @@ type Config =
   { notifications ∷ SubscribeIO Notification
   , backendApiUrl ∷ String
   , storage ∷ Storage
-  , auth0Client ∷ Auth0.Client
+  , auth0Config ∷ Auth0.Config
   }
+

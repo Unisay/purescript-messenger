@@ -3,7 +3,7 @@ module Component.Chat.Messages where
 import Preamble
 
 import AppM (App)
-import Auth (Info, User, token) as Auth
+import Auth (User, token) as Auth
 import Backend as Backend
 import Control.Monad.Rec.Class (forever)
 import Data.Array as Array

@@ -8,11 +8,9 @@ import Preamble
 import AppM (App)
 import AppM as App
 import Auth (Info(..))
-import Auth as Auth
+import Auth (Info, userInfo) as Auth
 import Auth0 as Auth0
-import Backend (deleteSession) as Auth
 import Backend as Backend
-import Chat.Api.Http (SignoutReason(..))
 import Component.Chat as Chat
 import Component.Debug as Debug
 import Component.Error as Error
@@ -21,14 +19,10 @@ import Component.Navigation (Output(..))
 import Component.Navigation as Navigation
 import Component.Notifications as Notifications
 import Config (Config)
-import Control.Monad.Except (ExceptT, runExceptT)
-import Control.Monad.Reader (ReaderT, runReaderT)
-import Control.Monad.State (class MonadState, gets, modify_)
-import Data.Array as Array
-import Data.Bitraversable (bitraverse_, ltraverse)
-import Data.Route (Route(..), goTo, publicRoutes)
+import Control.Monad.Reader (runReaderT)
+import Control.Monad.State (gets, modify_)
+import Data.Route (Route(..), goTo)
 import Data.Route as Route
-import Data.Traversable (traverse_)
 import Effect.Aff (Aff)
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class.Console as Console
@@ -37,8 +31,8 @@ import Halogen.Extended as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties.Extended as HP
 import Network.RemoteData (RemoteData(..))
-import Network.RemoteData as RD
-import Routing.Duplex as RD
+import Network.RemoteData (RemoteData(..), toMaybe) as RD
+import Routing.Duplex (parse, print) as RD
 import Routing.Duplex.Parser (RouteError(..))
 import Routing.Hash (getHash, setHash)
 import Type.Proxy (Proxy(..))
@@ -120,7 +114,7 @@ handleAction = do
       Error.Retry → modify_ _ { error = Nothing }
       Error.SignIn → do
         modify_ _ { error = Nothing, authInfo = Failure unit }
-        goTo Route.SignIn
+    -- goTo Route.SignIn
     NavigationOutput output →
       case output of
         OutputError err → recordAppError err
@@ -138,17 +132,19 @@ handleQuery
   → H.HalogenM State Action ChildSlots Void m (Maybe a)
 handleQuery (Navigate route a) = do
   isAuthorized ← _isAuthorized
-  client ← H.gets _.config.auth0Client <#> \auth0Client → { auth0Client }
-  if not (isAuthorized || isPublic route) then flip runReaderT client
-    $ Auth0.loginWithRedirect { redirect_uri: "https://puremess:8000/" }
-  -- TODO: Config
+  config ← H.gets _.config
+  if not (isAuthorized || isPublic route) then
+    runReaderT Auth0.loginWithRedirect config
   else navigate route
   pure $ Just a
   where
   _isAuthorized = H.gets _.authInfo <#> case _ of
     Success (Authenticated _) → true
     _ → false
-  isPublic = flip Array.elem publicRoutes
+  isPublic = case _ of
+    Home → true
+    Debug → true
+    Chat → false
 
 navigate
   ∷ ∀ m

@@ -2,15 +2,12 @@ module Main where
 
 import Preamble
 
-import Auth0 as Auth
+import Auth0 as Auth0
 import Component.Router as Router
-import Control.Monad.Except (runExcept)
-import Control.Monad.Reader (runReaderT)
 import Data.Route as Route
 import Data.String.Utils as Str
 import Effect.Aff (launchAff_)
-import Foreign (F, unsafeToForeign)
-import Foreign.Class as Foreign
+import Foreign (unsafeToForeign)
 import Halogen as H
 import Halogen.Aff (awaitBody, runHalogenAff)
 import Halogen.Subscription as Subscription
@@ -26,20 +23,24 @@ import Web.HTML.Window (document, history, localStorage, location)
 main ∷ Effect Unit
 main = runHalogenAff do
   let backendApiUrl = "https://puremess:8081"
-  auth0Config ← Auth.clientConfig (backendApiUrl <> "/auth_config.json")
-  auth0Client ← Auth.newClient auth0Config
+  auth0Client ← Auth0.newClient =<<
+    Auth0.clientConfig (backendApiUrl <> "/auth_config.json")
   qry ← liftEffect $ window >>= location >>= search
   when (Str.includes "code=" qry && Str.includes "state=" qry) do
-    void $ Auth0.handleRedirectCallback
+    void $ Auth0.handleRedirectCallback auth0Client
     liftEffect resetQueryString
   storage ← liftEffect $ window >>= localStorage
   notifications ← liftEffect Subscription.create
   let
+    auth0Config =
+      { client: auth0Client
+      , redirectUri: "https://puremess:8000/"
+      }
     appConfig =
       { notifications
       , backendApiUrl
       , storage
-      , auth0Client
+      , auth0Config
       }
   router ← awaitBody >>= runUI Router.component appConfig
   void $ liftEffect $ matchesWith (RD.parse Route.codec) \old new →

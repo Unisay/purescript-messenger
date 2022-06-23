@@ -15,7 +15,6 @@ import Data.String as String
 import Data.Username (Username)
 import Data.Username as Username
 import Effect.Aff.Class (class MonadAff)
-import Effect.Exception.Unsafe (unsafeThrow)
 import Foreign (ForeignError, renderForeignError)
 import Foreign.Class as Foreign
 
@@ -48,7 +47,7 @@ data Info = Anonymous | Authenticated User
 userInfo
   ∷ ∀ m r
   . MonadAff m
-  ⇒ MonadAsk (Auth0.HasClient r) m
+  ⇒ MonadAsk (Auth0.HasConfig r) m
   ⇒ m (Either Error Info)
 userInfo = do
   isAuthenticated ← Auth0.isAuthenticated
@@ -65,5 +64,5 @@ userInfo = do
     , name: Username.unsafe a0u.name
     }
 
-token ∷ ∀ m. m Token
-token = unsafeThrow "Auth.token is not implemented"
+token ∷ ∀ r m. MonadAsk (Auth0.HasConfig r) m ⇒ MonadAff m ⇒ m Token
+token = Auth0.getTokenSilently

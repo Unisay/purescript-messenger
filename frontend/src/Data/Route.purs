@@ -20,9 +20,6 @@ import Test.QuickCheck.Gen as Gen
 
 data Route
   = Home -- /
-  | SignIn -- /signin
-  | SignUp -- /signup
-  | Profile Username -- /profile/:username
   | Debug -- /debug 
   | Chat -- /chat
 
@@ -35,19 +32,13 @@ instance Show Route where
 instance Arbitrary Route where
   arbitrary =
     Gen.oneOf $ NEA.cons' (pure Home)
-      [ pure SignIn
-      , pure SignUp
-      , Profile <$> arbitrary
-      , pure Debug
+      [ pure Debug
       , pure Chat
       ]
 
 codec ∷ RouteDuplex' Route
 codec = root $ G.sum
   { "Home": G.noArgs
-  , "SignIn": path "signin" G.noArgs
-  , "SignUp": path "signup" G.noArgs
-  , "Profile": path "profile" (username segment)
   , "Debug": path "debug" G.noArgs
   , "Chat": path "chat" G.noArgs
   }
