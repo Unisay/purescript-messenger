@@ -19,8 +19,9 @@ import Component.Navigation (Output(..))
 import Component.Navigation as Navigation
 import Component.Notifications as Notifications
 import Config (Config)
+import Control.Monad.Except (runExceptT)
 import Control.Monad.Reader (runReaderT)
-import Control.Monad.State (gets, modify_)
+import Control.Monad.State (modify_)
 import Data.Route (Route(..), goTo)
 import Data.Route as Route
 import Effect.Aff (Aff)
@@ -98,7 +99,7 @@ handleAction = do
   case _ of
     Initialize → do
       modify_ _ { authInfo = Loading }
-      gets _.config >>= runReaderT Auth.userInfo >>= case _ of
+      H.readState _.config (runExceptT Auth.userInfo) >>= case _ of
         Left err → recordAppError $ App.AuthError err
         Right info → modify_ _ { authInfo = Success info }
       -- Route handling:
@@ -197,4 +198,3 @@ render { config, route, authInfo, error } =
 
       Just err →
         [ HH.slot _error 6 Error.component err ErrorAction ]
-

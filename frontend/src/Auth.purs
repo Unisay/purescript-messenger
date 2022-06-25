@@ -3,6 +3,7 @@ module Auth where
 import Preamble
 
 import Auth0 as Auth0
+import Control.Monad.Error.Class (class MonadThrow, throwError)
 import Control.Monad.Except (runExcept)
 import Control.Monad.Reader (class MonadAsk)
 import Data.Array as Array
@@ -18,7 +19,7 @@ import Effect.Aff.Class (class MonadAff)
 import Foreign (ForeignError, renderForeignError)
 import Foreign.Class as Foreign
 
-data Error = UserDecodingError (NonEmptyList ForeignError)
+newtype Error = UserDecodingError (NonEmptyList ForeignError)
 
 instance Show Error where
   show (UserDecodingError errs) =
@@ -52,17 +53,17 @@ instance Show Info where
 userInfo
   ∷ ∀ m r
   . MonadAff m
+  ⇒ MonadThrow Error m
   ⇒ MonadAsk (Auth0.HasConfig r) m
-  ⇒ m (Either Error Info)
+  ⇒ m Info
 userInfo = do
   isAuthenticated ← Auth0.isAuthenticated
-  logShow $ "Is authenticated: " <> show isAuthenticated
   if isAuthenticated then Auth0.getUser
     >>= Foreign.decode
     >>> runExcept
     >>> bimap UserDecodingError (fromAuth0User >>> Authenticated)
-    >>> pure
-  else pure $ Right Anonymous
+    >>> either throwError pure
+  else pure Anonymous
   where
   fromAuth0User ∷ Auth0User → User
   fromAuth0User a0u =
