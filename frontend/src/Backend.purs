@@ -13,7 +13,7 @@ import Chat.Api.Http (SignInResponseBody, SignUpResponse(..), SignUpResponseBody
 import Chat.Api.Http.Problem (Problem)
 import Chat.Api.Http.Problem as Problem
 import Control.Monad.Error.Class (class MonadThrow)
-import Control.Monad.Except (ExceptT, runExceptT)
+import Control.Monad.Error.Hoist ((<!%?>), (<%?>))
 import Control.Monad.Reader (class MonadAsk)
 import Control.Monad.Reader.Class (asks)
 import Data.Argonaut.Core (Json)
@@ -89,25 +89,29 @@ createSession'
   → m SignInResponse
 createSession' transport username password = do
   backendApiUrl ← asks _.backendApiUrl
-  response ← liftAff $ transport defaultBackendRequest
-    { method = Left PUT
-    , url = String.joinWith "/"
-        [ backendApiUrl, "users", Username.toString username, "session" ]
-    , content = Just $ RB.Json $ Json.encodeJson { username, password }
-    , responseFormat = ResponseFormat.json
-    }
-  case response of
-    Left err → throwError $ AffjaxError err
-    Right { status, body } →
-      case unwrap status, decodeJson body of
-        200, Right (token ∷ SignInResponseBody) → pure
-          $ SignedIn token
-        200, Left err → do
-          logShow err
-          throwError $ ResponseDecodeError err
-        403, _ → pure Forbidden
-        _, _ → throwError $ ResponseStatusError
-          { expected: wrap 200, actual: status }
+  { status, body } ←
+    liftAff
+      ( transport defaultBackendRequest
+          { method = Left PUT
+          , url = String.joinWith "/"
+              [ backendApiUrl
+              , "users"
+              , Username.toString username
+              , "session"
+              ]
+          , content = Just $ RB.Json $ Json.encodeJson { username, password }
+          , responseFormat = ResponseFormat.json
+          }
+      ) <!%?> AffjaxError
+  case unwrap status, decodeJson body of
+    200, Right (token ∷ SignInResponseBody) → pure
+      $ SignedIn token
+    200, Left err → do
+      logShow err
+      throwError $ ResponseDecodeError err
+    403, _ → pure Forbidden
+    _, _ → throwError $ ResponseStatusError
+      { expected: wrap 200, actual: status }
 
 createAccount
   ∷ ∀ r m
@@ -171,20 +175,19 @@ listUsers'
   → m (Array UserPresence)
 listUsers' transport token = do
   backendApiUrl ← asks _.backendApiUrl
-  response ← liftAff $ transport defaultBackendRequest
-    { method = Left GET
-    , url = String.joinWith "/" [ backendApiUrl, "chat", "users" ]
-    , responseFormat = ResponseFormat.json
-    , headers = [ authorization token ]
-    }
-  case response of
-    Left err → throwError $ AffjaxError err
-    Right { status, body } →
-      case status of
-        StatusCode 200 →
-          decodeJson body # either (ResponseDecodeError >>> throwError) pure
-        _ → throwError $ ResponseStatusError
-          { expected: wrap 200, actual: status }
+  { status, body } ←
+    liftAff
+      ( transport defaultBackendRequest
+          { method = Left GET
+          , url = String.joinWith "/" [ backendApiUrl, "chat", "users" ]
+          , responseFormat = ResponseFormat.json
+          , headers = [ authorization token ]
+          }
+      ) <!%?> AffjaxError
+  case status of
+    StatusCode 200 → decodeJson body <%?> ResponseDecodeError
+    _ → throwError $ ResponseStatusError
+      { expected: wrap 200, actual: status }
 
 deleteSession
   ∷ ∀ r m
@@ -209,19 +212,21 @@ deleteSession'
   → m Unit
 deleteSession' transport username token reason = do
   backendApiUrl ← asks _.backendApiUrl
-  response ← liftAff $ transport defaultBackendRequest
-    { method = Left DELETE
-    , url = String.joinWith "/"
-        [ backendApiUrl, "chat", "users", Username.toString username ]
-    , responseFormat = ResponseFormat.json
-    , content = Just $ RB.Json $ Json.encodeJson { reason }
-    , headers = [ authorization token ]
-    }
-  case response of
-    Left err → throwError $ AffjaxError err
-    Right { status: StatusCode 200 } → pass
-    Right { status: actual } →
-      throwError $ ResponseStatusError { expected: StatusCode 200, actual }
+  { status } ←
+    liftAff
+      ( transport defaultBackendRequest
+          { method = Left DELETE
+          , url = String.joinWith "/"
+              [ backendApiUrl, "chat", "users", Username.toString username ]
+          , responseFormat = ResponseFormat.json
+          , content = Just $ RB.Json $ Json.encodeJson { reason }
+          , headers = [ authorization token ]
+          }
+      ) <!%?> AffjaxError
+  case status of
+    StatusCode 200 → pass
+    actual → throwError $ ResponseStatusError
+      { expected: StatusCode 200, actual }
 
 sendMessage
   ∷ ∀ m r
@@ -246,24 +251,26 @@ sendMessage'
   → m Unit
 sendMessage' transport username message token = do
   backendApiUrl ← asks _.backendApiUrl
-  response ← liftAff $ transport defaultBackendRequest
-    { method = Left PUT
-    , url = String.joinWith "/"
-        [ backendApiUrl
-        , "chat"
-        , "users"
-        , Username.toString username
-        , "messages"
-        ]
-    , responseFormat = ResponseFormat.json
-    , content = Just $ RB.Json $ Json.encodeJson message
-    , headers = [ authorization token ]
-    }
-  case response of
-    Left err → throwError $ AffjaxError err
-    Right { status: StatusCode 200 } → pass
-    Right { status: actual } →
-      throwError $ ResponseStatusError { expected: StatusCode 200, actual }
+  { status } ←
+    liftAff
+      ( transport defaultBackendRequest
+          { method = Left PUT
+          , url = String.joinWith "/"
+              [ backendApiUrl
+              , "chat"
+              , "users"
+              , Username.toString username
+              , "messages"
+              ]
+          , responseFormat = ResponseFormat.json
+          , content = Just $ RB.Json $ Json.encodeJson message
+          , headers = [ authorization token ]
+          }
+      ) <!%?> AffjaxError
+  case status of
+    StatusCode 200 → pass
+    actual → throwError $ ResponseStatusError
+      { expected: StatusCode 200, actual }
 
 messagesWithCursor'
   ∷ ∀ m r
@@ -276,23 +283,22 @@ messagesWithCursor'
   → m (CursoredMessages)
 messagesWithCursor' transport cursor token = do
   backendApiUrl ← asks _.backendApiUrl
-  response ← liftAff $ transport
-    defaultBackendRequest
-      { method = Left GET
-      , url =
-          ( String.joinWith "/"
-              [ backendApiUrl, "chat", "messages" ]
-          ) <> fromMaybe "" (cursor <#> show >>> append "?cursor=")
-      , responseFormat = ResponseFormat.json
-      , headers = [ authorization token ]
-      }
-  case response of
-    Left err → throwError $ AffjaxError err
-    Right { status, body } → case status of
-      StatusCode 200 → decodeJson body #
-        either (ResponseDecodeError >>> throwError) pure
-      _ → throwError $ ResponseStatusError
-        { expected: wrap 200, actual: status }
+  { status, body } ←
+    liftAff
+      ( transport
+          defaultBackendRequest
+            { method = Left GET
+            , url =
+                ( String.joinWith "/"
+                    [ backendApiUrl, "chat", "messages" ]
+                ) <> fromMaybe "" (cursor <#> show >>> append "?cursor=")
+            , responseFormat = ResponseFormat.json
+            , headers = [ authorization token ]
+            }
+      ) <!%?> AffjaxError
+  case status of
+    StatusCode 200 → decodeJson body <%?> ResponseDecodeError
+    _ → throwError $ ResponseStatusError { expected: wrap 200, actual: status }
 
 messagesWithCursor
   ∷ ∀ m r
@@ -303,9 +309,6 @@ messagesWithCursor
   → Token
   → m (CursoredMessages)
 messagesWithCursor = messagesWithCursor' AW.request
-
-hoistError ∷ ∀ m e e'. MonadThrow e' m ⇒ (e → e') → ExceptT e m ~> m
-hoistError f ma = runExceptT ma >>= either (f >>> throwError) pure
 
 authorization ∷ Token → RequestHeader
 authorization token =

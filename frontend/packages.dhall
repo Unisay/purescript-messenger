@@ -35,6 +35,19 @@ let additions =
         , version = "v0.15.0-updates"
         , dependencies = [ "effect", "foreign", "foreign-object" ]
         }
+      , hoist-error =
+        { repo = "https://github.com/Unisay/purescript-hoist-error.git"
+        , version = "v1.0.1"
+        , dependencies =
+          [ "aff"
+          , "bifunctors"
+          , "effect"
+          , "either"
+          , "maybe"
+          , "strings"
+          , "transformers"
+          ]
+        }
       }
 
 in  (overrides // upstream // additions)

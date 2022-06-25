@@ -3,17 +3,14 @@ module Data.Route where
 import Preamble
 
 import Data.Array.NonEmpty as NEA
-import Data.Bifunctor (lmap)
 import Data.Generic.Rep (class Generic)
 import Data.Show.Generic (genericShow)
-import Data.Username (Username)
-import Data.Username as Username
 import Halogen.HTML (IProp)
 import Halogen.HTML.Properties as HP
-import Routing.Duplex (RouteDuplex', as, path, print, root, segment)
+import Routing.Duplex (RouteDuplex', path, print, root)
 import Routing.Duplex.Generic as G
 import Routing.Hash (setHash)
-import Test.QuickCheck.Arbitrary (class Arbitrary, arbitrary)
+import Test.QuickCheck.Arbitrary (class Arbitrary)
 import Test.QuickCheck.Gen as Gen
 
 -- https://github.com/natefaubion/purescript-routing-duplex/blob/v0.2.0/README.md
@@ -42,9 +39,6 @@ codec = root $ G.sum
   , "Debug": path "debug" G.noArgs
   , "Chat": path "chat" G.noArgs
   }
-  where
-  username =
-    as Username.toString (Username.parse >>> lmap (NEA.intercalate ";"))
 
 goTo ∷ ∀ m. MonadEffect m ⇒ Route → m Unit
 goTo = liftEffect <<< setHash <<< print codec

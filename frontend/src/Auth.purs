@@ -3,12 +3,12 @@ module Auth where
 import Preamble
 
 import Auth0 as Auth0
-import Control.Monad.Error.Class (class MonadThrow, throwError)
+import Control.Monad.Error.Class (class MonadThrow)
+import Control.Monad.Error.Hoist (hoistError)
 import Control.Monad.Except (runExcept)
 import Control.Monad.Reader (class MonadAsk)
 import Data.Array as Array
 import Data.Auth.Token (Token)
-import Data.Bifunctor (bimap)
 import Data.Email (Email)
 import Data.Email as Email
 import Data.List.NonEmpty (NonEmptyList)
@@ -58,11 +58,11 @@ userInfo
   ⇒ m Info
 userInfo = do
   isAuthenticated ← Auth0.isAuthenticated
-  if isAuthenticated then Auth0.getUser
-    >>= Foreign.decode
-    >>> runExcept
-    >>> bimap UserDecodingError (fromAuth0User >>> Authenticated)
-    >>> either throwError pure
+  if isAuthenticated then
+    Auth0.getUser >>= Foreign.decode
+      >>> runExcept
+      >>> map (fromAuth0User >>> Authenticated)
+      >>> hoistError UserDecodingError
   else pure Anonymous
   where
   fromAuth0User ∷ Auth0User → User
