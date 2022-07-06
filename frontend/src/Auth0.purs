@@ -17,7 +17,11 @@ type Config =
 
 type HasConfig r = { auth0Config ∷ Config | r }
 
-type RedirectOpts = { redirect_uri ∷ String }
+type AuthOpts =
+  { redirect_uri ∷ String
+  , audience ∷ String
+  , scope ∷ String
+  }
 
 data ClientConfig
 
@@ -49,9 +53,13 @@ foreign import _loginWithPopup ∷ Client → Effect (Promise Unit)
 loginWithRedirect ∷ ∀ c m. MonadAsk (HasConfig c) m ⇒ MonadAff m ⇒ m Unit
 loginWithRedirect = do
   { client, redirectUri } ← asks _.auth0Config
-  liftAff $ toAff $ _loginWithRedirect client { redirect_uri: redirectUri }
+  liftAff $ toAff $ _loginWithRedirect client
+    { redirect_uri: redirectUri
+    , audience: "api" -- causes an error "Invalid service name: api"
+    , scope: "api"
+    }
 
-foreign import _loginWithRedirect ∷ Client → RedirectOpts → Promise Unit
+foreign import _loginWithRedirect ∷ Client → AuthOpts → Promise Unit
 
 handleRedirectCallback ∷ ∀ m. MonadAff m ⇒ Client → m Foreign
 handleRedirectCallback = _handleRedirectCallback >>> toAffE >>> liftAff
@@ -66,18 +74,22 @@ getUser = asks _.auth0Config.client >>= _getUser >>> toAff >>> liftAff
 foreign import _getUser ∷ Client → Promise Foreign
 
 getTokenSilently ∷ ∀ c m. MonadAsk (HasConfig c) m ⇒ MonadAff m ⇒ m Token
-getTokenSilently =
-  asks _.auth0Config.client
-    >>= _getTokenSilently
-    >>> toAff
-    >>> map Token.unsafe
-    >>> liftAff
+getTokenSilently = do
+  client ← asks _.auth0Config.client
+  token ← liftAff $ toAffE $ _getTokenSilently client
+    { detailedResponse: false }
+  pure $ Token.unsafe token
 
-foreign import _getTokenSilently ∷ Client → Promise String
+foreign import _getTokenSilently
+  ∷ Client → { detailedResponse ∷ Boolean } → Effect (Promise String)
 
 buildAuthorizeUrl ∷ ∀ c m. MonadAsk (HasConfig c) m ⇒ MonadAff m ⇒ m String
 buildAuthorizeUrl = do
   { client, redirectUri } ← asks _.auth0Config
-  liftAff $ toAff $ _buildAuthorizeUrl client { redirect_uri: redirectUri }
+  liftAff $ toAff $ _buildAuthorizeUrl client
+    { redirect_uri: redirectUri
+    , audience: "api"
+    , scope: "api"
+    }
 
-foreign import _buildAuthorizeUrl ∷ Client → RedirectOpts → Promise String
+foreign import _buildAuthorizeUrl ∷ Client → AuthOpts → Promise String

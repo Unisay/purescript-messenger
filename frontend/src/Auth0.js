@@ -25,7 +25,7 @@ export const _getUser =
   client => client.getUser();
 
 export const _getTokenSilently =
-  client => client.getTokenSilently();
+  client => opts => () => client.getTokenSilently(opts);
 
 export const _buildAuthorizeUrl =
   client => opts => client.buildAuthorizeUrl(opts);
