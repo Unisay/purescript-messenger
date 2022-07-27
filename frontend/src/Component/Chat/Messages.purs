@@ -59,7 +59,8 @@ component = H.mkComponent
   }
 
 initialState ∷ Input → State
-initialState user = { user, scrollMode: Following, messages: WithCursor 0 [] }
+initialState user =
+  { user, scrollMode: Following, messages: WithCursor Nothing [] }
 
 render ∷ ∀ m. State → H.ComponentHTML Action () m
 render state = HH.div [ HP.classNames [ "relative" ] ]
