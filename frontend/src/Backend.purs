@@ -39,7 +39,7 @@ type Transport = AW.Request Json → Aff (Either AW.Error (AW.Response Json))
 
 data Error
   = AffjaxError AW.Error
-  | ResponseDecodeError JsonDecodeError
+  | ResponseDecodeError String JsonDecodeError
   | ResponseStatusError { expected ∷ StatusCode, actual ∷ StatusCode }
   | ResponseProblem Problem
 
@@ -47,8 +47,8 @@ instance Show Error where
   show err = "Backend error: " <> case err of
     AffjaxError e →
       "AJAX request failed: " <> AW.printError e
-    ResponseDecodeError e →
-      "decoding response JSON failed: " <> show e
+    ResponseDecodeError endpoint e →
+      "decoding " <> endpoint <> " response JSON failed: " <> show e
     ResponseStatusError { expected, actual } →
       "unexpected response status: "
         <> show actual
@@ -107,8 +107,7 @@ createSession' transport username password = do
     200, Right (token ∷ SignInResponseBody) → pure
       $ SignedIn token
     200, Left err → do
-      logShow err
-      throwError $ ResponseDecodeError err
+      throwError $ ResponseDecodeError "createSession" err
     403, _ → pure Forbidden
     _, _ → throwError $ ResponseStatusError
       { expected: wrap 200, actual: status }
@@ -185,7 +184,7 @@ listUsers' transport token = do
           }
       ) <!%?> AffjaxError
   case status of
-    StatusCode 200 → decodeJson body <%?> ResponseDecodeError
+    StatusCode 200 → decodeJson body <%?> ResponseDecodeError "listUsers"
     _ → throwError $ ResponseStatusError
       { expected: wrap 200, actual: status }
 
@@ -297,7 +296,8 @@ messagesWithCursor' transport cursor token = do
             }
       ) <!%?> AffjaxError
   case status of
-    StatusCode 200 → decodeJson body <%?> ResponseDecodeError
+    StatusCode 200 →
+      decodeJson body <%?> ResponseDecodeError "messagesWithCursor"
     _ → throwError $ ResponseStatusError { expected: wrap 200, actual: status }
 
 messagesWithCursor
