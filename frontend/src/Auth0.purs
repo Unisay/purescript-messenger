@@ -55,7 +55,7 @@ loginWithRedirect = do
   { client, redirectUri } ← asks _.auth0Config
   liftAff $ toAff $ _loginWithRedirect client
     { redirect_uri: redirectUri
-    , audience: "api" -- causes an error "Invalid service name: api"
+    , audience: "https://puremess:8081/"
     , scope: "api"
     }
 
@@ -88,7 +88,7 @@ buildAuthorizeUrl = do
   { client, redirectUri } ← asks _.auth0Config
   liftAff $ toAff $ _buildAuthorizeUrl client
     { redirect_uri: redirectUri
-    , audience: "api"
+    , audience: "https://puremess:8081/"
     , scope: "api"
     }
 

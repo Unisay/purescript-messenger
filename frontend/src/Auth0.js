@@ -6,7 +6,8 @@ export const _config =
 export const _client =
   config => () => createAuth0Client({
     domain: config.domain,
-    client_id: config.clientId
+    client_id: config.clientId,
+    audience: config.audience
   });
 
 export const _isAuthenticated =
