@@ -9,6 +9,7 @@ import Backend as Chat
 import DOM.HTML.Indexed.WrapValue (WrapValue(..))
 import Data.Message (Message(..))
 import Data.Message as Message
+import Data.Newtype (unwrap)
 import Data.String as String
 import Data.Validation (Validation)
 import Effect.Aff (Milliseconds(..), delay)
@@ -29,14 +30,14 @@ import Web.UIEvent.KeyboardEvent (KeyboardEvent, key, shiftKey, toEvent)
 
 data Action
   = SetMessage String
-  | UpdateInfo Auth.Info
+  | UpdateInfo Auth.User
   | SendMessage Event
   | KeyPressed KeyboardEvent
 
-type Input = Auth.Info
+type Input = Auth.User
 
 type State =
-  { info ∷ Auth.Info
+  { user ∷ Auth.User
   , message ∷ Validation Message
   , buttonBlocked ∷ Boolean
   }
@@ -54,10 +55,10 @@ component = H.mkComponent
   }
 
 initialState ∷ Input → State
-initialState info =
+initialState user =
   { buttonBlocked: true
   , message: { inputValue: "", result: Nothing }
-  , info
+  , user
   }
 
 render ∷ ∀ m. State → H.ComponentHTML Action () m
@@ -161,7 +162,7 @@ render state = HH.form
 
 handleAction ∷ Action → H.HalogenM State Action () Output App Unit
 handleAction = case _ of
-  UpdateInfo info → H.modify_ _ { info = info }
+  UpdateInfo user → H.modify_ _ { user = user }
   SetMessage str →
     H.modify_ _ { message { inputValue = String.trim str } } *> validateInput
   SendMessage ev → do
@@ -172,8 +173,8 @@ handleAction = case _ of
           { buttonBlocked = true, message { result = Just $ Left err } }
         liftAff (delay $ Milliseconds 500.0) *> validateInput
       Right text → do
-        username ← H.gets _.info.username
-        token ← H.gets _.info.token
+        username ← H.gets $ _.user >>> unwrap >>> _.name
+        token ← Auth.token
         createdAt ← liftEffect nowDateTime
         let msg = Message { text, createdAt, username }
         H.raiseError_ (Chat.sendMessage username msg token)

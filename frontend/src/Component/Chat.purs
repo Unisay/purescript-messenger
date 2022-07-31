@@ -13,11 +13,11 @@ import Halogen.HTML.Extended as HH
 import Halogen.HTML.Properties.Extended as HP
 import Type.Proxy (Proxy(..))
 
-type State = Auth.Info
+type State = Auth.User
 
 data Action = HandleBackendError Backend.Error
 
-type Input = Auth.Info
+type Input = Auth.User
 
 type Output = Backend.Error
 
@@ -35,7 +35,7 @@ component =
     , eval: H.mkEval H.defaultEval { handleAction = handleAction }
     }
   where
-  render authInfo =
+  render authUser =
     HH.div
       [ HP.classNames
           [ "grow"
@@ -60,11 +60,11 @@ component =
       ]
     where
     slotUsers =
-      HH.slot _users unit Users.component authInfo HandleBackendError
+      HH.slot _users unit Users.component authUser HandleBackendError
     slotMessages =
-      HH.slot _messages unit Messages.component authInfo HandleBackendError
+      HH.slot _messages unit Messages.component authUser HandleBackendError
     slotControls =
-      HH.slot _controls unit Controls.component authInfo HandleBackendError
+      HH.slot _controls unit Controls.component authUser HandleBackendError
     _users =
       Proxy ∷ Proxy "users"
     _messages =

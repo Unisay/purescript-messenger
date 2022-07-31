@@ -68,23 +68,20 @@ render { authInfo } = HH.div
               , "basis-auto"
               ]
           ]
-          $
-            ( \route → HH.a
-                [ HP.classNames
-                    [ "justify-center"
-                    , "flex"
-                    , "font-medium"
-                    , "w-full"
-                    ]
-                , Route.href route
-                ]
-                [ HH.span_ [ HH.text $ "Go to " <> show route ] ]
-            )
+          $ navLink
           <$> case authInfo of
-            Nothing → [ Route.SignIn, Route.SignUp, Route.Debug ]
-            Just _ → [ Route.Chat ]
+            Nothing → [ { href: Route.href Route.Debug, label: "Debug" } ]
+            Just _ → [ { href: Route.href Route.Chat, label: "Chat" } ]
+
       ]
   ]
+  where
+  navLink { href, label } =
+    HH.a
+      [ HP.classNames [ "justify-center", "flex", "font-medium", "w-full" ]
+      , href
+      ]
+      [ HH.span_ [ HH.text $ "Go to " <> label ] ]
 
 handleAction ∷ ∀ s. Action → H.HalogenM State Action s App.Error App Unit
 handleAction = case _ of

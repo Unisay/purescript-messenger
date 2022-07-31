@@ -9,12 +9,21 @@ import Affjax.RequestHeader (RequestHeader(..)) as AX
 import Affjax.ResponseFormat (ResponseFormat)
 import Affjax.ResponseFormat as ResponseFormat
 import Affjax.StatusCode (StatusCode(..))
-import Backend (HasBackendConfig, SignInResponse(..), createAccount', createSession', deleteSession', listUsers', sendMessage')
+import Backend
+  ( HasBackendConfig
+  , SignInResponse(..)
+  , createAccount'
+  , createSession'
+  , deleteSession'
+  , listUsers'
+  , sendMessage'
+  )
 import Backend as Backend
 import Chat.Api.Http (SignUpResponse(..), SignoutReason(..))
 import Chat.Presence (Presence(..))
 import Component.Notifications (HasNotifications)
-import Control.Monad.Error.Class (class MonadThrow, throwError)
+import Control.Monad.Error.Class (class MonadThrow)
+import Control.Monad.Error.Hoist (hoistError)
 import Control.Monad.Except (ExceptT, runExceptT)
 import Control.Monad.Reader (ReaderT, runReaderT)
 import Data.Argonaut.Core (Json, jsonEmptyArray, jsonNull, jsonSingletonObject)
@@ -343,5 +352,5 @@ forbidden403 =
   }
 
 fromRight ∷ ∀ a m e. Show e ⇒ MonadThrow Error m ⇒ Either e a → m a
-fromRight = either (throwError <<< error <<< append " fromRight " <<< show) pure
+fromRight = hoistError (error <<< append " fromRight " <<< show)
 

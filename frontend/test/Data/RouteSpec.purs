@@ -8,7 +8,6 @@ import Data.CodePoint.Unicode (isPrint)
 import Data.Route (Route(..), codec)
 import Data.String (toCodePointArray)
 import Data.String as String
-import Data.Username as Username
 import Routing.Duplex as Routing
 import Test.QuickCheck
   ( class Testable
@@ -29,12 +28,6 @@ spec = liftEffect $ withSeed >>= \seed → runTest do
     let printRoute r s = Routing.print codec r `shouldEqual` s
     test "Home" do
       printRoute Home "/"
-    test "SignIn" do
-      printRoute SignIn "/signin"
-    test "SignUp" do
-      printRoute SignUp "/signup"
-    test "Profile" do
-      printRoute (Profile (Username.unsafe "yura")) "/profile/yura"
 
   describe "Route properties" do
     property "All routes roundrip" seed \route →

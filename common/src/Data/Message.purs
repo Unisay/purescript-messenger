@@ -25,7 +25,7 @@ import Data.String.NonEmpty as NonEmptyString
 import Data.Time.Duration (Seconds, convertDuration)
 import Data.Username (Username)
 
-type Cursor = Int
+type Cursor = Maybe String
 
 data WithCursor a = WithCursor Cursor a
 
@@ -67,8 +67,8 @@ instance DecodeJson Message where
 
 instance DecodeJson CursoredMessages where
   decodeJson json = do
-    m ∷ { cursor ∷ Int, messages ∷ Array Message } ← decodeJson json
-    pure $ WithCursor m.cursor m.messages
+    m ∷ { cursor ∷ Cursor, items ∷ Array Message } ← decodeJson json
+    pure $ WithCursor m.cursor m.items
 
 toString ∷ Message → String
 toString (Message m) = NonEmptyString.toString m.text

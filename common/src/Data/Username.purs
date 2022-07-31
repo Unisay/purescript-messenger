@@ -23,11 +23,7 @@ import Data.Codec.Argonaut as CA
 import Data.Either (Either(..), isRight)
 import Data.Profunctor (dimap)
 import Data.String (null, trim) as String
-import Data.String.CodePoints
-  ( codePointFromChar
-  , length
-  , toCodePointArray
-  ) as String
+import Data.String.CodePoints (codePointFromChar, length, toCodePointArray) as String
 import Data.String.Gen (genString)
 import Data.Tuple (Tuple(..))
 import Foreign (ForeignError(..))
@@ -80,6 +76,7 @@ parse s = case String.trim s of
     Unicode.isAlphaNum cp
       || cp == String.codePointFromChar '_'
       || cp == String.codePointFromChar '-'
+      || cp == String.codePointFromChar '.'
 
 isValid ∷ String → Boolean
 isValid = isRight <<< parse

@@ -2,81 +2,66 @@ module Auth where
 
 import Preamble
 
+import Auth0 as Auth0
 import Control.Monad.Error.Class (class MonadThrow)
-import Control.Monad.Except (throwError)
+import Control.Monad.Error.Hoist (hoistError)
+import Control.Monad.Except (runExcept)
 import Control.Monad.Reader (class MonadAsk)
-import Data.Argonaut.Decode (JsonDecodeError, decodeJson)
+import Data.Array as Array
 import Data.Auth.Token (Token)
-import Data.Auth.Token as Token
-import Data.Traversable (for)
+import Data.Email (Email)
+import Data.List.NonEmpty (NonEmptyList)
+import Data.Newtype (class Newtype)
+import Data.String as String
 import Data.Username (Username)
-import Jwt (JwtError(..))
-import Jwt as Jwt
-import LocalStorage (HasStorage)
-import LocalStorage as Storage
+import Effect.Aff.Class (class MonadAff)
+import Foreign (ForeignError, renderForeignError)
+import Foreign.Class (class Decode)
+import Foreign.Class (decode) as Foreign
+import Foreign.Index (readProp) as Foreign
 
-data Error
-  = TokenDecoding (JwtError JsonDecodeError)
-  | TokenIsMissing
-  | TokenNoSub
+newtype Error = UserDecodingError (NonEmptyList ForeignError)
 
 instance Show Error where
+  show (UserDecodingError errs) =
+    String.joinWith "; "
+      $ Array.fromFoldable
+      $ map renderForeignError errs
+
+newtype User = User
+  { email ∷ Email
+  , name ∷ Username
+  }
+
+derive instance Newtype User _
+
+instance Decode User where
+  decode v = ado
+    email ← Foreign.readProp "email" v >>= Foreign.decode
+    name ← Foreign.readProp "nickname" v >>= Foreign.decode
+    in User { email, name }
+
+data Info = Anonymous | Authenticated User
+
+instance Show Info where
   show = case _ of
-    TokenDecoding err →
-      "Failed to decode auth token: " <>
-        case err of
-          MalformedToken → "Malformed token"
-          Base64DecodeError e → "Base63 decode error: " <> show e
-          JsonDecodeError a → "JSON decode error: " <> show a
-          JsonParseError e → "JSON parse error: " <> show e
-    TokenIsMissing → "Authentication token is missing"
-    TokenNoSub → "Authentication token contains no sub claim"
+    Anonymous → "Anonymous"
+    Authenticated (User user) → "Authenticated: " <> show user
 
-type Info = { username ∷ Username, token ∷ Token }
-
-tokenKey ∷ Storage.Key Token
-tokenKey = Storage.Key "auth.token"
-
-loadToken
-  ∷ ∀ r m. MonadEffect m ⇒ MonadAsk { | HasStorage r } m ⇒ m (Maybe Token)
-loadToken = Storage.readKey tokenKey (Token.parse >>> hush)
-
-saveToken
-  ∷ ∀ r m
-  . MonadEffect m
-  ⇒ MonadAsk { | HasStorage r } m
-  ⇒ Token
-  → m Unit
-saveToken = Storage.writeKey tokenKey Token.toString
-
-removeToken ∷ ∀ r m. MonadEffect m ⇒ MonadAsk { | HasStorage r } m ⇒ m Unit
-removeToken = Storage.removeKey tokenKey
-
-loadInfo
-  ∷ ∀ r m
-  . MonadEffect m
-  ⇒ MonadThrow Error m
-  ⇒ MonadAsk { | HasStorage r } m
-  ⇒ m (Maybe Info)
-loadInfo = do
-  tok ← loadToken
-  for tok decodeToken
-
-decodeToken ∷ ∀ m. MonadThrow Error m ⇒ Token → m Info
-decodeToken token =
-  case dec of
-    Left err → throwError $ TokenDecoding err
-    Right { sub: Nothing } → throwError TokenNoSub
-    Right { sub: Just username } → pure { username, token }
-  where
-  dec ∷ Either (JwtError JsonDecodeError) { sub ∷ Maybe Username }
-  dec = Jwt.decodeWith decodeJson (Token.toString token)
-
-loadedInfo
+userInfo
   ∷ ∀ m r
-  . MonadEffect m
-  ⇒ MonadAsk { | HasStorage r } m
+  . MonadAff m
   ⇒ MonadThrow Error m
+  ⇒ MonadAsk (Auth0.HasConfig r) m
   ⇒ m Info
-loadedInfo = loadInfo >>= maybe (throwError TokenIsMissing) pure
+userInfo = do
+  isAuthenticated ← Auth0.isAuthenticated
+  if isAuthenticated then
+    Auth0.getUser >>= Foreign.decode
+      >>> runExcept
+      >>> map Authenticated
+      >>> hoistError UserDecodingError
+  else pure Anonymous
 
+token ∷ ∀ r m. MonadAsk (Auth0.HasConfig r) m ⇒ MonadAff m ⇒ m Token
+token = Auth0.getTokenSilently
