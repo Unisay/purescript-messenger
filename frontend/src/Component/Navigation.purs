@@ -12,6 +12,7 @@ import Auth as Auth
 import Auth0 (buildAuthorizeUrl)
 import Chat.Api.Http (SignoutReason(..))
 import Control.Monad.Reader (asks)
+import Data.Newtype (unwrap)
 import Data.Notification (useful)
 import Data.Route (Route(..))
 import Data.Route as Route
@@ -100,7 +101,7 @@ render { route, authInfo, authorizeUrl } = HH.nav_
     Just (Authenticated user) →
       [ HH.li
           [ HP.classNames [ "list-none", "mr-16", "mt-8", "text-xl" ] ]
-          [ HH.text $ Username.toString user.name ]
+          [ HH.text $ Username.toString (unwrap user).name ]
       , HH.li
           [ HP.classNames [ "list-none", "mr-16", "mt-9", "text-xl" ] ]
           [ HH.a

@@ -9,6 +9,7 @@ import Backend as Chat
 import DOM.HTML.Indexed.WrapValue (WrapValue(..))
 import Data.Message (Message(..))
 import Data.Message as Message
+import Data.Newtype (unwrap)
 import Data.String as String
 import Data.Validation (Validation)
 import Effect.Aff (Milliseconds(..), delay)
@@ -172,7 +173,7 @@ handleAction = case _ of
           { buttonBlocked = true, message { result = Just $ Left err } }
         liftAff (delay $ Milliseconds 500.0) *> validateInput
       Right text → do
-        username ← H.gets _.user.name
+        username ← H.gets $ _.user >>> unwrap >>> _.name
         token ← Auth.token
         createdAt ← liftEffect nowDateTime
         let msg = Message { text, createdAt, username }
