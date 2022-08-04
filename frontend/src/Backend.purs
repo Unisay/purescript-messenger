@@ -9,7 +9,13 @@ import Affjax.RequestHeader (RequestHeader)
 import Affjax.ResponseFormat as ResponseFormat
 import Affjax.StatusCode (StatusCode(..))
 import Affjax.Web as AW
-import Chat.Api.Http (SignInResponseBody, SignUpResponse(..), SignUpResponseBody, SignoutReason, UserPresence)
+import Chat.Api.Http
+  ( SignInResponseBody
+  , SignUpResponse(..)
+  , SignUpResponseBody
+  , SignoutReason
+  , UserPresence
+  )
 import Chat.Api.Http.Problem (Problem)
 import Chat.Api.Http.Problem as Problem
 import Control.Monad.Error.Class (class MonadThrow)
@@ -23,7 +29,8 @@ import Data.Auth.Token (Token)
 import Data.Auth.Token as Token
 import Data.Email (Email)
 import Data.HTTP.Method (Method(..))
-import Data.Message (Cursor, CursoredMessages, Message)
+import Data.Message (Cursor, CursoredMessages, Message(..), dateTimeToSeconds)
+import Data.Message as Message
 import Data.Newtype (unwrap, wrap)
 import Data.Password (Password)
 import Data.String as String
@@ -248,7 +255,7 @@ sendMessage'
   → Message
   → Token
   → m Unit
-sendMessage' transport username message token = do
+sendMessage' transport username message@(Message m) token = do
   backendApiUrl ← asks _.backendApiUrl
   { status } ←
     liftAff
@@ -257,9 +264,9 @@ sendMessage' transport username message token = do
           , url = String.joinWith "/"
               [ backendApiUrl
               , "chat"
-              , "users"
-              , Username.toString username
-              , "messages"
+              , show username
+              , show $ degree $ dateTimeToSeconds m.createdAt
+              , Message.hash $ show username <> show m.text <> show m.createdAt
               ]
           , responseFormat = ResponseFormat.json
           , content = Just $ RB.Json $ Json.encodeJson message

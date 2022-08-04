@@ -6,6 +6,8 @@ module Data.Message
   , WithCursor(..)
   , Cursor
   , CursoredMessages
+  , dateTimeToSeconds
+  , hash
   ) where
 
 import Preamble
@@ -43,13 +45,9 @@ derive newtype instance Eq Message
 instance EncodeJson Message where
   encodeJson (Message m) = encodeJson
     { text: m.text
-    , created_at:
-        Number.round
-          $ (unwrap ∷ Seconds → _)
-          $ convertDuration
-          $ Instant.unInstant
-          $ Instant.fromDateTime m.createdAt
+    , created_at: dateTimeToSeconds m.createdAt
     , username: m.username
+    , hash: hash $ show m.username <> show m.text <> show m.createdAt
     }
 
 instance DecodeJson Message where
@@ -82,3 +80,12 @@ parse s = NES.fromString (String.trim s) # maybe
 
 fromCursored ∷ CursoredMessages → Array Message
 fromCursored (WithCursor _ arr) = arr
+
+dateTimeToSeconds ∷ DateTime → Number
+dateTimeToSeconds = Instant.fromDateTime
+  >>> Instant.unInstant
+  >>> convertDuration
+  >>> (unwrap ∷ Seconds → _)
+  >>> Number.round
+
+foreign import hash ∷ String → String
