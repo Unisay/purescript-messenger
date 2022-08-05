@@ -264,8 +264,6 @@ sendMessage' transport username message@(Message m) token = do
           , url = String.joinWith "/"
               [ backendApiUrl
               , "chat"
-              , show username
-              , show $ degree $ dateTimeToSeconds m.createdAt
               , Message.hash $ show username <> show m.text <> show m.createdAt
               ]
           , responseFormat = ResponseFormat.json
