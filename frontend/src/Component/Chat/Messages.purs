@@ -108,7 +108,7 @@ render state = HH.div [ HP.classNames [ "relative" ] ]
                           , "font-semibold"
                           ]
                       ]
-                      [ HH.text $ Username.toString m.username <> ": " ]
+                      [ HH.text $ Username.toString m.author <> ": " ]
                   , HH.p [ HP.classNames [ "inline" ] ]
                       [ HH.text $ NES.toString m.text ]
                   ]
@@ -169,9 +169,7 @@ handleAction = case _ of
     updateMessages Nothing
   Tick →
     H.gets _.messages >>=
-      \(WithCursor c msg) → updateMessages
-        if Array.null msg then Nothing
-        else Just c
+      \(WithCursor c _msg) → updateMessages c
   MessagesScroll →
     messagesScrollInfo >>= traverse_ \{ sheight, cheight, top } → do
       if abs (sheight - (cheight + top)) > 1.0 then
@@ -192,8 +190,9 @@ handleAction = case _ of
     token ← Auth.token
     H.raiseError (Backend.messagesWithCursor cursor token)
       \(WithCursor last messages) → do
+        let cursor' = if isJust last then last else cursor
         H.modify_ \st → st
-          { messages = WithCursor last
+          { messages = WithCursor cursor'
               (messages <> Message.fromCursored st.messages)
           }
         updateScroll

@@ -12,9 +12,8 @@ import Data.Message as Message
 import Data.Newtype (unwrap)
 import Data.String as String
 import Data.Validation (Validation)
-import Effect.Aff (Milliseconds(..), delay)
 import Effect.Now (nowDateTime)
-import Halogen.Extended (PropName(..), liftAff)
+import Halogen.Extended (PropName(..))
 import Halogen.Extended as H
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Extended (prop)
@@ -164,22 +163,21 @@ handleAction ∷ Action → H.HalogenM State Action () Output App Unit
 handleAction = case _ of
   UpdateInfo user → H.modify_ _ { user = user }
   SetMessage str →
-    H.modify_ _ { message { inputValue = String.trim str } } *> validateInput
+    H.modify_ _ { message { inputValue = String.trim str } }
+      *> validateInput
   SendMessage ev → do
     liftEffect $ Event.preventDefault ev
     H.gets _.message.inputValue <#> Message.parse >>= case _ of
       Left err → do
         H.modify_ _
           { buttonBlocked = true, message { result = Just $ Left err } }
-        liftAff (delay $ Milliseconds 500.0) *> validateInput
       Right text → do
-        username ← H.gets $ _.user >>> unwrap >>> _.name
+        author ← H.gets $ _.user >>> unwrap >>> _.name
         token ← Auth.token
         createdAt ← liftEffect nowDateTime
-        let msg = Message { text, createdAt, username }
-        H.raiseError_ (Chat.sendMessage username msg token)
+        let msg = Message { text, createdAt, author }
+        H.raiseError_ (Chat.sendMessage author msg token)
         H.modify_ _ { buttonBlocked = true, message { inputValue = "" } }
-        liftAff (delay $ Milliseconds 500.0) *> validateInput
   KeyPressed keyEv →
     if shiftKey keyEv then pass
     else case key keyEv of

@@ -9,13 +9,7 @@ import Affjax.RequestHeader (RequestHeader)
 import Affjax.ResponseFormat as ResponseFormat
 import Affjax.StatusCode (StatusCode(..))
 import Affjax.Web as AW
-import Chat.Api.Http
-  ( SignInResponseBody
-  , SignUpResponse(..)
-  , SignUpResponseBody
-  , SignoutReason
-  , UserPresence
-  )
+import Chat.Api.Http (SignInResponseBody, SignUpResponse(..), SignUpResponseBody, SignoutReason, UserPresence)
 import Chat.Api.Http.Problem (Problem)
 import Chat.Api.Http.Problem as Problem
 import Control.Monad.Error.Class (class MonadThrow)
@@ -29,8 +23,9 @@ import Data.Auth.Token (Token)
 import Data.Auth.Token as Token
 import Data.Email (Email)
 import Data.HTTP.Method (Method(..))
+import Data.Hashing (hash)
+import Data.Int as Int
 import Data.Message (Cursor, CursoredMessages, Message(..), dateTimeToSeconds)
-import Data.Message as Message
 import Data.Newtype (unwrap, wrap)
 import Data.Password (Password)
 import Data.String as String
@@ -264,7 +259,7 @@ sendMessage' transport username message@(Message m) token = do
           , url = String.joinWith "/"
               [ backendApiUrl
               , "chat"
-              , Message.hash $ show username <> show m.text <> show m.createdAt
+              , hash $ show username <> show m.text <> show m.createdAt
               ]
           , responseFormat = ResponseFormat.json
           , content = Just $ RB.Json $ Json.encodeJson message
@@ -282,7 +277,7 @@ messagesWithCursor'
   ⇒ MonadAsk (Record (HasBackendConfig r)) m
   ⇒ MonadThrow Error m
   ⇒ Transport
-  → Maybe Cursor
+  → Cursor
   → Token
   → m (CursoredMessages)
 messagesWithCursor' transport cursor token = do
@@ -295,7 +290,12 @@ messagesWithCursor' transport cursor token = do
             , url =
                 ( String.joinWith "/"
                     [ backendApiUrl, "chat", "messages" ]
-                ) <> fromMaybe "" (cursor <#> show >>> append "?cursor=")
+                ) <> fromMaybe ""
+                  ( cursor <#> dateTimeToSeconds
+                      >>> Int.ceil
+                      >>> show
+                      >>> append "?cursor="
+                  )
             , responseFormat = ResponseFormat.json
             , headers = [ authorization token ]
             }
@@ -310,7 +310,7 @@ messagesWithCursor
   . MonadAff m
   ⇒ MonadAsk (Record (HasBackendConfig r)) m
   ⇒ MonadThrow Error m
-  ⇒ Maybe Cursor
+  ⇒ Cursor
   → Token
   → m (CursoredMessages)
 messagesWithCursor = messagesWithCursor' AW.request

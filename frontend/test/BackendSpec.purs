@@ -58,14 +58,14 @@ import Unsafe.Coerce (unsafeCoerce)
 spec ∷ Spec Unit
 spec = describe "Backend" do
   let
-    username = Username.unsafe "testuser"
+    author = Username.unsafe "testuser"
     password = Password.unsafe "testpass"
     email = Email.unsafe "john.doe@example.com"
     presence = Online
     reason = UserAction
     token = Token.unsafe "1234567890"
     message = Message
-      { username
+      { author
       , text: NES.nes (Proxy ∷ _ "nes")
       , createdAt: mockDateTime
       }
@@ -85,23 +85,23 @@ spec = describe "Backend" do
           content # maybe (fail "Body is absent") case _ of
             RequestBody.Json j → do
               ( actual
-                  ∷ { username ∷ Username
+                  ∷ { author ∷ Username
                     , password ∷ Password
                     , email ∷ Email
                     }
               ) ← fromRight $ decodeJson j
-              actual.username `shouldEqual` username
+              actual.author `shouldEqual` author
               (shouldEqual `on` Password.toString) actual.password password
               actual.email `shouldEqual` email
             _ → fail "NonJson body"
           respond ok200
-      withConfig (createAccount' server username password email) >>= case _ of
+      withConfig (createAccount' server author password email) >>= case _ of
         Right SignedUp → pure unit
         result → fail $ "SignedUp expected, but got: " <> show result
 
     it "handles already created accounts" do
       let server _ = respond conflict409
-      withConfig (createAccount' server username password email) >>= case _ of
+      withConfig (createAccount' server author password email) >>= case _ of
         Left backendError → fail (show backendError)
         Right SignedUp → fail
           "Received SignedUp where AlreadyRegistered expected"
@@ -109,20 +109,20 @@ spec = describe "Backend" do
 
     it "handles bad requests" do
       let server _request = respond badRequest400
-      withConfig (createAccount' server username password email) >>= case _ of
+      withConfig (createAccount' server author password email) >>= case _ of
         Left (Backend.ResponseProblem problem) →
           problem.type `shouldEqual` "urn:puremess:be:bad-request-error"
         result → fail $ "Expected ResponseProblem but got " <> show result
 
     it "handles request error" do
       let server _request = pure $ Left AX.RequestFailedError
-      withConfig (createAccount' server username password email) >>= case _ of
+      withConfig (createAccount' server author password email) >>= case _ of
         Left (Backend.AffjaxError AX.RequestFailedError) → pure unit
         result → fail $ "Expected RequestFailedError but got " <> show result
 
     it "handles timeout error" do
       let server _request = pure $ Left AX.TimeoutError
-      withConfig (createAccount' server username password email) >>= case _ of
+      withConfig (createAccount' server author password email) >>= case _ of
         Left (Backend.AffjaxError AX.TimeoutError) → pure unit
         result → fail $ "Expected TimeoutError but got " <> show result
 
@@ -135,31 +135,31 @@ spec = describe "Backend" do
           ResponseFormat.json `assertResponseFormat` responseFormat
           content # maybe (fail "Body is absent") case _ of
             RequestBody.Json j → do
-              (actual ∷ { username ∷ Username, password ∷ Password }) ←
+              (actual ∷ { author ∷ Username, password ∷ Password }) ←
                 fromRight $ decodeJson j
-              actual.username `shouldEqual` username
+              actual.author `shouldEqual` author
               (shouldEqual `on` Password.toString) actual.password password
             _ → fail "NonJson body"
           respond ok200 { body = encodeJson jsonToken }
-      withConfig (createSession' server username password) >>= case _ of
+      withConfig (createSession' server author password) >>= case _ of
         Left backendError → fail (show backendError)
         Right response → assertSignedIn response
 
     it "handles request error" do
       let server _request = pure $ Left AX.RequestFailedError
-      withConfig (createSession' server username password) >>= case _ of
+      withConfig (createSession' server author password) >>= case _ of
         Left (Backend.AffjaxError AX.RequestFailedError) → pure unit
         result → fail $ "Expected RequestFailedError but got " <> show result
 
     it "handles timeout error" do
       let server _request = pure $ Left AX.TimeoutError
-      withConfig (createSession' server username password) >>= case _ of
+      withConfig (createSession' server author password) >>= case _ of
         Left (Backend.AffjaxError AX.TimeoutError) → pure unit
         result → fail $ "Expected TimeoutError but got " <> show result
 
     it "handles forbidden" do
       let server _request = respond forbidden403
-      withConfig (createSession' server username password) >>= case _ of
+      withConfig (createSession' server author password) >>= case _ of
         Right Forbidden → pure unit
         result → fail $ "Forbidden expected, got: " <> show result
 
@@ -179,7 +179,7 @@ spec = describe "Backend" do
         Left err → fail $ show err
         Right srb →
           Array.head srb # maybe (fail "Response body is empty") \user → do
-            user.username `shouldEqual` username
+            user.username `shouldEqual` author
             user.presence `shouldEqual` presence
             pure unit
 
@@ -212,19 +212,19 @@ spec = describe "Backend" do
               actual.reason `shouldEqual` reason
             _ → fail "NonJson body"
           respond ok200
-      withConfig (deleteSession' server username token reason) >>= case _ of
+      withConfig (deleteSession' server author token reason) >>= case _ of
         Left err → fail $ show err
         Right _ → pass
 
     it "handles request error" do
       let server _request = pure $ Left AX.RequestFailedError
-      withConfig (deleteSession' server username token reason) >>= case _ of
+      withConfig (deleteSession' server author token reason) >>= case _ of
         Left (Backend.AffjaxError AX.RequestFailedError) → pure unit
         result → fail $ "Expected RequestFailedError but got " <> show result
 
     it "handles timeout error" do
       let server _request = pure $ Left AX.TimeoutError
-      withConfig (deleteSession' server username token reason) >>= case _ of
+      withConfig (deleteSession' server author token reason) >>= case _ of
         Left (Backend.AffjaxError AX.TimeoutError) → pure unit
         result → fail $ "Expected TimeoutError but got " <> show result
 
@@ -245,19 +245,19 @@ spec = describe "Backend" do
               actual `shouldEqual` message
             _ → fail "NonJson body"
           respond ok200
-      withConfig (sendMessage' server username message token) >>= case _ of
+      withConfig (sendMessage' server author message token) >>= case _ of
         Left err → fail $ show err
         Right _ → pass
 
     it "handles request error" do
       let server _request = pure $ Left AX.RequestFailedError
-      withConfig (sendMessage' server username message token) >>= case _ of
+      withConfig (sendMessage' server author message token) >>= case _ of
         Left (Backend.AffjaxError AX.RequestFailedError) → pure unit
         result → fail $ "Expected RequestFailedError but got " <> show result
 
     it "handles timeout error" do
       let server _request = pure $ Left AX.TimeoutError
-      withConfig (sendMessage' server username message token) >>= case _ of
+      withConfig (sendMessage' server author message token) >>= case _ of
         Left (Backend.AffjaxError AX.TimeoutError) → pure unit
         result → fail $ "Expected TimeoutError but got " <> show result
 
@@ -311,7 +311,7 @@ respond = pure <<< Right
 mockUserList ∷ Array (Object Json)
 mockUserList =
   [ fromHomogeneous
-      { username: encodeJson "testuser"
+      { author: encodeJson "testuser"
       , presence: encodeJson Online
       }
   ]
