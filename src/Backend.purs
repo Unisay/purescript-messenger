@@ -261,7 +261,7 @@ sendMessage' transport message token = do
       ( transport defaultBackendRequest
           { method = Left PUT
           , url = String.joinWith "/"
-              [ backendApiUrl, "chat", Message.primaryKey message ]
+              [ backendApiUrl, "chat", Message.renderId message ]
           , responseFormat = ResponseFormat.json
           , content = Just $ RB.Json $ Json.encodeJson message
           , headers = [ authorization token ]

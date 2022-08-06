@@ -7,12 +7,12 @@ import Auth as Auth
 import Backend as Backend
 import Backend as Chat
 import DOM.HTML.Indexed.WrapValue (WrapValue(..))
-import Data.Message (Message(..))
+import Data.Message (Message)
 import Data.Message as Message
 import Data.Newtype (unwrap)
 import Data.String as String
 import Data.Validation (Validation)
-import Effect.Now (nowDateTime)
+import Effect.Aff.Class (liftAff)
 import Halogen.Extended (PropName(..))
 import Halogen.Extended as H
 import Halogen.HTML.Events as HE
@@ -174,8 +174,7 @@ handleAction = case _ of
       Right text → do
         author ← H.gets $ _.user >>> unwrap >>> _.name
         token ← Auth.token
-        createdAt ← liftEffect nowDateTime
-        let msg = Message { text, createdAt, author }
+        msg ← liftAff $ Message.create text author
         H.raiseError_ (Chat.sendMessage msg token)
         H.modify_ _ { buttonBlocked = true, message { inputValue = "" } }
   KeyPressed keyEv →

@@ -120,7 +120,7 @@ handleAction = case _ of
   timer val = do
     { emitter, listener } ← H.liftEffect HS.create
     _ ← H.liftAff $ Aff.forkAff $ forever do
-      Aff.delay $ Milliseconds 1000.0
+      Aff.delay $ Milliseconds 10000.0
       H.liftEffect $ HS.notify listener val
     pure emitter
 

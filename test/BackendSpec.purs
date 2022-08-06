@@ -26,6 +26,7 @@ import Control.Monad.Error.Class (class MonadThrow)
 import Control.Monad.Error.Hoist (hoistError)
 import Control.Monad.Except (ExceptT, runExceptT)
 import Control.Monad.Reader (ReaderT, runReaderT)
+import Crypto as Crypto
 import Data.Argonaut.Core (Json, jsonEmptyArray, jsonNull, jsonSingletonObject)
 import Data.Argonaut.Decode (decodeJson)
 import Data.Argonaut.Encode (encodeJson)
@@ -58,6 +59,8 @@ import Unsafe.Coerce (unsafeCoerce)
 spec ∷ Spec Unit
 spec = describe "Backend" do
   let
+    messageId = Crypto.unsafeSha256
+      "f2ca1bb6c7e907d06dafe4687e579fce76b37e4e93b7605022da52e6ccc26fd2"
     author = Username.unsafe "testuser"
     password = Password.unsafe "testpass"
     email = Email.unsafe "john.doe@example.com"
@@ -65,7 +68,8 @@ spec = describe "Backend" do
     reason = UserAction
     token = Token.unsafe "1234567890"
     message = Message
-      { author
+      { id: messageId
+      , author
       , text: NES.nes (Proxy ∷ _ "nes")
       , createdAt: mockDateTime
       }
