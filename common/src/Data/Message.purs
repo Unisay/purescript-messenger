@@ -2,6 +2,7 @@ module Data.Message
   ( toString
   , Message(..)
   , parse
+  , primaryKey
   , fromCursored
   , WithCursor(..)
   , Cursor
@@ -11,6 +12,7 @@ module Data.Message
 
 import Preamble
 
+import Data.Hashing (hash)
 import Data.Argonaut.Decode (class DecodeJson, JsonDecodeError(..), decodeJson)
 import Data.Argonaut.Encode (class EncodeJson, encodeJson)
 import Data.Array.NonEmpty (NonEmptyArray)
@@ -36,6 +38,9 @@ newtype Message = Message
   , createdAt ∷ DateTime
   , author ∷ Username
   }
+
+primaryKey :: Message -> String
+primaryKey (Message m) = hash $ show m.author <> show m.text <> show m.createdAt
 
 type CursoredMessages = WithCursor (Array Message)
 

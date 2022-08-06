@@ -245,19 +245,19 @@ spec = describe "Backend" do
               actual `shouldEqual` message
             _ → fail "NonJson body"
           respond ok200
-      withConfig (sendMessage' server author message token) >>= case _ of
+      withConfig (sendMessage' server message token) >>= case _ of
         Left err → fail $ show err
         Right _ → pass
 
     it "handles request error" do
       let server _request = pure $ Left AX.RequestFailedError
-      withConfig (sendMessage' server author message token) >>= case _ of
+      withConfig (sendMessage' server message token) >>= case _ of
         Left (Backend.AffjaxError AX.RequestFailedError) → pure unit
         result → fail $ "Expected RequestFailedError but got " <> show result
 
     it "handles timeout error" do
       let server _request = pure $ Left AX.TimeoutError
-      withConfig (sendMessage' server author message token) >>= case _ of
+      withConfig (sendMessage' server message token) >>= case _ of
         Left (Backend.AffjaxError AX.TimeoutError) → pure unit
         result → fail $ "Expected TimeoutError but got " <> show result
 

@@ -9,7 +9,13 @@ import Affjax.RequestHeader (RequestHeader)
 import Affjax.ResponseFormat as ResponseFormat
 import Affjax.StatusCode (StatusCode(..))
 import Affjax.Web as AW
-import Chat.Api.Http (SignInResponseBody, SignUpResponse(..), SignUpResponseBody, SignoutReason, UserPresence)
+import Chat.Api.Http
+  ( SignInResponseBody
+  , SignUpResponse(..)
+  , SignUpResponseBody
+  , SignoutReason
+  , UserPresence
+  )
 import Chat.Api.Http.Problem (Problem)
 import Chat.Api.Http.Problem as Problem
 import Control.Monad.Error.Class (class MonadThrow)
@@ -23,9 +29,9 @@ import Data.Auth.Token (Token)
 import Data.Auth.Token as Token
 import Data.Email (Email)
 import Data.HTTP.Method (Method(..))
-import Data.Hashing (hash)
 import Data.Int as Int
-import Data.Message (Cursor, CursoredMessages, Message(..), dateTimeToSeconds)
+import Data.Message (Cursor, CursoredMessages, Message, dateTimeToSeconds)
+import Data.Message as Message
 import Data.Newtype (unwrap, wrap)
 import Data.Password (Password)
 import Data.String as String
@@ -234,8 +240,7 @@ sendMessage
   . MonadAff m
   ⇒ MonadAsk (Record (HasBackendConfig r)) m
   ⇒ MonadThrow Error m
-  ⇒ Username
-  → Message
+  ⇒ Message
   → Token
   → m Unit
 sendMessage = sendMessage' AW.request
@@ -246,21 +251,17 @@ sendMessage'
   ⇒ MonadAsk (Record (HasBackendConfig r)) m
   ⇒ MonadThrow Error m
   ⇒ Transport
-  → Username
   → Message
   → Token
   → m Unit
-sendMessage' transport username message@(Message m) token = do
+sendMessage' transport message token = do
   backendApiUrl ← asks _.backendApiUrl
   { status } ←
     liftAff
       ( transport defaultBackendRequest
           { method = Left PUT
           , url = String.joinWith "/"
-              [ backendApiUrl
-              , "chat"
-              , hash $ show username <> show m.text <> show m.createdAt
-              ]
+              [ backendApiUrl, "chat", Message.primaryKey message ]
           , responseFormat = ResponseFormat.json
           , content = Just $ RB.Json $ Json.encodeJson message
           , headers = [ authorization token ]

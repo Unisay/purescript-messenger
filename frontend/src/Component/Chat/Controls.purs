@@ -176,7 +176,7 @@ handleAction = case _ of
         token ← Auth.token
         createdAt ← liftEffect nowDateTime
         let msg = Message { text, createdAt, author }
-        H.raiseError_ (Chat.sendMessage author msg token)
+        H.raiseError_ (Chat.sendMessage msg token)
         H.modify_ _ { buttonBlocked = true, message { inputValue = "" } }
   KeyPressed keyEv →
     if shiftKey keyEv then pass
