@@ -1,49 +1,55 @@
 {
-  "name": "purescript-messenger",
+  "name": "purescript-messenger-frontend",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "directories": {
-    "doc": "docs"
-  },
-  "scripts": {
-    "zephyr": "wget https://github.com/MaybeJustJames/zephyr/releases/download/v0.4.0/Linux.tar.gz && tar -xzvf Linux.tar.gz && rm Linux.tar.gz && mv zephyr/zephyr node_modules/.bin/zephyr && rm -rf zephyr",
-    "postinstall": "npm run zephyr && npm i -g spago purescript && (cd common && spago build); npm run bundle -w frontend; npm run bundle -w backend && ln -sf ../backend/dist/main.js dist/backend.js",
-    "start": "node dist/backend.js"
-  },
+  "description": "Frontend part of the Messenger App",
+  "private": true,
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Unisay/purescript-messenger.git"
   },
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "build:purescript": "spago -P build",
+    "build:tailwind": "tailwindcss -m -c tailwind.config.js -i tailwind_inputs.css -o dist/styles/tailwind.css",
+    "build": "run-p build:purescript build:tailwind",
+    "bundle:build": "spago -P build --purs-args '--codegen corefn'",
+    "bundle:dce": "zephyr -f Main.main",
+    "bundle:esbuild": "node build/esbuild-bundle.mjs",
+    "bundle": "run-s bundle:build bundle:dce bundle:esbuild",
+    "dev": "npm-run-all -s build -p watch:tailwind dev:serve",
+    "dev:serve": "node build/esbuild-dev.mjs",
+    "dev:build": "run-s build serve",
+    "watch:purescript": "spago -P build --watch",
+    "watch:tailwind": "tailwindcss -c tailwind.config.js -i tailwind_inputs.css -o dist/styles/tailwind.css --watch",
+    "prod": "npm run bundle && http-server dist",
+    "test": "spago -P test",
+    "clean:node": "rm -rf node_modules",
+    "clean:purescript": "rm -rf output dce-output",
+    "clean:spago": "rm -rf .spago",
+    "clean:dist": "rm -rf dist/js/*",
+    "clean": "run-p clean:*"
+  },
+  "keywords": [],
   "author": "",
   "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/Unisay/purescript-messenger/issues"
-  },
-  "homepage": "https://github.com/Unisay/purescript-messenger#readme",
-  "workspaces": [
-    "frontend",
-    "backend"
-  ],
   "dependencies": {
-    "argon2-ffi": "^2.0.0",
-    "cors": "^2.8.5",
-    "express": "^4.17.2",
-    "jsonwebtoken": "^8.5.1",
-    "sqlite3": "^5.0.2"
+    "@auth0/auth0-spa-js": "^1.22.0",
+    "email-validate": "^1.0.0",
+    "xhr2": "^0.2.1",
+    "md5": "^2.3.0"
   },
-  "cacheDirectories": [
-    "node_modules",
-    "common/.spago",
-    "common/output",
-    "frontend/node_modules",
-    "frontend/.spago",
-    "frontend/output",
-    "backend/node_modules",
-    "backend/.spago",
-    "backend/output"
-  ],
-  "engines": {
-    "node": "16.x"
+  "devDependencies": {
+    "connect-livereload": "^0.6.1",
+    "create-serve": "^1.0.1",
+    "esbuild": "^0.14.23",
+    "esbuild-plugin-purescript": "^1.1.1",
+    "express": "^4.18.1",
+    "http-server": "^14.1.0",
+    "livereload": "^0.9.3",
+    "npm-run-all": "^4.1.5",
+    "purs-tidy": "^0.7.0",
+    "tailwindcss": "^3.0.23"
   }
 }
