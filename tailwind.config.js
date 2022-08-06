@@ -40,6 +40,9 @@ module.exports = {
       },
       fontWeight: {
         'datetime': '550'
+      },
+      maxWidth: {
+        'chat': '77rem',
       }
     }
   },

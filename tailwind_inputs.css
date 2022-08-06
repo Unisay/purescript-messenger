@@ -3,5 +3,11 @@
 @tailwind utilities;
 
 @layer components {
-  .wrap-anywhere{ overflow-wrap: anywhere; }
+  .wrap-anywhere {
+    overflow-wrap: anywhere;
+  }
+
+  .overflow-break-word {
+    overflow-wrap: break-word;
+  }
 }

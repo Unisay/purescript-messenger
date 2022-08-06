@@ -76,6 +76,7 @@ render state = HH.div [ HP.classNames [ "relative" ] ]
           , "relative"
           , "h-chat"
           , "bg-slate-100"
+          , "max-w-chat"
           ]
       , HE.onScroll $ const MessagesScroll
       ]
@@ -83,13 +84,16 @@ render state = HH.div [ HP.classNames [ "relative" ] ]
           [ HP.classNames
               [ "flex"
               , "flex-col-reverse"
-              , "wrap-anywhere"
               ]
           ]
           $ Message.fromCursored state.messages
           <#> \(Message m) →
             HH.li_
-              [ HH.div [ HP.classNames [ "font-mono" ] ]
+              [ HH.div
+                  [ HP.classNames
+                      [ "font-mono"
+                      ]
+                  ]
                   [ HH.span
                       [ HP.classNames
                           [ "cursor-default"
@@ -108,7 +112,12 @@ render state = HH.div [ HP.classNames [ "relative" ] ]
                           ]
                       ]
                       [ HH.text $ Username.toString m.author <> ": " ]
-                  , HH.p [ HP.classNames [ "inline" ] ]
+                  , HH.p
+                      [ HP.classNames
+                          [ "break-words"
+                          , "overflow-break-word"
+                          ]
+                      ]
                       [ HH.text $ NES.toString m.text ]
                   ]
               ]
