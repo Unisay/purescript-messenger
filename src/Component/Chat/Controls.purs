@@ -12,6 +12,7 @@ import Data.Message as Message
 import Data.Newtype (unwrap)
 import Data.String as String
 import Data.Validation (Validation)
+import Effect.Aff (Milliseconds(..), delay)
 import Effect.Aff.Class (liftAff)
 import Halogen.Extended (PropName(..))
 import Halogen.Extended as H
@@ -39,6 +40,7 @@ type State =
   { user ∷ Auth.User
   , message ∷ Validation Message
   , buttonBlocked ∷ Boolean
+  , sendCooldown ∷ Boolean
   }
 
 type Output = Backend.Error
@@ -56,6 +58,7 @@ component = H.mkComponent
 initialState ∷ Input → State
 initialState user =
   { buttonBlocked: true
+  , sendCooldown: false
   , message: { inputValue: "", result: Nothing }
   , user
   }
@@ -140,7 +143,8 @@ render state = HH.form
             , "rounded-tl-lg"
             ]
           <>
-            if isBlocked then [ "bg-gray-500", "cursor-not-allowed" ]
+            if isBlocked || state.sendCooldown then
+              [ "bg-gray-500", "cursor-not-allowed" ]
             else
               [ "bg-blue-500"
               , "hover:bg-blue-600"
@@ -153,7 +157,7 @@ render state = HH.form
       , HP.value "↑"
       , HP.type_ InputSubmit
       , HP.id "controls"
-      , HP.disabled isBlocked
+      , HP.disabled (isBlocked || state.sendCooldown)
       ]
   ]
   where
@@ -177,12 +181,14 @@ handleAction = case _ of
         msg ← liftAff $ Message.create text author
         H.raiseError_ (Chat.sendMessage msg token)
         H.modify_ _ { buttonBlocked = true, message { inputValue = "" } }
-  KeyPressed keyEv →
-    if shiftKey keyEv then pass
-    else case key keyEv of
+        goOnCooldown
+  KeyPressed keyEv → when (not $ shiftKey keyEv)
+    case key keyEv of
       "Enter" → do
         liftEffect $ Event.preventDefault $ toEvent keyEv
-        whenM (not <$> H.gets _.buttonBlocked)
+        isBlocked ← H.gets _.buttonBlocked
+        onCooldown ← H.gets _.sendCooldown
+        when (not $ isBlocked || onCooldown)
           $ liftEffect (CustomEvent.new submit)
           >>= CustomEvent.toEvent
           >>> SendMessage
@@ -194,3 +200,9 @@ handleAction = case _ of
 
   unblockBtn = H.modify_ _ { buttonBlocked = false }
     # whenM (H.gets _.buttonBlocked)
+
+  goOnCooldown = do
+    H.modify_ _ { sendCooldown = true }
+    liftAff $ delay (Milliseconds 1000.0)
+    H.modify_ _ { sendCooldown = false }
+
