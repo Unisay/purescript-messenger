@@ -4,10 +4,8 @@ module Data.Message
   , renderId
   , parse
   , create
-  , fromCursored
-  , WithCursor(..)
+  , SlidingWindow
   , Cursor
-  , CursoredMessages
   , dateTimeToSeconds
   ) where
 
@@ -30,10 +28,16 @@ import Data.Time.Duration (Seconds, convertDuration)
 import Data.Username (Username)
 import Effect.Aff (Aff)
 import Effect.Now (nowDateTime)
+import Foreign (Foreign)
 
-type Cursor = Maybe DateTime
+type Cursor = String
 
-data WithCursor a = WithCursor Cursor a
+type SlidingWindow ∷ Type → Type
+type SlidingWindow item =
+  { fromCursor ∷ Cursor
+  , toCursor ∷ Cursor
+  , items ∷ Array item
+  }
 
 newtype Message = Message
   { id ∷ Digest SHA256
@@ -47,8 +51,6 @@ create text author = do
   createdAt ← liftEffect nowDateTime
   id ← sha256hex $ show author <> show text <> show createdAt
   pure $ Message { id, text, author, createdAt }
-
-type CursoredMessages = WithCursor (Array Message)
 
 derive newtype instance Show Message
 derive newtype instance Eq Message
@@ -77,12 +79,6 @@ instance DecodeJson Message where
     pure $ Message
       { id: m.id, createdAt: toDateTime posix, text, author: m.author }
 
-instance DecodeJson CursoredMessages where
-  decodeJson json = do
-    m ∷ { cursor ∷ Maybe Number, items ∷ Array Message } ← decodeJson json
-    let posix = m.cursor >>= numberToPosix
-    pure $ WithCursor (toDateTime <$> posix) m.items
-
 toString ∷ Message → String
 toString (Message m) = NonEmptyString.toString m.text
 
@@ -95,9 +91,6 @@ parse s = NES.fromString (String.trim s) # maybe
   \str →
     if NES.length str > 800 then Left $ pure "Your message is too long!"
     else Right str
-
-fromCursored ∷ CursoredMessages → Array Message
-fromCursored (WithCursor _ arr) = arr
 
 dateTimeToSeconds ∷ DateTime → Number
 dateTimeToSeconds = Instant.fromDateTime

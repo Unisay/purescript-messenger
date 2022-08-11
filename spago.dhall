@@ -28,7 +28,6 @@
   , "halogen-subscriptions"
   , "hoist-error"
   , "http-methods"
-  , "integers"
   , "lists"
   , "maybe"
   , "newtype"

@@ -9,13 +9,7 @@ import Affjax.RequestHeader (RequestHeader)
 import Affjax.ResponseFormat as ResponseFormat
 import Affjax.StatusCode (StatusCode(..))
 import Affjax.Web as AW
-import Chat.Api.Http
-  ( SignInResponseBody
-  , SignUpResponse(..)
-  , SignUpResponseBody
-  , SignoutReason
-  , UserPresence
-  )
+import Chat.Api.Http (SignInResponseBody, SignUpResponse(..), SignUpResponseBody, SignoutReason, UserPresence)
 import Chat.Api.Http.Problem (Problem)
 import Chat.Api.Http.Problem as Problem
 import Control.Monad.Error.Class (class MonadThrow)
@@ -29,18 +23,20 @@ import Data.Auth.Token (Token)
 import Data.Auth.Token as Token
 import Data.Email (Email)
 import Data.HTTP.Method (Method(..))
-import Data.Int as Int
-import Data.Message (Cursor, CursoredMessages, Message, dateTimeToSeconds)
+import Data.Message (Cursor, Message, SlidingWindow)
 import Data.Message as Message
 import Data.Newtype (unwrap, wrap)
 import Data.Password (Password)
 import Data.String as String
 import Data.Time.Duration (Milliseconds(..))
+import Data.Tuple (Tuple(..))
 import Data.Username (Username)
 import Data.Username as Username
 import Effect.Aff (Aff, throwError)
 import Effect.Aff.Class (class MonadAff, liftAff)
 import LocalStorage (HasStorage)
+import URI.Extra.QueryPairs as QP
+import URI.Query as Q
 
 type HasBackendConfig r = (backendApiUrl ∷ String | r)
 type Transport = AW.Request Json → Aff (Either AW.Error (AW.Response Json))
@@ -272,49 +268,58 @@ sendMessage' transport message token = do
     actual → throwError $ ResponseStatusError
       { expected: StatusCode 200, actual }
 
-messagesWithCursor'
+data Direction = Backward | Forward
+
+messagesFromCursor'
   ∷ ∀ m r
   . MonadAff m
   ⇒ MonadAsk (Record (HasBackendConfig r)) m
   ⇒ MonadThrow Error m
   ⇒ Transport
-  → Cursor
+  → Direction
+  → Maybe Cursor
   → Token
-  → m (CursoredMessages)
-messagesWithCursor' transport cursor token = do
+  → m (SlidingWindow Message)
+messagesFromCursor' transport direction cursor token = do
   backendApiUrl ← asks _.backendApiUrl
+  let
+    url = (String.joinWith "/" [ backendApiUrl, "chat", "messages" ])
+      <> Q.print
+        ( QP.print QP.keyFromString QP.valueFromString
+            ( QP.QueryPairs
+                [ Tuple "cursor" cursor
+                , Tuple "direction" $
+                    Just case direction of
+                      Forward → "f"
+                      Backward → "b"
+                ]
+            )
+        )
   { status, body } ←
     liftAff
       ( transport
           defaultBackendRequest
             { method = Left GET
-            , url =
-                ( String.joinWith "/"
-                    [ backendApiUrl, "chat", "messages" ]
-                ) <> fromMaybe ""
-                  ( cursor <#> dateTimeToSeconds
-                      >>> Int.ceil
-                      >>> show
-                      >>> append "?cursor="
-                  )
+            , url = url
             , responseFormat = ResponseFormat.json
             , headers = [ authorization token ]
             }
       ) <!%?> AffjaxError
   case status of
     StatusCode 200 →
-      decodeJson body <%?> ResponseDecodeError "messagesWithCursor"
+      decodeJson body <%?> ResponseDecodeError "messagesFromCursor"
     _ → throwError $ ResponseStatusError { expected: wrap 200, actual: status }
 
-messagesWithCursor
+messagesFromCursor
   ∷ ∀ m r
   . MonadAff m
   ⇒ MonadAsk (Record (HasBackendConfig r)) m
   ⇒ MonadThrow Error m
-  ⇒ Cursor
+  ⇒ Direction
+  → Maybe Cursor
   → Token
-  → m (CursoredMessages)
-messagesWithCursor = messagesWithCursor' AW.request
+  → m (SlidingWindow Message)
+messagesFromCursor = messagesFromCursor' AW.request
 
 authorization ∷ Token → RequestHeader
 authorization token =

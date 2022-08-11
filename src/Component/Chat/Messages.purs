@@ -4,13 +4,14 @@ import Preamble
 
 import AppM (App)
 import Auth (User, token) as Auth
+import Backend (Direction(..))
 import Backend as Backend
 import Control.Monad.Rec.Class (forever)
+import Data.Array as Array
 import Data.Formatter.DateTime (format)
 import Data.Formatter.DateTime as F
 import Data.List (List(..), (:))
-import Data.Message (CursoredMessages, Message(..), WithCursor(..))
-import Data.Message as Message
+import Data.Message (Message(..), SlidingWindow)
 import Data.Number (abs)
 import Data.String.NonEmpty as NES
 import Data.Traversable (traverse_)
@@ -24,6 +25,8 @@ import Halogen.HTML.Extended as HH
 import Halogen.HTML.Properties.Extended (InputType(..))
 import Halogen.HTML.Properties.Extended as HP
 import Halogen.Subscription as HS
+import Network.RemoteData (RemoteData(..))
+import Network.RemoteData as RD
 import Web.DOM (Element)
 import Web.DOM.Document (toNonElementParentNode)
 import Web.DOM.Element (clientHeight, scrollHeight, scrollTop, setScrollTop)
@@ -32,7 +35,12 @@ import Web.HTML (window)
 import Web.HTML.HTMLDocument (toDocument)
 import Web.HTML.Window (document)
 
-data Action = Initialize | Tick | MessagesScroll | ScrollBtnClicked
+data Action
+  = Initialize
+  | Tick
+  | MessagesScroll
+  | ScrollBtnClicked
+  | LoadPrevious
 
 type Input = Auth.User
 
@@ -42,7 +50,7 @@ data ScrollMode = Following | NotFollowing
 
 type State =
   { user ∷ Auth.User
-  , messages ∷ CursoredMessages
+  , messages ∷ RemoteData Void (SlidingWindow Message)
   , scrollMode ∷ ScrollMode
   }
 
@@ -59,7 +67,7 @@ component = H.mkComponent
 
 initialState ∷ Input → State
 initialState user =
-  { user, scrollMode: Following, messages: WithCursor Nothing [] }
+  { user, scrollMode: Following, messages: NotAsked }
 
 render ∷ ∀ m. State → H.ComponentHTML Action () m
 render state = HH.div [ HP.classNames [ "relative" ] ]
@@ -80,47 +88,48 @@ render state = HH.div [ HP.classNames [ "relative" ] ]
           ]
       , HE.onScroll $ const MessagesScroll
       ]
-      [ HH.ol
-          [ HP.classNames
-              [ "flex"
-              , "flex-col-reverse"
+      [ HH.ol [ HP.classNames [ "flex", "flex-col" ] ] $ Array.cons
+          ( HH.li []
+              [ HH.a [ HE.onClick \_me → LoadPrevious ]
+                  [ HH.text "Load previous messages" ]
               ]
-          ]
-          $ Message.fromCursored state.messages
-          <#> \(Message m) →
-            HH.li_
-              [ HH.div
-                  [ HP.classNames
-                      [ "font-mono"
+          )
+          ( (RD.withDefault [] (state.messages <#> _.items))
+              <#> \(Message m) →
+                HH.li_
+                  [ HH.div
+                      [ HP.classNames [ "font-mono" ] ]
+                      [ HH.span
+                          [ HP.classNames
+                              [ "cursor-default"
+                              , "text-blue-600"
+                              , "font-datetime"
+                              , "italic"
+                              ]
+                          ]
+                          [ HH.text $ format dateTimeFormat m.createdAt <>
+                              " "
+                          ]
+                      , HH.span
+                          [ HP.classNames
+                              [ "cursor-pointer"
+                              , "text-blue-600"
+                              , "hover:text-blue-700"
+                              , "font-semibold"
+                              ]
+                          ]
+                          [ HH.text $ Username.toString m.author <> ": " ]
+                      , HH.p
+                          [ HP.classNames
+                              [ "break-words"
+                              , "overflow-break-word"
+                              ]
+                          ]
+                          [ HH.text $ NES.toString m.text ]
                       ]
                   ]
-                  [ HH.span
-                      [ HP.classNames
-                          [ "cursor-default"
-                          , "text-blue-600"
-                          , "font-datetime"
-                          , "italic"
-                          ]
-                      ]
-                      [ HH.text $ format dateTimeFormat m.createdAt <> " " ]
-                  , HH.span
-                      [ HP.classNames
-                          [ "cursor-pointer"
-                          , "text-blue-600"
-                          , "hover:text-blue-700"
-                          , "font-semibold"
-                          ]
-                      ]
-                      [ HH.text $ Username.toString m.author <> ": " ]
-                  , HH.p
-                      [ HP.classNames
-                          [ "break-words"
-                          , "overflow-break-word"
-                          ]
-                      ]
-                      [ HH.text $ NES.toString m.text ]
-                  ]
-              ]
+          )
+
       ]
   , HH.input
       [ HP.classNames
@@ -174,10 +183,10 @@ handleAction ∷ Action → H.HalogenM State Action () Output App Unit
 handleAction = case _ of
   Initialize → do
     _ ← H.subscribe =<< timer Tick
-    updateMessages Nothing
+    updateMessages Backward Nothing
   Tick →
-    H.gets _.messages >>=
-      \(WithCursor c _msg) → updateMessages c
+    H.gets _.messages >>= \window →
+      updateMessages Forward (RD.toMaybe window <#> _.toCursor)
   MessagesScroll →
     messagesScrollInfo >>= traverse_ \{ sheight, cheight, top } → do
       if abs (sheight - (cheight + top)) > 1.0 then
@@ -185,6 +194,9 @@ handleAction = case _ of
       else H.modify_ _ { scrollMode = Following }
   ScrollBtnClicked →
     scrollToBottom
+  LoadPrevious →
+    H.gets _.messages >>= \window →
+      updateMessages Backward (RD.toMaybe window <#> _.fromCursor)
 
   where
   timer val = do
@@ -194,15 +206,12 @@ handleAction = case _ of
       H.liftEffect $ HS.notify listener val
     pure emitter
 
-  updateMessages cursor = do
+  updateMessages dir cursor = do
     token ← Auth.token
-    H.raiseError (Backend.messagesWithCursor cursor token)
-      \(WithCursor last messages) → do
-        let cursor' = if isJust last then last else cursor
-        H.modify_ \st → st
-          { messages = WithCursor cursor'
-              (messages <> Message.fromCursored st.messages)
-          }
+    H.modify_ _ { messages = Loading }
+    H.raiseError (Backend.messagesFromCursor dir cursor token)
+      \window → do
+        H.modify_ \st → st { messages = Success window }
         updateScroll
 
   updateScroll = H.gets _.scrollMode >>= case _ of
