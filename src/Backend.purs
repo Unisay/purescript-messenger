@@ -19,17 +19,18 @@ import Control.Monad.Reader.Class (asks)
 import Data.Argonaut.Core (Json)
 import Data.Argonaut.Decode (JsonDecodeError, decodeJson)
 import Data.Argonaut.Encode (encodeJson) as Json
+import Data.Array (catMaybes)
 import Data.Auth.Token (Token)
 import Data.Auth.Token as Token
 import Data.Email (Email)
 import Data.HTTP.Method (Method(..))
-import Data.Message (Cursor, Message, SlidingWindow)
+import Data.Message (Cursor, Message)
 import Data.Message as Message
 import Data.Newtype (unwrap, wrap)
 import Data.Password (Password)
 import Data.String as String
 import Data.Time.Duration (Milliseconds(..))
-import Data.Tuple (Tuple(..))
+import Data.Tuple (Tuple(..), fst, snd)
 import Data.Username (Username)
 import Data.Username as Username
 import Effect.Aff (Aff, throwError)
@@ -270,28 +271,31 @@ sendMessage' transport message token = do
 
 data Direction = Backward | Forward
 
+renderDirection ∷ Direction → String
+renderDirection = case _ of
+  Backward → "b"
+  Forward → "f"
+
 messagesFromCursor'
   ∷ ∀ m r
   . MonadAff m
   ⇒ MonadAsk (Record (HasBackendConfig r)) m
   ⇒ MonadThrow Error m
   ⇒ Transport
-  → Direction
-  → Maybe Cursor
+  → Maybe (Tuple Cursor Direction)
   → Token
-  → m (SlidingWindow Message)
-messagesFromCursor' transport direction cursor token = do
+  → m { cursor ∷ Cursor, items ∷ Array Message }
+messagesFromCursor' transport cursorWithDirection token = do
   backendApiUrl ← asks _.backendApiUrl
   let
     url = (String.joinWith "/" [ backendApiUrl, "chat", "messages" ])
       <> Q.print
         ( QP.print QP.keyFromString QP.valueFromString
-            ( QP.QueryPairs
-                [ Tuple "cursor" cursor
-                , Tuple "direction" $
-                    Just case direction of
-                      Forward → "f"
-                      Backward → "b"
+            ( QP.QueryPairs $ catMaybes
+                [ Tuple "cursor" <<< Just <<< fst
+                    <$> cursorWithDirection
+                , Tuple "direction" <<< Just <<< renderDirection <<< snd
+                    <$> cursorWithDirection
                 ]
             )
         )
@@ -315,10 +319,9 @@ messagesFromCursor
   . MonadAff m
   ⇒ MonadAsk (Record (HasBackendConfig r)) m
   ⇒ MonadThrow Error m
-  ⇒ Direction
-  → Maybe Cursor
+  ⇒ Maybe (Tuple Cursor Direction)
   → Token
-  → m (SlidingWindow Message)
+  → m { cursor ∷ Cursor, items ∷ Array Message }
 messagesFromCursor = messagesFromCursor' AW.request
 
 authorization ∷ Token → RequestHeader

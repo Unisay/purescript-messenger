@@ -15,6 +15,7 @@ import Data.Message (Message(..), SlidingWindow)
 import Data.Number (abs)
 import Data.String.NonEmpty as NES
 import Data.Traversable (traverse_)
+import Data.Tuple (Tuple(..))
 import Data.Username as Username
 import Effect.Aff (Milliseconds(..))
 import Effect.Aff as Aff
@@ -183,10 +184,11 @@ handleAction ∷ Action → H.HalogenM State Action () Output App Unit
 handleAction = case _ of
   Initialize → do
     _ ← H.subscribe =<< timer Tick
-    updateMessages Backward Nothing
+    updateMessages Nothing
   Tick →
-    H.gets _.messages >>= \window →
-      updateMessages Forward (RD.toMaybe window <#> _.toCursor)
+    H.gets _.messages >>= \window → do
+      let cursor = RD.toMaybe window <#> _.toCursor
+      updateMessages $ flip Tuple Forward <$> cursor
   MessagesScroll →
     messagesScrollInfo >>= traverse_ \{ sheight, cheight, top } → do
       if abs (sheight - (cheight + top)) > 1.0 then
@@ -196,7 +198,8 @@ handleAction = case _ of
     scrollToBottom
   LoadPrevious →
     H.gets _.messages >>= \window →
-      updateMessages Backward (RD.toMaybe window <#> _.fromCursor)
+      updateMessages
+        (flip Tuple Backward <<< _.fromCursor <$> RD.toMaybe window)
 
   where
   timer val = do
@@ -206,12 +209,17 @@ handleAction = case _ of
       H.liftEffect $ HS.notify listener val
     pure emitter
 
-  updateMessages dir cursor = do
+  updateMessages cursorDirection = do
     token ← Auth.token
     H.modify_ _ { messages = Loading }
-    H.raiseError (Backend.messagesFromCursor dir cursor token)
-      \window → do
-        H.modify_ \st → st { messages = Success window }
+    H.raiseError do
+      Backend.messagesFromCursor cursorDirection token \{ cursor, items } → do
+        H.modify_ \st → st
+          { messages = Success
+              case direction of
+                Forward → st.messages {}
+                Backward → st.messages {}
+          }
         updateScroll
 
   updateScroll = H.gets _.scrollMode >>= case _ of

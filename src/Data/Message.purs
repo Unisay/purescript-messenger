@@ -28,7 +28,6 @@ import Data.Time.Duration (Seconds, convertDuration)
 import Data.Username (Username)
 import Effect.Aff (Aff)
 import Effect.Now (nowDateTime)
-import Foreign (Foreign)
 
 type Cursor = String
 
