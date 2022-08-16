@@ -11,7 +11,7 @@ import Data.Array as Array
 import Data.Formatter.DateTime (format)
 import Data.Formatter.DateTime as F
 import Data.List (List(..), (:))
-import Data.Message (Message(..), SlidingWindow)
+import Data.Message (Message(..), SlidingWindow, dateTimeToSeconds, unMessage)
 import Data.Number (abs)
 import Data.String.NonEmpty as NES
 import Data.Traversable (traverse_)
@@ -32,7 +32,7 @@ import Web.DOM (Element)
 import Web.DOM.Document (toNonElementParentNode)
 import Web.DOM.Element (clientHeight, scrollHeight, scrollTop, setScrollTop)
 import Web.DOM.NonElementParentNode (getElementById)
-import Web.HTML (window)
+import Web.HTML as Web
 import Web.HTML.HTMLDocument (toDocument)
 import Web.HTML.Window (document)
 
@@ -187,7 +187,7 @@ handleAction = case _ of
     updateMessages Nothing
   Tick →
     H.gets _.messages >>= \window → do
-      let cursor = RD.toMaybe window <#> _.toCursor
+      let cursor = RD.toMaybe window >>= _.toCursor
       updateMessages $ flip Tuple Forward <$> cursor
   MessagesScroll →
     messagesScrollInfo >>= traverse_ \{ sheight, cheight, top } → do
@@ -197,9 +197,9 @@ handleAction = case _ of
   ScrollBtnClicked →
     scrollToBottom
   LoadPrevious →
-    H.gets _.messages >>= \window →
-      updateMessages
-        (flip Tuple Backward <<< _.fromCursor <$> RD.toMaybe window)
+    H.gets _.messages >>= \window → do
+      let cursor = RD.toMaybe window >>= _.fromCursor
+      updateMessages $ flip Tuple Forward <$> cursor
 
   where
   timer val = do
@@ -212,15 +212,36 @@ handleAction = case _ of
   updateMessages cursorDirection = do
     token ← Auth.token
     H.modify_ _ { messages = Loading }
-    H.raiseError do
-      Backend.messagesFromCursor cursorDirection token \{ cursor, items } → do
+    H.raiseError (Backend.messagesFromCursor cursorDirection token)
+      \{ cursor, items, direction } → do
         H.modify_ \st → st
-          { messages = Success
-              case direction of
-                Forward → st.messages {}
-                Backward → st.messages {}
+          { messages = case RD.toMaybe st.messages of
+              Nothing →
+                let
+                  fromCursor = maybe Nothing
+                    ( unMessage
+                        >>> _.createdAt
+                        >>> dateTimeToSeconds
+                        >>> Just
+                    )
+                    (Array.last items)
+                in
+                  Success { toCursor: cursor, items, fromCursor }
+              Just msgs@{ fromCursor, items: items', toCursor } → Success
+                case direction of
+                  Just Forward →
+                    { items: items' <> items
+                    , fromCursor
+                    , toCursor: cursor
+                    }
+                  Just Backward →
+                    { items: items <> items'
+                    , fromCursor: cursor
+                    , toCursor
+                    }
+                  Nothing → msgs
           }
-        updateScroll
+        when (fromMaybe false $ direction <#> ((==) Forward)) updateScroll
 
   updateScroll = H.gets _.scrollMode >>= case _ of
     NotFollowing → pass
@@ -228,7 +249,7 @@ handleAction = case _ of
 
   messagesScrollInfo ∷ ∀ m. MonadEffect m ⇒ m (Maybe ScrollInfo)
   messagesScrollInfo = liftEffect do
-    parent ← window >>= document <#> toDocument >>> toNonElementParentNode
+    parent ← Web.window >>= document <#> toDocument >>> toNonElementParentNode
     let elementId = "messages"
     getElementById elementId parent >>= case _ of
       Just el → do

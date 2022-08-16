@@ -7,6 +7,7 @@ module Data.Message
   , SlidingWindow
   , Cursor
   , dateTimeToSeconds
+  , unMessage
   ) where
 
 import Preamble
@@ -29,12 +30,12 @@ import Data.Username (Username)
 import Effect.Aff (Aff)
 import Effect.Now (nowDateTime)
 
-type Cursor = String
+type Cursor = Number
 
 type SlidingWindow ∷ Type → Type
 type SlidingWindow item =
-  { fromCursor ∷ Cursor
-  , toCursor ∷ Cursor
+  { fromCursor ∷ Maybe Cursor
+  , toCursor ∷ Maybe Cursor
   , items ∷ Array item
   }
 
@@ -65,11 +66,12 @@ instance EncodeJson Message where
 instance DecodeJson Message where
   decodeJson json = do
     m
-      ∷ { id ∷ Digest SHA256
-        , text ∷ String
-        , created_at ∷ Number
-        , author ∷ Username
-        } ←
+      ∷
+          { id ∷ Digest SHA256
+          , text ∷ String
+          , created_at ∷ Number
+          , author ∷ Username
+          } ←
       decodeJson json
     posix ← note (TypeMismatch "Unexpected Milliseconds value")
       $ numberToPosix m.created_at
@@ -102,3 +104,12 @@ numberToPosix ∷ Number → Maybe Instant
 numberToPosix = wrap
   >>> (convertDuration ∷ Seconds → _)
   >>> Instant.instant
+
+unMessage
+  ∷ Message
+  → { id ∷ Digest SHA256
+    , text ∷ NonEmptyString
+    , createdAt ∷ DateTime
+    , author ∷ Username
+    }
+unMessage (Message m) = m

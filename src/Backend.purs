@@ -17,7 +17,7 @@ import Control.Monad.Error.Hoist ((<!%?>), (<%?>))
 import Control.Monad.Reader (class MonadAsk)
 import Control.Monad.Reader.Class (asks)
 import Data.Argonaut.Core (Json)
-import Data.Argonaut.Decode (JsonDecodeError, decodeJson)
+import Data.Argonaut.Decode (class DecodeJson, JsonDecodeError(..), decodeJson)
 import Data.Argonaut.Encode (encodeJson) as Json
 import Data.Array (catMaybes)
 import Data.Auth.Token (Token)
@@ -271,6 +271,15 @@ sendMessage' transport message token = do
 
 data Direction = Backward | Forward
 
+derive instance Eq Direction
+
+instance DecodeJson Direction where
+  decodeJson v = decodeJson v >>= case _ of
+    "Forward" → Right Forward
+    "Backward" → Right Backward
+    result → Left $ TypeMismatch $ "`Direction` value was expected, but got: "
+      <> result
+
 renderDirection ∷ Direction → String
 renderDirection = case _ of
   Backward → "b"
@@ -284,7 +293,11 @@ messagesFromCursor'
   ⇒ Transport
   → Maybe (Tuple Cursor Direction)
   → Token
-  → m { cursor ∷ Cursor, items ∷ Array Message }
+  → m
+      { cursor ∷ Maybe Cursor
+      , items ∷ Array Message
+      , direction ∷ Maybe Direction
+      }
 messagesFromCursor' transport cursorWithDirection token = do
   backendApiUrl ← asks _.backendApiUrl
   let
@@ -292,7 +305,7 @@ messagesFromCursor' transport cursorWithDirection token = do
       <> Q.print
         ( QP.print QP.keyFromString QP.valueFromString
             ( QP.QueryPairs $ catMaybes
-                [ Tuple "cursor" <<< Just <<< fst
+                [ Tuple "cursor" <<< Just <<< show <<< fst
                     <$> cursorWithDirection
                 , Tuple "direction" <<< Just <<< renderDirection <<< snd
                     <$> cursorWithDirection
@@ -321,7 +334,11 @@ messagesFromCursor
   ⇒ MonadThrow Error m
   ⇒ Maybe (Tuple Cursor Direction)
   → Token
-  → m { cursor ∷ Cursor, items ∷ Array Message }
+  → m
+      { cursor ∷ Maybe Cursor
+      , items ∷ Array Message
+      , direction ∷ Maybe Direction
+      }
 messagesFromCursor = messagesFromCursor' AW.request
 
 authorization ∷ Token → RequestHeader
