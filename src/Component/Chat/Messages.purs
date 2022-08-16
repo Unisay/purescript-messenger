@@ -11,11 +11,10 @@ import Data.Array as Array
 import Data.Formatter.DateTime (format)
 import Data.Formatter.DateTime as F
 import Data.List (List(..), (:))
-import Data.Message (Message(..), SlidingWindow, dateTimeToSeconds, unMessage)
+import Data.Message (Cursor, Message(..), SlidingWindow)
 import Data.Number (abs)
 import Data.String.NonEmpty as NES
 import Data.Traversable (traverse_)
-import Data.Tuple (Tuple(..))
 import Data.Username as Username
 import Effect.Aff (Milliseconds(..))
 import Effect.Aff as Aff
@@ -184,11 +183,11 @@ handleAction ∷ Action → H.HalogenM State Action () Output App Unit
 handleAction = case _ of
   Initialize → do
     _ ← H.subscribe =<< timer Tick
-    updateMessages Nothing
+    updateMessages Nothing Backward
   Tick →
     H.gets _.messages >>= \window → do
-      let cursor = RD.toMaybe window >>= _.toCursor
-      updateMessages $ flip Tuple Forward <$> cursor
+      let cursor = RD.toMaybe window <#> _.toCursor
+      updateMessages cursor Forward
   MessagesScroll →
     messagesScrollInfo >>= traverse_ \{ sheight, cheight, top } → do
       if abs (sheight - (cheight + top)) > 1.0 then
@@ -198,8 +197,8 @@ handleAction = case _ of
     scrollToBottom
   LoadPrevious →
     H.gets _.messages >>= \window → do
-      let cursor = RD.toMaybe window >>= _.fromCursor
-      updateMessages $ flip Tuple Forward <$> cursor
+      let cursor = RD.toMaybe window <#> _.fromCursor
+      updateMessages cursor Forward
 
   where
   timer val = do
@@ -209,39 +208,42 @@ handleAction = case _ of
       H.liftEffect $ HS.notify listener val
     pure emitter
 
-  updateMessages cursorDirection = do
+  updateMessages ∷ Maybe Cursor → Direction → _
+  updateMessages cursor direction = do
     token ← Auth.token
     H.modify_ _ { messages = Loading }
-    H.raiseError (Backend.messagesFromCursor cursorDirection token)
-      \{ cursor, items, direction } → do
+    H.raiseError (Backend.messagesFromCursor cursor direction token)
+      \{ prevCursor, nextCursor, items } → do
         H.modify_ \st → st
           { messages = case RD.toMaybe st.messages of
               Nothing →
-                let
-                  fromCursor = maybe Nothing
-                    ( unMessage
-                        >>> _.createdAt
-                        >>> dateTimeToSeconds
-                        >>> Just
-                    )
-                    (Array.last items)
-                in
-                  Success { toCursor: cursor, items, fromCursor }
-              Just msgs@{ fromCursor, items: items', toCursor } → Success
-                case direction of
-                  Just Forward →
-                    { items: items' <> items
-                    , fromCursor
-                    , toCursor: cursor
-                    }
-                  Just Backward →
-                    { items: items <> items'
-                    , fromCursor: cursor
-                    , toCursor
-                    }
-                  Nothing → msgs
+                Success
+                  case direction of
+                    Forward →
+                      { fromCursor: prevCursor
+                      , toCursor: nextCursor
+                      , items
+                      }
+                    Backward →
+                      { fromCursor: nextCursor
+                      , toCursor: prevCursor
+                      , items
+                      }
+              Just prev →
+                Success
+                  case direction of
+                    Forward →
+                      { items: prev.items <> items
+                      , fromCursor: prevCursor
+                      , toCursor: nextCursor
+                      }
+                    Backward →
+                      { items: items <> prev.items
+                      , fromCursor: nextCursor
+                      , toCursor: prevCursor
+                      }
           }
-        when (fromMaybe false $ direction <#> ((==) Forward)) updateScroll
+        when (direction == Forward) updateScroll
 
   updateScroll = H.gets _.scrollMode >>= case _ of
     NotFollowing → pass
@@ -273,3 +275,46 @@ type ScrollInfo =
   }
 
 type ElementId = String
+
+{-
+
+
+
+
+.... a b c d e f g h i j k l ....
+          ^     
+                ^     
+                      ^     
+
+C -> S: get next items, [ after cursor ].
+S -> C: [items, cursor]
+C -> S: get next items, after cursor.
+...
+C -> S: get next items, [ after cursor ].
+S -> C: [items = Nil, cursor = X]
+C -> S: get next items, after cursor.
+
+
+------>
+.... a b c d e f g h i j k l ....
+                           ^     
+                      ^     
+                ^     
+
+C -> S: get next items, direction = Backward, cursor = Nothing
+S -> C: [items, cursor]
+C -> S: get next items, direction = Backward, cursor 
+S -> C: [items, cursor]
+C -> S: get next items, direction = Backward, cursor 
+S -> C: [items = [], cursor = Nothing]
+
+
+
+
+S: .... a b c d e f g h i j k l ....
+C: .... ........... g h i ..... ....
+                   ^     ^
+C: .... ........e f g h i ..... ....
+                ^        ^
+
+-}

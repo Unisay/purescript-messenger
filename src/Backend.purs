@@ -9,7 +9,13 @@ import Affjax.RequestHeader (RequestHeader)
 import Affjax.ResponseFormat as ResponseFormat
 import Affjax.StatusCode (StatusCode(..))
 import Affjax.Web as AW
-import Chat.Api.Http (SignInResponseBody, SignUpResponse(..), SignUpResponseBody, SignoutReason, UserPresence)
+import Chat.Api.Http
+  ( SignInResponseBody
+  , SignUpResponse(..)
+  , SignUpResponseBody
+  , SignoutReason
+  , UserPresence
+  )
 import Chat.Api.Http.Problem (Problem)
 import Chat.Api.Http.Problem as Problem
 import Control.Monad.Error.Class (class MonadThrow)
@@ -291,24 +297,23 @@ messagesFromCursor'
   ⇒ MonadAsk (Record (HasBackendConfig r)) m
   ⇒ MonadThrow Error m
   ⇒ Transport
-  → Maybe (Tuple Cursor Direction)
+  → Maybe Cursor
+  → Direction
   → Token
   → m
-      { cursor ∷ Maybe Cursor
+      { prevCursor ∷ Cursor
+      , nextCursor ∷ Cursor
       , items ∷ Array Message
-      , direction ∷ Maybe Direction
       }
-messagesFromCursor' transport cursorWithDirection token = do
+messagesFromCursor' transport mbCursor direction token = do
   backendApiUrl ← asks _.backendApiUrl
   let
     url = (String.joinWith "/" [ backendApiUrl, "chat", "messages" ])
       <> Q.print
         ( QP.print QP.keyFromString QP.valueFromString
             ( QP.QueryPairs $ catMaybes
-                [ Tuple "cursor" <<< Just <<< show <<< fst
-                    <$> cursorWithDirection
-                , Tuple "direction" <<< Just <<< renderDirection <<< snd
-                    <$> cursorWithDirection
+                [ Tuple "cursor" <<< Just <$> mbCursor
+                , Just $ Tuple "direction" (Just (renderDirection direction))
                 ]
             )
         )
@@ -332,12 +337,13 @@ messagesFromCursor
   . MonadAff m
   ⇒ MonadAsk (Record (HasBackendConfig r)) m
   ⇒ MonadThrow Error m
-  ⇒ Maybe (Tuple Cursor Direction)
+  ⇒ Maybe Cursor
+  → Direction
   → Token
   → m
-      { cursor ∷ Maybe Cursor
+      { prevCursor ∷ Cursor
+      , nextCursor ∷ Cursor
       , items ∷ Array Message
-      , direction ∷ Maybe Direction
       }
 messagesFromCursor = messagesFromCursor' AW.request
 

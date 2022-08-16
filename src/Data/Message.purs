@@ -30,12 +30,12 @@ import Data.Username (Username)
 import Effect.Aff (Aff)
 import Effect.Now (nowDateTime)
 
-type Cursor = Number
+type Cursor = String
 
 type SlidingWindow ∷ Type → Type
 type SlidingWindow item =
-  { fromCursor ∷ Maybe Cursor
-  , toCursor ∷ Maybe Cursor
+  { fromCursor ∷ Cursor
+  , toCursor ∷ Cursor
   , items ∷ Array item
   }
 
@@ -66,12 +66,11 @@ instance EncodeJson Message where
 instance DecodeJson Message where
   decodeJson json = do
     m
-      ∷
-          { id ∷ Digest SHA256
-          , text ∷ String
-          , created_at ∷ Number
-          , author ∷ Username
-          } ←
+      ∷ { id ∷ Digest SHA256
+        , text ∷ String
+        , created_at ∷ Number
+        , author ∷ Username
+        } ←
       decodeJson json
     posix ← note (TypeMismatch "Unexpected Milliseconds value")
       $ numberToPosix m.created_at
