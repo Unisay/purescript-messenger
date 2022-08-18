@@ -7,6 +7,9 @@
     "type": "git",
     "url": "git+https://github.com/Unisay/purescript-messenger.git"
   },
+  "engines": {
+    "node": "18.x"
+  },
   "directories": {
     "test": "test"
   },
