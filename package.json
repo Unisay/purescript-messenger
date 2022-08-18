@@ -11,6 +11,7 @@
     "test": "test"
   },
   "scripts": {
+    "start": "npm run bundle && http-server dist",
     "build:purescript": "spago -P build",
     "build:tailwind": "tailwindcss -m -c tailwind.config.js -i tailwind_inputs.css -o dist/styles/tailwind.css",
     "build": "run-p build:purescript build:tailwind",
@@ -23,7 +24,6 @@
     "dev:build": "run-s build serve",
     "watch:purescript": "spago -P build --watch",
     "watch:tailwind": "tailwindcss -c tailwind.config.js -i tailwind_inputs.css -o dist/styles/tailwind.css --watch",
-    "prod": "npm run bundle && http-server dist",
     "test": "spago -P test",
     "clean:node": "rm -rf node_modules",
     "clean:purescript": "rm -rf output dce-output",
