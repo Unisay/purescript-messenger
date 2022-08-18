@@ -36,7 +36,7 @@ import Data.Newtype (unwrap, wrap)
 import Data.Password (Password)
 import Data.String as String
 import Data.Time.Duration (Milliseconds(..))
-import Data.Tuple (Tuple(..), fst, snd)
+import Data.Tuple (Tuple(..))
 import Data.Username (Username)
 import Data.Username as Username
 import Effect.Aff (Aff, throwError)

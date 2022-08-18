@@ -183,6 +183,7 @@ handleAction ∷ Action → H.HalogenM State Action () Output App Unit
 handleAction = case _ of
   Initialize → do
     _ ← H.subscribe =<< timer Tick
+    H.modify_ _ { messages = Loading }
     updateMessages Nothing Backward
   Tick →
     H.gets _.messages >>= \window → do
@@ -211,7 +212,6 @@ handleAction = case _ of
   updateMessages ∷ Maybe Cursor → Direction → _
   updateMessages cursor direction = do
     token ← Auth.token
-    H.modify_ _ { messages = Loading }
     H.raiseError (Backend.messagesFromCursor cursor direction token)
       \{ prevCursor, nextCursor, items } → do
         H.modify_ \st → st
