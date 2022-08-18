@@ -1,6 +1,4 @@
 node_modules/
-output/
-dce-output/
 generated-docs/
 /.psc-package/
 /.psc*
@@ -12,3 +10,28 @@ generated-docs/
 .psci_modules
 .vscode/
 .direnv/
+# Dependencies
+.psci_modules
+bower_components
+
+# Dot files
+.spago
+.psci
+.pulp-cache
+.purs-repl
+.psc-ide-port
+.cache
+.direnv
+
+# IDE files
+*.code-workspace
+.vscode
+
+# Generated
+output
+dce-output
+*.lock
+*.map
+
+dist/js/*
+dist/styles/tailwind.css

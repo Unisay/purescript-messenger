@@ -10,7 +10,7 @@ jobs:
 
       - uses: purescript-contrib/setup-purescript@main
         with:
-          purescript: "0.15.2"
+          purescript: "0.15.4"
 
       - name: Cache PureScript dependencies
         uses: actions/cache@v2
@@ -23,15 +23,7 @@ jobs:
         with:
           key: ${{ runner.os }}-spago-${{ hashFiles('**/*.dhall') }}
           path: |
-            frontend/.spago
-            frontend/output
-            backend/.spago
-            backend/output
-            common/.spago
-            common/output
-      - name: Build and test common
-        run: cd common && spago build && spago test --no-install
-      - name: Build and test frontend
-        run: cd frontend && spago build && spago test --no-install
-      - name: Build and test backend
-        run: cd backend && spago build && spago test --no-install
+            .spago
+            output
+      - name: Build and test
+        run: spago build && spago test --no-install
