@@ -14,7 +14,7 @@
     "test": "test"
   },
   "scripts": {
-    "start": "http-server dist",
+    "start": "node ./server.js",
     "build:purescript": "spago -P build",
     "build:tailwind": "tailwindcss -m -c tailwind.config.js -i tailwind_inputs.css -o dist/styles/tailwind.css",
     "build": "npm run bundle",
