@@ -29,7 +29,9 @@
     "clean:purescript": "rm -rf output dce-output",
     "clean:spago": "rm -rf .spago",
     "clean:dist": "rm -rf dist/js/*",
-    "clean": "run-p clean:*"
+    "clean": "run-p clean:*",
+    "postinstall": "npm run install:zephyr",
+    "install:zephyr": "node ./install.js && ln -sf ../binary-install/node_modules/.bin/zephyr node_modules/.bin/zephyr"
   },
   "keywords": [],
   "author": "",
@@ -40,10 +42,11 @@
     "xhr2": "^0.2.1"
   },
   "devDependencies": {
+    "binary-install": "^1.0.6",
     "connect-livereload": "^0.6.1",
     "create-serve": "^1.0.1",
-    "esbuild-plugin-purescript": "^1.1.1",
     "esbuild": "^0.14.23",
+    "esbuild-plugin-purescript": "^1.1.1",
     "express": "^4.18.1",
     "http-server": "^14.1.0",
     "livereload": "^0.9.3",
