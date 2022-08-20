@@ -2,7 +2,7 @@ import express from "express";
 import * as fs from 'node:fs';
 import * as https from 'https';
 
-const port = 8080;
+const port = process.env.PORT || 8080;
 const certs = {
   key: fs.readFileSync('ssl/key.pem'),
   cert: fs.readFileSync('ssl/cert.crt')
