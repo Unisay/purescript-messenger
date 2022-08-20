@@ -10,9 +10,9 @@ esbuild
     entryPoints: ["build/index.js"],
     external: ["url", "xhr2"],
     outdir: "dist/js",
-    plugins: [PureScriptPlugin({ output: "dce-output" })],
+    treeShaking: true,
+    plugins: [PureScriptPlugin({ output: "output" })],
   })
   .catch((e) => {
-    error(e);
-    process.exit(1);
+    console.error(e);
   });

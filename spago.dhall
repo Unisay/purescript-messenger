@@ -11,7 +11,6 @@
   , "codec-argonaut"
   , "console"
   , "datetime"
-  , "debug"
   , "dom-indexed"
   , "effect"
   , "either"

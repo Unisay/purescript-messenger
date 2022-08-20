@@ -28,9 +28,8 @@ import Web.HTML.Window (document, history, localStorage, location)
 
 main ∷ Effect Unit
 main = runHalogenAff do
-  let backendApiUrl = "https://puremess:8081"
-  auth0Client ← Auth0.newClient =<<
-    Auth0.clientConfig (backendApiUrl <> "/auth_config.json")
+  let backendApiUrl = "https://puremess:8080"
+  auth0Client ← Auth0.newClient =<< Auth0.clientConfig "auth_config.json"
 
   params ← queryParams
 
@@ -46,7 +45,7 @@ main = runHalogenAff do
   let
     auth0Config =
       { client: auth0Client
-      , redirectUri: "https://puremess:8000/"
+      , redirectUri: "https://puremess:8080/"
       }
     appConfig =
       { notifications

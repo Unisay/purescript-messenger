@@ -7,7 +7,7 @@
     flake-utils.url = "github:numtide/flake-utils";
     nixpkgs.url = "nixpkgs/nixos-unstable";
     easy-purescript-nix = {
-      url = "github:justinwoo/easy-purescript-nix";
+      url = "github:Unisay/easy-purescript-nix";
       flake = false;
     };
   };
