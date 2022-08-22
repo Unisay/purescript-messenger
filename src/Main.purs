@@ -23,13 +23,14 @@ import URI.Query as Q
 import Web.HTML (window)
 import Web.HTML.HTMLDocument (title)
 import Web.HTML.History (DocumentTitle(..), URL(..), replaceState)
-import Web.HTML.Location (search)
+import Web.HTML.Location (href, search)
 import Web.HTML.Window (document, history, localStorage, location)
 
 main ∷ Effect Unit
 main = runHalogenAff do
-  let backendApiUrl = "https://puremess:8080"
+  let backendApiUrl = "https://puremess:8081"
   auth0Client ← Auth0.newClient =<< Auth0.clientConfig "auth_config.json"
+  redirectUri ← liftEffect $ href =<< location =<< window
 
   params ← queryParams
 
@@ -45,7 +46,7 @@ main = runHalogenAff do
   let
     auth0Config =
       { client: auth0Client
-      , redirectUri: "https://puremess:8080/"
+      , redirectUri
       }
     appConfig =
       { notifications
