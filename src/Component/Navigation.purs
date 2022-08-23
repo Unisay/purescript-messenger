@@ -9,8 +9,7 @@ import AppM (App)
 import AppM as App
 import Auth (Info(..))
 import Auth as Auth
-import Auth0 (buildAuthorizeUrl)
-import Chat.Api.Http (SignoutReason(..))
+import Auth0 as Auth0
 import Control.Monad.Reader (asks)
 import Data.Newtype (unwrap)
 import Data.Notification (useful)
@@ -27,13 +26,14 @@ type State =
   { route ∷ Route
   , authInfo ∷ Maybe Auth.Info
   , authorizeUrl ∷ Maybe String
+  , logoutUrl ∷ Maybe String
   }
 
 type Input = { route ∷ Route, authInfo ∷ Maybe Auth.Info }
 
 data Output = OutputError App.Error | SignedOut
 
-data Action = UpdateState Input | SignOut SignoutReason | Initialize
+data Action = UpdateState Input | SignOut | Initialize
 
 component ∷ ∀ q. H.Component q Input Output App
 component =
@@ -52,10 +52,11 @@ initialState { route, authInfo } =
   { route
   , authInfo
   , authorizeUrl: Nothing
+  , logoutUrl: Nothing
   }
 
 render ∷ ∀ m. State → H.ComponentHTML Action () m
-render { route, authInfo, authorizeUrl } = HH.nav_
+render { route, authInfo, authorizeUrl, logoutUrl } = HH.nav_
   [ HH.ul
       [ HP.classNames
           [ "bg-white"
@@ -104,28 +105,33 @@ render { route, authInfo, authorizeUrl } = HH.nav_
           [ HH.text $ Username.toString (unwrap user).name ]
       , HH.li
           [ HP.classNames [ "list-none", "mr-16", "mt-9", "text-xl" ] ]
-          [ HH.a
-              [ Route.href Home
-              , HE.onClick \_ → SignOut UserAction
-              , HP.classNames [ "block" ]
-              ]
-              [ HH.img
-                  [ HP.src "images/signout.svg"
-                  , HP.classNames
-                      [ "h-6"
-                      , "w-6"
-                      , "transition"
-                      , "duration-100"
-                      , "hover:scale-110"
-                      , "active:scale-125"
-                      , "stroke-current"
-                      , "hover:stroke-blue-800"
-                      , "stroke-2"
-                      , "fill-transparent"
-                      ]
-                  ]
-              ]
+          [ case logoutUrl of
+              Nothing → HH.img
+                [ HP.classNames [ "block" ], HP.src "images/signout.svg" ]
+              Just url → HH.a
+                [ HP.href url
+                , HE.onClick \_ → SignOut
+                , HP.classNames [ "block" ]
+                ]
+                [ HH.img
+                    [ HP.src "images/signout.svg"
+                    , HP.classNames
+                        [ "h-6"
+                        , "w-6"
+                        , "transition"
+                        , "duration-100"
+                        , "hover:scale-110"
+                        , "active:scale-125"
+                        , "stroke-current"
+                        , "hover:stroke-blue-800"
+                        , "stroke-2"
+                        , "fill-transparent"
+                        ]
+                    ]
+                ]
+
           ]
+
       ]
   anonymousActions =
     [ { label: "Signin", href: authorizeUrl }
@@ -150,22 +156,19 @@ render { route, authInfo, authorizeUrl } = HH.nav_
                 [ HH.text label ]
           ]
 
-handleAction ∷ ∀ s. Action → H.HalogenM State Action s Output App Unit
+handleAction ∷ Action → H.HalogenM State Action () Output App Unit
 handleAction = case _ of
   Initialize → do
-    authorizeUrl ← buildAuthorizeUrl
-    H.modify_ _ { authorizeUrl = Just authorizeUrl }
+    authorizeUrl ← Auth0.buildAuthorizeUrl
+    logoutUrl ← Auth0.buildLogoutUrl
+    log logoutUrl
+    H.modify_ _
+      { authorizeUrl = Just authorizeUrl
+      , logoutUrl = Just logoutUrl
+      }
   UpdateState { route, authInfo } →
     H.modify_ _ { route = route, authInfo = authInfo }
-  SignOut _reason → do
-
-    -- H.gets _.authInfo >>= case _ of
-    --   Nothing → H.raise $ OutputError $ App.AuthError Auth.TokenIsMissing
-    --   Just { username, token } → do
-    --     H.raiseErrors_ (deleteSession username token reason)
-    --       (App.BackendError >>> OutputError)
+  SignOut → do
     listener ← asks _.notifications.listener
     liftEffect $ HS.notify listener $ useful "You successfully signed out!"
-    H.modify_ _ { authInfo = Nothing }
-    --     Auth.removeToken *>
     H.raise SignedOut

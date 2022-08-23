@@ -3334,6 +3334,7 @@
   var _getUser = (client) => client.getUser();
   var _getTokenSilently = (client) => (opts) => () => client.getTokenSilently(opts);
   var _buildAuthorizeUrl = (client) => (opts) => client.buildAuthorizeUrl(opts);
+  var _buildLogoutUrl = (client) => (opts) => client.buildLogoutUrl(opts);
 
   // output/Control.Apply/foreign.js
   var arrayApply = function(fs) {
@@ -10430,8 +10431,8 @@
   };
 
   // output/Auth0/index.js
-  var newClient = function($69) {
-    return toAffE(_client($69));
+  var newClient = function($81) {
+    return toAffE(_client($81));
   };
   var loginWithRedirect = function(dictMonadAsk) {
     var asks3 = asks(dictMonadAsk);
@@ -10443,7 +10444,8 @@
         return liftAff5(toAff(_loginWithRedirect(v2.client)({
           redirect_uri: v2.redirectUri,
           audience: "https://puremess:8081/",
-          scope: "api"
+          scope: "api",
+          cacheLocation: "localstorage"
         })));
       });
     };
@@ -10454,17 +10456,17 @@
       return bind(dictMonadAff.MonadEffect0().Monad0().Bind1())(asks3(function(v2) {
         return v2.auth0Config.client;
       }))(function() {
-        var $72 = liftAff(dictMonadAff);
-        return function($73) {
-          return $72(toAff(_isAuthenticated($73)));
+        var $84 = liftAff(dictMonadAff);
+        return function($85) {
+          return $84(toAff(_isAuthenticated($85)));
         };
       }());
     };
   };
   var handleRedirectCallback = function(dictMonadAff) {
-    var $74 = liftAff(dictMonadAff);
-    return function($75) {
-      return $74(toAffE(_handleRedirectCallback($75)));
+    var $86 = liftAff(dictMonadAff);
+    return function($87) {
+      return $86(toAffE(_handleRedirectCallback($87)));
     };
   };
   var getUser = function(dictMonadAsk) {
@@ -10473,9 +10475,9 @@
       return bind(dictMonadAff.MonadEffect0().Monad0().Bind1())(asks3(function(v2) {
         return v2.auth0Config.client;
       }))(function() {
-        var $76 = liftAff(dictMonadAff);
-        return function($77) {
-          return $76(toAff(_getUser($77)));
+        var $88 = liftAff(dictMonadAff);
+        return function($89) {
+          return $88(toAff(_getUser($89)));
         };
       }());
     };
@@ -10499,11 +10501,23 @@
     };
   };
   var clientConfig = /* @__PURE__ */ function() {
-    var $78 = liftAff(monadAffAff);
-    return function($79) {
-      return $78(toAffE(_config($79)));
+    var $90 = liftAff(monadAffAff);
+    return function($91) {
+      return $90(toAffE(_config($91)));
     };
   }();
+  var buildLogoutUrl = function(dictMonadAsk) {
+    var Monad0 = dictMonadAsk.Monad0();
+    var pure26 = pure(Monad0.Applicative0());
+    return bind(Monad0.Bind1())(asks(dictMonadAsk)(function(v2) {
+      return v2.auth0Config;
+    }))(function(v2) {
+      return pure26(_buildLogoutUrl(v2.client)({
+        returnTo: v2.redirectUri,
+        federated: false
+      }));
+    });
+  };
   var buildAuthorizeUrl = function(dictMonadAsk) {
     var asks3 = asks(dictMonadAsk);
     return function(dictMonadAff) {
@@ -10514,7 +10528,8 @@
         return liftAff5(toAff(_buildAuthorizeUrl(v2.client)({
           redirect_uri: v2.redirectUri,
           audience: "https://puremess:8081/",
-          scope: "api"
+          scope: "api",
+          cacheLocation: "localstorage"
         })));
       });
     };
@@ -27745,15 +27760,6 @@
   // output/Affjax.Web/index.js
   var request2 = /* @__PURE__ */ request(driver);
 
-  // output/Chat.Api.Http/index.js
-  var UserAction = /* @__PURE__ */ function() {
-    function UserAction2() {
-    }
-    ;
-    UserAction2.value = new UserAction2();
-    return UserAction2;
-  }();
-
   // output/Chat.Presence/index.js
   var bind7 = /* @__PURE__ */ bind(bindEither);
   var decodeJson2 = /* @__PURE__ */ decodeJson(decodeJsonString);
@@ -29455,6 +29461,12 @@
       return function($50) {
         return liftEffect16($49($50));
       };
+    };
+  };
+  var log3 = function(dictMonadEffect) {
+    var $51 = liftEffect(dictMonadEffect);
+    return function($52) {
+      return $51(log2($52));
     };
   };
   var error3 = function(dictMonadEffect) {
@@ -34746,10 +34758,10 @@
         return false;
       }
       ;
-      throw new Error("Failed pattern match at Component.Chat.Messages (line 178, column 17 - line 180, column 25): " + [state3.scrollMode.constructor.name]);
+      throw new Error("Failed pattern match at Component.Chat.Messages (line 179, column 17 - line 181, column 25): " + [state3.scrollMode.constructor.name]);
     }();
     var dateTimeFormat = new Cons(new Placeholder("["), new Cons(DayOfMonth.value, new Cons(new Placeholder(" "), new Cons(MonthShort.value, new Cons(new Placeholder(" "), new Cons(Hours24.value, new Cons(new Placeholder(":"), new Cons(MinutesTwoDigits.value, new Cons(new Placeholder("]"), Nil.value)))))))));
-    return div3([classNames(["relative"])])([div3([id3("messages"), classNames(["border-x-2", "border-t-2", "border-slate-400", "rounded-t-sm", "pl-2", "pr-1", "overflow-y-scroll", "relative", "h-chat", "bg-slate-100", "max-w-chat"]), onScroll($$const(MessagesScroll.value))])([ol([classNames(["flex", "flex-col"])])(cons3(li2([])([a2([onClick(function(_me) {
+    return div3([classNames(["relative"])])([div3([id3("messages"), classNames(["border-x-2", "border-t-2", "border-slate-400", "rounded-t-sm", "pl-2", "pr-1", "overflow-y-scroll", "relative", "h-chat", "bg-slate-100", "max-w-chat", "min-w-chat"]), onScroll($$const(MessagesScroll.value))])([ol([classNames(["flex", "flex-col"])])(cons3(li2([])([a2([onClick(function(_me) {
       return LoadPrevious.value;
     })])([text("Load previous messages")])]))(mapFlipped4(withDefault([])(mapFlipped1(state3.messages)(function(v2) {
       return v2.items;
@@ -34803,7 +34815,7 @@
           return Nothing.value;
         }
         ;
-        throw new Error("Failed pattern match at Component.Chat.Messages (line 256, column 41 - line 264, column 21): " + [v2.constructor.name]);
+        throw new Error("Failed pattern match at Component.Chat.Messages (line 257, column 41 - line 265, column 21): " + [v2.constructor.name]);
       });
     };
     var messagesScrollInfo1 = messagesScrollInfo(monadEffectEffect);
@@ -34825,7 +34837,7 @@
         return scrollToBottom1;
       }
       ;
-      throw new Error("Failed pattern match at Component.Chat.Messages (line 248, column 42 - line 250, column 31): " + [v2.constructor.name]);
+      throw new Error("Failed pattern match at Component.Chat.Messages (line 249, column 42 - line 251, column 31): " + [v2.constructor.name]);
     });
     var updateMessages = function(cursor) {
       return function(direction) {
@@ -34860,7 +34872,7 @@
                       };
                     }
                     ;
-                    throw new Error("Failed pattern match at Component.Chat.Messages (line 221, column 19 - line 231, column 24): " + [direction.constructor.name]);
+                    throw new Error("Failed pattern match at Component.Chat.Messages (line 222, column 19 - line 232, column 24): " + [direction.constructor.name]);
                   }());
                 }
                 ;
@@ -34882,11 +34894,11 @@
                       };
                     }
                     ;
-                    throw new Error("Failed pattern match at Component.Chat.Messages (line 234, column 19 - line 244, column 24): " + [direction.constructor.name]);
+                    throw new Error("Failed pattern match at Component.Chat.Messages (line 235, column 19 - line 245, column 24): " + [direction.constructor.name]);
                   }());
                 }
                 ;
-                throw new Error("Failed pattern match at Component.Chat.Messages (line 218, column 24 - line 244, column 24): " + [v22.constructor.name]);
+                throw new Error("Failed pattern match at Component.Chat.Messages (line 219, column 24 - line 245, column 24): " + [v22.constructor.name]);
               }();
               return $90;
             }))(function() {
@@ -34975,7 +34987,7 @@
         });
       }
       ;
-      throw new Error("Failed pattern match at Component.Chat.Messages (line 183, column 16 - line 202, column 36): " + [v2.constructor.name]);
+      throw new Error("Failed pattern match at Component.Chat.Messages (line 184, column 16 - line 203, column 36): " + [v2.constructor.name]);
     };
   }();
   var component2 = /* @__PURE__ */ function() {
@@ -36687,13 +36699,6 @@
     Debug: /* @__PURE__ */ path("debug")(noArgs),
     Chat: /* @__PURE__ */ path("chat")(noArgs)
   }));
-  var goTo = function(dictMonadEffect) {
-    var $55 = liftEffect(dictMonadEffect);
-    var $56 = print9(codec);
-    return function($57) {
-      return $55(setHash2($56($57)));
-    };
-  };
   var href5 = /* @__PURE__ */ function() {
     var $58 = append(semigroupString)("#");
     var $59 = print9(codec);
@@ -36765,10 +36770,13 @@
   var bind110 = /* @__PURE__ */ bind(bindHalogenM);
   var monadAskHalogenM4 = /* @__PURE__ */ monadAskHalogenM(monadAskAppM);
   var buildAuthorizeUrl2 = /* @__PURE__ */ buildAuthorizeUrl(monadAskHalogenM4)(/* @__PURE__ */ monadAffHalogenM(monadAffAppM));
+  var buildLogoutUrl2 = /* @__PURE__ */ buildLogoutUrl(monadAskHalogenM4);
+  var discard5 = /* @__PURE__ */ discard(discardUnit)(bindHalogenM);
+  var monadEffectHalogenM3 = /* @__PURE__ */ monadEffectHalogenM(monadEffectAppM);
+  var log4 = /* @__PURE__ */ log3(monadEffectHalogenM3);
   var modify_7 = /* @__PURE__ */ modify_2(monadStateHalogenM);
   var asks2 = /* @__PURE__ */ asks(monadAskHalogenM4);
-  var discard5 = /* @__PURE__ */ discard(discardUnit)(bindHalogenM);
-  var liftEffect8 = /* @__PURE__ */ liftEffect(/* @__PURE__ */ monadEffectHalogenM(monadEffectAppM));
+  var liftEffect8 = /* @__PURE__ */ liftEffect(monadEffectHalogenM3);
   var OutputError = /* @__PURE__ */ function() {
     function OutputError2(value0) {
       this.value0 = value0;
@@ -36797,13 +36805,10 @@
     return UpdateState3;
   }();
   var SignOut = /* @__PURE__ */ function() {
-    function SignOut2(value0) {
-      this.value0 = value0;
+    function SignOut2() {
     }
     ;
-    SignOut2.create = function(value0) {
-      return new SignOut2(value0);
-    };
+    SignOut2.value = new SignOut2();
     return SignOut2;
   }();
   var Initialize4 = /* @__PURE__ */ function() {
@@ -36830,7 +36835,7 @@
           return a2([classNames(["decoration-transparent", "text-black", "transition", "duration-50", "hover:text-blue-800", "active:text-blue-600"]), href(v1.href.value0)])([text(v1.label)]);
         }
         ;
-        throw new Error("Failed pattern match at Component.Navigation (line 137, column 13 - line 150, column 34): " + [v1.href.constructor.name]);
+        throw new Error("Failed pattern match at Component.Navigation (line 143, column 13 - line 156, column 34): " + [v1.href.constructor.name]);
       }()]));
     });
     var headerActions = function() {
@@ -36843,23 +36848,33 @@
       }
       ;
       if (v2.authInfo instanceof Just && v2.authInfo.value0 instanceof Authenticated) {
-        return [li2([classNames(["list-none", "mr-16", "mt-8", "text-xl"])])([text(toString5(unwrap8(v2.authInfo.value0.value0).name))]), li2([classNames(["list-none", "mr-16", "mt-9", "text-xl"])])([a2([href5(Home.value), onClick(function(v1) {
-          return new SignOut(UserAction.value);
-        }), classNames(["block"])])([img([src("images/signout.svg"), classNames(["h-6", "w-6", "transition", "duration-100", "hover:scale-110", "active:scale-125", "stroke-current", "hover:stroke-blue-800", "stroke-2", "fill-transparent"])])])])];
+        return [li2([classNames(["list-none", "mr-16", "mt-8", "text-xl"])])([text(toString5(unwrap8(v2.authInfo.value0.value0).name))]), li2([classNames(["list-none", "mr-16", "mt-9", "text-xl"])])([function() {
+          if (v2.logoutUrl instanceof Nothing) {
+            return img([classNames(["block"]), src("images/signout.svg")]);
+          }
+          ;
+          if (v2.logoutUrl instanceof Just) {
+            return a2([href(v2.logoutUrl.value0), onClick(function(v1) {
+              return SignOut.value;
+            }), classNames(["block"])])([img([src("images/signout.svg"), classNames(["h-6", "w-6", "transition", "duration-100", "hover:scale-110", "active:scale-125", "stroke-current", "hover:stroke-blue-800", "stroke-2", "fill-transparent"])])]);
+          }
+          ;
+          throw new Error("Failed pattern match at Component.Navigation (line 108, column 13 - line 131, column 18): " + [v2.logoutUrl.constructor.name]);
+        }()])];
       }
       ;
-      throw new Error("Failed pattern match at Component.Navigation (line 98, column 19 - line 129, column 8): " + [v2.authInfo.constructor.name]);
+      throw new Error("Failed pattern match at Component.Navigation (line 99, column 19 - line 135, column 8): " + [v2.authInfo.constructor.name]);
     }();
     return nav_([ul([classNames(["bg-white", "top-0", "pr-0", "pt-2", "flex", "justify-end", "align-center", "w-full", "sticky", "h-20"])])(append14([li2([classNames(["list-none", "ml-8", "mr-auto", "mt-8"])])([a2([classNames([function() {
-      var $37 = eq7(v2.route)(Home.value);
-      if ($37) {
+      var $40 = eq7(v2.route)(Home.value);
+      if ($40) {
         return "overline";
       }
       ;
       return "no-underline";
     }(), function() {
-      var $38 = eq7(v2.route)(Home.value);
-      if ($38) {
+      var $41 = eq7(v2.route)(Home.value);
+      if ($41) {
         return "text-blue-800";
       }
       ;
@@ -36870,40 +36885,46 @@
     return {
       route: v2.route,
       authInfo: v2.authInfo,
-      authorizeUrl: Nothing.value
+      authorizeUrl: Nothing.value,
+      logoutUrl: Nothing.value
     };
   };
   var handleAction8 = function(v2) {
     if (v2 instanceof Initialize4) {
       return bind110(buildAuthorizeUrl2)(function(authorizeUrl) {
-        return modify_7(function(v1) {
-          var $46 = {};
-          for (var $47 in v1) {
-            if ({}.hasOwnProperty.call(v1, $47)) {
-              $46[$47] = v1[$47];
-            }
-            ;
-          }
-          ;
-          $46.authorizeUrl = new Just(authorizeUrl);
-          return $46;
+        return bind110(buildLogoutUrl2)(function(logoutUrl) {
+          return discard5(log4(logoutUrl))(function() {
+            return modify_7(function(v1) {
+              var $50 = {};
+              for (var $51 in v1) {
+                if ({}.hasOwnProperty.call(v1, $51)) {
+                  $50[$51] = v1[$51];
+                }
+                ;
+              }
+              ;
+              $50.authorizeUrl = new Just(authorizeUrl);
+              $50.logoutUrl = new Just(logoutUrl);
+              return $50;
+            });
+          });
         });
       });
     }
     ;
     if (v2 instanceof UpdateState2) {
       return modify_7(function(v1) {
-        var $49 = {};
-        for (var $50 in v1) {
-          if ({}.hasOwnProperty.call(v1, $50)) {
-            $49[$50] = v1[$50];
+        var $53 = {};
+        for (var $54 in v1) {
+          if ({}.hasOwnProperty.call(v1, $54)) {
+            $53[$54] = v1[$54];
           }
           ;
         }
         ;
-        $49.route = v2.value0.route;
-        $49.authInfo = v2.value0.authInfo;
-        return $49;
+        $53.route = v2.value0.route;
+        $53.authInfo = v2.value0.authInfo;
+        return $53;
       });
     }
     ;
@@ -36912,25 +36933,12 @@
         return v1.notifications.listener;
       }))(function(listener) {
         return discard5(liftEffect8(notify(listener)(useful("You successfully signed out!"))))(function() {
-          return discard5(modify_7(function(v1) {
-            var $55 = {};
-            for (var $56 in v1) {
-              if ({}.hasOwnProperty.call(v1, $56)) {
-                $55[$56] = v1[$56];
-              }
-              ;
-            }
-            ;
-            $55.authInfo = Nothing.value;
-            return $55;
-          }))(function() {
-            return raise(SignedOut.value);
-          });
+          return raise(SignedOut.value);
         });
       });
     }
     ;
-    throw new Error("Failed pattern match at Component.Navigation (line 154, column 16 - line 171, column 22): " + [v2.constructor.name]);
+    throw new Error("Failed pattern match at Component.Navigation (line 160, column 16 - line 174, column 22): " + [v2.constructor.name]);
   };
   var component8 = /* @__PURE__ */ function() {
     return mkComponent({
@@ -37324,16 +37332,16 @@
     return function(route) {
       return discard7(liftEffect16(setHash2(print9(codec)(route))))(function() {
         return modify_9(function(v2) {
-          var $91 = {};
-          for (var $92 in v2) {
-            if ({}.hasOwnProperty.call(v2, $92)) {
-              $91[$92] = v2[$92];
+          var $89 = {};
+          for (var $90 in v2) {
+            if ({}.hasOwnProperty.call(v2, $90)) {
+              $89[$90] = v2[$90];
             }
             ;
           }
           ;
-          $91.route = route;
-          return $91;
+          $89.route = route;
+          return $89;
         });
       });
     };
@@ -37379,8 +37387,8 @@
           return v1.config;
         }))(function(config) {
           return discard7(function() {
-            var $99 = !(authorized || isPublic(v2.value0));
-            if ($99) {
+            var $97 = !(authorized || isPublic(v2.value0));
+            if ($97) {
               return runReaderT(loginWithRedirect1)(config);
             }
             ;
@@ -37394,40 +37402,39 @@
   };
   var handleAction10 = function(dictMonadAff) {
     var MonadEffect0 = dictMonadAff.MonadEffect0();
-    var monadEffectHalogenM3 = monadEffectHalogenM(MonadEffect0);
-    var logShow3 = logShow2(monadEffectHalogenM3)(showError3);
+    var monadEffectHalogenM4 = monadEffectHalogenM(MonadEffect0);
+    var logShow3 = logShow2(monadEffectHalogenM4)(showError3);
     var userInfo2 = userInfo(monadAffExceptT(monadAffReader(monadAffHalogenM(dictMonadAff))))(monadThrowExceptT2)(monadAskExceptT3);
-    var liftEffect16 = liftEffect(monadEffectHalogenM3);
-    var error5 = error3(monadEffectHalogenM3);
+    var liftEffect16 = liftEffect(monadEffectHalogenM4);
+    var error5 = error3(monadEffectHalogenM4);
     var navigate1 = navigate(MonadEffect0);
-    var goTo2 = goTo(monadEffectHalogenM3);
     var recordAppError = function(err) {
       return applySecond4(logShow3(err))(modify_9(function(v2) {
-        var $102 = {};
-        for (var $103 in v2) {
-          if ({}.hasOwnProperty.call(v2, $103)) {
-            $102[$103] = v2[$103];
+        var $100 = {};
+        for (var $101 in v2) {
+          if ({}.hasOwnProperty.call(v2, $101)) {
+            $100[$101] = v2[$101];
           }
           ;
         }
         ;
-        $102.error = new Just(err);
-        return $102;
+        $100.error = new Just(err);
+        return $100;
       }));
     };
     return function(v2) {
       if (v2 instanceof Initialize6) {
         return discard7(modify_9(function(v1) {
-          var $106 = {};
-          for (var $107 in v1) {
-            if ({}.hasOwnProperty.call(v1, $107)) {
-              $106[$107] = v1[$107];
+          var $104 = {};
+          for (var $105 in v1) {
+            if ({}.hasOwnProperty.call(v1, $105)) {
+              $104[$105] = v1[$105];
             }
             ;
           }
           ;
-          $106.authInfo = Loading.value;
-          return $106;
+          $104.authInfo = Loading.value;
+          return $104;
         }))(function() {
           return discard7(bind24(readState2(function(v1) {
             return v1.config;
@@ -37438,16 +37445,16 @@
             ;
             if (v1 instanceof Right) {
               return modify_9(function(v22) {
-                var $111 = {};
-                for (var $112 in v22) {
-                  if ({}.hasOwnProperty.call(v22, $112)) {
-                    $111[$112] = v22[$112];
+                var $109 = {};
+                for (var $110 in v22) {
+                  if ({}.hasOwnProperty.call(v22, $110)) {
+                    $109[$110] = v22[$110];
                   }
                   ;
                 }
                 ;
-                $111.authInfo = new Success(v1.value0);
-                return $111;
+                $109.authInfo = new Success(v1.value0);
+                return $109;
               });
             }
             ;
@@ -37482,32 +37489,32 @@
       if (v2 instanceof ErrorAction) {
         if (v2.value0 instanceof Retry) {
           return modify_9(function(v1) {
-            var $120 = {};
-            for (var $121 in v1) {
-              if ({}.hasOwnProperty.call(v1, $121)) {
-                $120[$121] = v1[$121];
+            var $118 = {};
+            for (var $119 in v1) {
+              if ({}.hasOwnProperty.call(v1, $119)) {
+                $118[$119] = v1[$119];
               }
               ;
             }
             ;
-            $120.error = Nothing.value;
-            return $120;
+            $118.error = Nothing.value;
+            return $118;
           });
         }
         ;
         if (v2.value0 instanceof SignIn) {
           return modify_9(function(v1) {
-            var $123 = {};
-            for (var $124 in v1) {
-              if ({}.hasOwnProperty.call(v1, $124)) {
-                $123[$124] = v1[$124];
+            var $121 = {};
+            for (var $122 in v1) {
+              if ({}.hasOwnProperty.call(v1, $122)) {
+                $121[$122] = v1[$122];
               }
               ;
             }
             ;
-            $123.error = Nothing.value;
-            $123.authInfo = new Failure(unit);
-            return $123;
+            $121.error = Nothing.value;
+            $121.authInfo = new Failure(unit);
+            return $121;
           });
         }
         ;
@@ -37520,21 +37527,10 @@
         }
         ;
         if (v2.value0 instanceof SignedOut) {
-          return applySecond4(modify_9(function(v1) {
-            var $129 = {};
-            for (var $130 in v1) {
-              if ({}.hasOwnProperty.call(v1, $130)) {
-                $129[$130] = v1[$130];
-              }
-              ;
-            }
-            ;
-            $129.authInfo = NotAsked.value;
-            return $129;
-          }))(goTo2(Home.value));
+          return pass5;
         }
         ;
-        throw new Error("Failed pattern match at Component.Router (line 120, column 7 - line 122, column 73): " + [v2.value0.constructor.name]);
+        throw new Error("Failed pattern match at Component.Router (line 119, column 7 - line 121, column 25): " + [v2.value0.constructor.name]);
       }
       ;
       if (v2 instanceof RecordAppError) {
@@ -37567,8 +37563,8 @@
       if (v2.error instanceof Nothing) {
         var hoistApp = hoist4(run3(v2.config));
         var slotChat = function(info2) {
-          return slot12(_chat)(4)(hoistApp(component4))(info2)(function($145) {
-            return RecordAppError.create(BackendError.create($145));
+          return slot12(_chat)(4)(hoistApp(component4))(info2)(function($140) {
+            return RecordAppError.create(BackendError.create($140));
           });
         };
         var slotDebug = slot_1(_debug)(unit)(hoistApp(component1))(unit);

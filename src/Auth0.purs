@@ -21,7 +21,10 @@ type AuthOpts =
   { redirect_uri ∷ String
   , audience ∷ String
   , scope ∷ String
+  , cacheLocation ∷ String
   }
+
+type LogoutOpts = { returnTo ∷ String, federated ∷ Boolean }
 
 data ClientConfig
 
@@ -57,6 +60,7 @@ loginWithRedirect = do
     { redirect_uri: redirectUri
     , audience: "https://puremess:8081/"
     , scope: "api"
+    , cacheLocation: "localstorage"
     }
 
 foreign import _loginWithRedirect ∷ Client → AuthOpts → Promise Unit
@@ -90,6 +94,15 @@ buildAuthorizeUrl = do
     { redirect_uri: redirectUri
     , audience: "https://puremess:8081/"
     , scope: "api"
+    , cacheLocation: "localstorage"
     }
 
 foreign import _buildAuthorizeUrl ∷ Client → AuthOpts → Promise String
+
+buildLogoutUrl ∷ ∀ c m. MonadAsk (HasConfig c) m ⇒ m String
+buildLogoutUrl = do
+  { client, redirectUri } ← asks _.auth0Config
+  pure $ _buildLogoutUrl client
+    { returnTo: redirectUri, federated: false }
+
+foreign import _buildLogoutUrl ∷ Client → LogoutOpts → String

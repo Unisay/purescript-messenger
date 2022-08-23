@@ -22,7 +22,7 @@ import Config (Config)
 import Control.Monad.Except (runExceptT)
 import Control.Monad.Reader (runReaderT)
 import Control.Monad.State (modify_)
-import Data.Route (Route(..), goTo)
+import Data.Route (Route(..))
 import Data.Route as Route
 import Effect.Aff (Aff)
 import Effect.Aff.Class (class MonadAff)
@@ -115,11 +115,11 @@ handleAction = do
       Error.Retry → modify_ _ { error = Nothing }
       Error.SignIn → do
         modify_ _ { error = Nothing, authInfo = Failure unit }
-    -- goTo Route.SignIn
     NavigationOutput output →
       case output of
         OutputError err → recordAppError err
-        SignedOut → modify_ _ { authInfo = NotAsked } *> goTo Route.Home
+        SignedOut → pass
+    -- modify_ _ { authInfo = NotAsked }
     RecordAppError err →
       recordAppError err
 

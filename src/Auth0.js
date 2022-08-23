@@ -30,3 +30,6 @@ export const _getTokenSilently =
 
 export const _buildAuthorizeUrl =
   client => opts => client.buildAuthorizeUrl(opts);
+
+export const _buildLogoutUrl =
+  client => opts => client.buildLogoutUrl(opts);

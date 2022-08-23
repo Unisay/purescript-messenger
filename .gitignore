@@ -22,6 +22,7 @@ bower_components
 .psc-ide-port
 .cache
 .direnv
+.DS_Store
 
 # IDE files
 *.code-workspace
