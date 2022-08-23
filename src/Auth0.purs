@@ -21,6 +21,7 @@ type AuthOpts =
   { redirect_uri ∷ String
   , audience ∷ String
   , scope ∷ String
+  , cacheLocation ∷ String
   }
 
 data ClientConfig
@@ -57,9 +58,24 @@ loginWithRedirect = do
     { redirect_uri: redirectUri
     , audience: "https://puremess:8081/"
     , scope: "api"
+    , cacheLocation: "localstorage"
     }
 
 foreign import _loginWithRedirect ∷ Client → AuthOpts → Promise Unit
+
+type LogoutOpts =
+  { localOnly ∷ Boolean, federated ∷ Boolean, returnTo ∷ String }
+
+logout ∷ ∀ c m. MonadAsk (HasConfig c) m ⇒ MonadAff m ⇒ m Unit
+logout = do
+  { client, redirectUri } ← asks _.auth0Config
+  liftAff $ toAff $ _logout client
+    { returnTo: redirectUri
+    , localOnly: false
+    , federated: false
+    }
+
+foreign import _logout ∷ Client → LogoutOpts → Promise Unit
 
 handleRedirectCallback ∷ ∀ m. MonadAff m ⇒ Client → m Foreign
 handleRedirectCallback = _handleRedirectCallback >>> toAffE >>> liftAff
@@ -90,6 +106,18 @@ buildAuthorizeUrl = do
     { redirect_uri: redirectUri
     , audience: "https://puremess:8081/"
     , scope: "api"
+    , cacheLocation: "localstorage"
     }
 
 foreign import _buildAuthorizeUrl ∷ Client → AuthOpts → Promise String
+
+buildLogoutUrl ∷ ∀ c m. MonadAsk (HasConfig c) m ⇒ m String
+buildLogoutUrl = do
+  { client, redirectUri } ← asks _.auth0Config
+  pure $ _buildLogoutUrl client
+    { returnTo: redirectUri
+    , federated: false
+    , localOnly: false
+    }
+
+foreign import _buildLogoutUrl ∷ Client → LogoutOpts → String

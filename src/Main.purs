@@ -30,8 +30,6 @@ main ∷ Effect Unit
 main = runHalogenAff do
   let backendApiUrl = "https://puremess:8081"
   auth0Client ← Auth0.newClient =<< Auth0.clientConfig "auth_config.json"
-  redirectUri ← liftEffect $ href =<< location =<< window
-
   params ← queryParams
 
   for_ (paramValue "error" params <* paramValue "state" params) warnShow
@@ -43,6 +41,7 @@ main = runHalogenAff do
 
   storage ← liftEffect $ window >>= localStorage
   notifications ← liftEffect Subscription.create
+  redirectUri ← liftEffect $ href =<< location =<< window
   let
     auth0Config =
       { client: auth0Client

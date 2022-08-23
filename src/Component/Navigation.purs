@@ -9,11 +9,8 @@ import AppM (App)
 import AppM as App
 import Auth (Info(..))
 import Auth as Auth
-import Auth0 (buildAuthorizeUrl)
-import Chat.Api.Http (SignoutReason(..))
-import Control.Monad.Reader (asks)
+import Auth0 as Auth0
 import Data.Newtype (unwrap)
-import Data.Notification (useful)
 import Data.Route (Route(..))
 import Data.Route as Route
 import Data.Username as Username
@@ -21,7 +18,6 @@ import Halogen.Extended as H
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Extended as HH
 import Halogen.HTML.Properties.Extended as HP
-import Halogen.Subscription as HS
 
 type State =
   { route ∷ Route
@@ -33,7 +29,7 @@ type Input = { route ∷ Route, authInfo ∷ Maybe Auth.Info }
 
 data Output = OutputError App.Error | SignedOut
 
-data Action = UpdateState Input | SignOut SignoutReason | Initialize
+data Action = UpdateState Input | SignOut | Initialize
 
 component ∷ ∀ q. H.Component q Input Output App
 component =
@@ -105,8 +101,7 @@ render { route, authInfo, authorizeUrl } = HH.nav_
       , HH.li
           [ HP.classNames [ "list-none", "mr-16", "mt-9", "text-xl" ] ]
           [ HH.a
-              [ Route.href Home
-              , HE.onClick \_ → SignOut UserAction
+              [ HE.onClick \_ → SignOut
               , HP.classNames [ "block" ]
               ]
               [ HH.img
@@ -125,7 +120,9 @@ render { route, authInfo, authorizeUrl } = HH.nav_
                       ]
                   ]
               ]
+
           ]
+
       ]
   anonymousActions =
     [ { label: "Signin", href: authorizeUrl }
@@ -150,22 +147,13 @@ render { route, authInfo, authorizeUrl } = HH.nav_
                 [ HH.text label ]
           ]
 
-handleAction ∷ ∀ s. Action → H.HalogenM State Action s Output App Unit
+handleAction ∷ Action → H.HalogenM State Action () Output App Unit
 handleAction = case _ of
   Initialize → do
-    authorizeUrl ← buildAuthorizeUrl
+    authorizeUrl ← Auth0.buildAuthorizeUrl
     H.modify_ _ { authorizeUrl = Just authorizeUrl }
   UpdateState { route, authInfo } →
     H.modify_ _ { route = route, authInfo = authInfo }
-  SignOut _reason → do
-
-    -- H.gets _.authInfo >>= case _ of
-    --   Nothing → H.raise $ OutputError $ App.AuthError Auth.TokenIsMissing
-    --   Just { username, token } → do
-    --     H.raiseErrors_ (deleteSession username token reason)
-    --       (App.BackendError >>> OutputError)
-    listener ← asks _.notifications.listener
-    liftEffect $ HS.notify listener $ useful "You successfully signed out!"
-    H.modify_ _ { authInfo = Nothing }
-    --     Auth.removeToken *>
+  SignOut → do
+    Auth0.logout
     H.raise SignedOut
