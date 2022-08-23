@@ -32,3 +32,6 @@ output
 dce-output
 *.lock
 *.map
+
+dist/js/*
+dist/styles/tailwind.css
