@@ -10,9 +10,7 @@ import AppM as App
 import Auth (Info(..))
 import Auth as Auth
 import Auth0 as Auth0
-import Control.Monad.Reader (asks)
 import Data.Newtype (unwrap)
-import Data.Notification (useful)
 import Data.Route (Route(..))
 import Data.Route as Route
 import Data.Username as Username
@@ -20,7 +18,6 @@ import Halogen.Extended as H
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Extended as HH
 import Halogen.HTML.Properties.Extended as HP
-import Halogen.Subscription as HS
 
 type State =
   { route ∷ Route
@@ -56,7 +53,7 @@ initialState { route, authInfo } =
   }
 
 render ∷ ∀ m. State → H.ComponentHTML Action () m
-render { route, authInfo, authorizeUrl, logoutUrl } = HH.nav_
+render { route, authInfo, authorizeUrl } = HH.nav_
   [ HH.ul
       [ HP.classNames
           [ "bg-white"
@@ -105,30 +102,26 @@ render { route, authInfo, authorizeUrl, logoutUrl } = HH.nav_
           [ HH.text $ Username.toString (unwrap user).name ]
       , HH.li
           [ HP.classNames [ "list-none", "mr-16", "mt-9", "text-xl" ] ]
-          [ case logoutUrl of
-              Nothing → HH.img
-                [ HP.classNames [ "block" ], HP.src "images/signout.svg" ]
-              Just url → HH.a
-                [ HP.href url
-                , HE.onClick \_ → SignOut
-                , HP.classNames [ "block" ]
-                ]
-                [ HH.img
-                    [ HP.src "images/signout.svg"
-                    , HP.classNames
-                        [ "h-6"
-                        , "w-6"
-                        , "transition"
-                        , "duration-100"
-                        , "hover:scale-110"
-                        , "active:scale-125"
-                        , "stroke-current"
-                        , "hover:stroke-blue-800"
-                        , "stroke-2"
-                        , "fill-transparent"
-                        ]
-                    ]
-                ]
+          [ HH.a
+              [ HE.onClick \_ → SignOut
+              , HP.classNames [ "block" ]
+              ]
+              [ HH.img
+                  [ HP.src "images/signout.svg"
+                  , HP.classNames
+                      [ "h-6"
+                      , "w-6"
+                      , "transition"
+                      , "duration-100"
+                      , "hover:scale-110"
+                      , "active:scale-125"
+                      , "stroke-current"
+                      , "hover:stroke-blue-800"
+                      , "stroke-2"
+                      , "fill-transparent"
+                      ]
+                  ]
+              ]
 
           ]
 
@@ -160,15 +153,9 @@ handleAction ∷ Action → H.HalogenM State Action () Output App Unit
 handleAction = case _ of
   Initialize → do
     authorizeUrl ← Auth0.buildAuthorizeUrl
-    logoutUrl ← Auth0.buildLogoutUrl
-    log logoutUrl
-    H.modify_ _
-      { authorizeUrl = Just authorizeUrl
-      , logoutUrl = Just logoutUrl
-      }
+    H.modify_ _ { authorizeUrl = Just authorizeUrl }
   UpdateState { route, authInfo } →
     H.modify_ _ { route = route, authInfo = authInfo }
   SignOut → do
-    listener ← asks _.notifications.listener
-    liftEffect $ HS.notify listener $ useful "You successfully signed out!"
+    Auth0.logout
     H.raise SignedOut

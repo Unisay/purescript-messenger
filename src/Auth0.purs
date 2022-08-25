@@ -24,8 +24,6 @@ type AuthOpts =
   , cacheLocation ∷ String
   }
 
-type LogoutOpts = { returnTo ∷ String, federated ∷ Boolean }
-
 data ClientConfig
 
 foreign import _config ∷ String → Effect (Promise ClientConfig)
@@ -65,6 +63,20 @@ loginWithRedirect = do
 
 foreign import _loginWithRedirect ∷ Client → AuthOpts → Promise Unit
 
+type LogoutOpts =
+  { localOnly ∷ Boolean, federated ∷ Boolean, returnTo ∷ String }
+
+logout ∷ ∀ c m. MonadAsk (HasConfig c) m ⇒ MonadAff m ⇒ m Unit
+logout = do
+  { client, redirectUri } ← asks _.auth0Config
+  liftAff $ toAff $ _logout client
+    { returnTo: redirectUri
+    , localOnly: false
+    , federated: false
+    }
+
+foreign import _logout ∷ Client → LogoutOpts → Promise Unit
+
 handleRedirectCallback ∷ ∀ m. MonadAff m ⇒ Client → m Foreign
 handleRedirectCallback = _handleRedirectCallback >>> toAffE >>> liftAff
 
@@ -103,6 +115,9 @@ buildLogoutUrl ∷ ∀ c m. MonadAsk (HasConfig c) m ⇒ m String
 buildLogoutUrl = do
   { client, redirectUri } ← asks _.auth0Config
   pure $ _buildLogoutUrl client
-    { returnTo: redirectUri, federated: false }
+    { returnTo: redirectUri
+    , federated: false
+    , localOnly: false
+    }
 
 foreign import _buildLogoutUrl ∷ Client → LogoutOpts → String
