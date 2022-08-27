@@ -85,6 +85,7 @@ render state = HH.div [ HP.classNames [ "relative" ] ]
           , "h-chat"
           , "bg-slate-100"
           , "max-w-chat"
+          , "min-w-chat"
           ]
       , HE.onScroll $ const MessagesScroll
       ]

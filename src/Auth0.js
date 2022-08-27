@@ -19,6 +19,9 @@ export const _loginWithPopup =
 export const _loginWithRedirect =
   client => opts => client.loginWithRedirect(opts);
 
+export const _logout =
+  client => opts => { return client.logout(opts) || Promise.resolve(); }
+
 export const _handleRedirectCallback =
   client => () => client.handleRedirectCallback();
 
@@ -30,3 +33,6 @@ export const _getTokenSilently =
 
 export const _buildAuthorizeUrl =
   client => opts => client.buildAuthorizeUrl(opts);
+
+export const _buildLogoutUrl =
+  client => opts => client.buildLogoutUrl(opts);
